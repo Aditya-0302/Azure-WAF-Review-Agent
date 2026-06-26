@@ -88,11 +88,21 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: 1
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
       - name: pip-audit
         run: |
           pip install pip-audit
-          pip-audit -r src/shared/pyproject.toml
-          pip-audit -r src/api/pyproject.toml
+          pip install -e "src/shared"
+          pip install -e "src/api"
+          pip install -e "src/agents/extraction"
+          pip install -e "src/agents/preparation"
+          pip install -e "src/agents/reasoning"
+          pip install -e "src/agents/reporting"
+          pip-audit
 
   # ── Docker builds (all 5 images, no push) ────────────────────────────────────
   docker-build:
