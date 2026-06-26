@@ -33,7 +33,7 @@ class CloudEventEnvelope(BaseModel, Generic[T]):
         return self.model_dump_json().encode("utf-8")
 
     @classmethod
-    def from_json_bytes(cls, raw: bytes, data_type: type[T]) -> CloudEventEnvelope[T]:
+    def from_json_bytes(cls, raw: bytes, data_type: type[T]) -> CloudEventEnvelope[T]:  # type: ignore[valid-type]
         payload: dict[str, Any] = json.loads(raw)
-        payload["data"] = data_type.model_validate(payload["data"])
+        payload["data"] = data_type.model_validate(payload["data"])  # type: ignore[attr-defined]
         return cls.model_validate(payload)

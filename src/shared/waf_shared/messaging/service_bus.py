@@ -59,6 +59,8 @@ class ServiceBusPublisher:
             if self._connection_string is not None:
                 self._client = ServiceBusClient.from_connection_string(self._connection_string)
             else:
+                assert self._namespace is not None  # guaranteed by __init__ validation
+                assert self._credential is not None
                 self._client = ServiceBusClient(
                     fully_qualified_namespace=self._namespace,
                     credential=self._credential,

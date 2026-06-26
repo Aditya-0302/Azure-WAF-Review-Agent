@@ -48,7 +48,7 @@ from azure.identity.aio import (
 from azure.keyvault.secrets.aio import SecretClient
 
 
-def _SyncClientSecretCredential(*args, **kwargs) -> ClientSecretCredential:
+def _SyncClientSecretCredential(*args: Any, **kwargs: Any) -> ClientSecretCredential:  # noqa: N802
     """Creates an azure.identity.aio.ClientSecretCredential for cross-tenant async SDK use.
 
     The name is kept for test-patch compatibility: tests that assert on

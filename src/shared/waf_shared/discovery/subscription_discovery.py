@@ -41,16 +41,16 @@ class SubscriptionDiscoveryService:
         try:
             client = SubscriptionClient(credential)
             raw_subs: list[object] = []
-            async for sub in client.subscriptions.list():
-                raw_subs.append(sub)
+            async for azure_sub in client.subscriptions.list():
+                raw_subs.append(azure_sub)
             subs: list[AzureSubscription] = []
-            for sub in raw_subs:
+            for raw_sub in raw_subs:
                 try:
-                    subs.append(_map_subscription(sub))
+                    subs.append(_map_subscription(raw_sub))
                 except Exception:
                     _logger.warning(
                         "discovery.subscription.map_failed",
-                        subscription_id=getattr(sub, "subscription_id", "unknown"),
+                        subscription_id=getattr(raw_sub, "subscription_id", "unknown"),
                     )
             self._metrics.subscriptions_discovered.add(len(subs))
             _logger.info(
@@ -107,7 +107,7 @@ class SubscriptionDiscoveryService:
 
 def _map_subscription(sub: object) -> AzureSubscription:
     raw_state = getattr(sub, "state", None)
-    if hasattr(raw_state, "value"):
+    if raw_state is not None and hasattr(raw_state, "value"):
         raw_state = raw_state.value
     try:
         state = SubscriptionState(str(raw_state))

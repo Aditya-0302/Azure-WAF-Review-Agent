@@ -176,4 +176,4 @@ for _cls in [
     WorkflowFailedEvent,
     WorkflowCancelledEvent,
 ]:
-    _cls.__setattr__ = _raise_frozen_attr_error  # type: ignore[method-assign]
+    _cls.__setattr__ = _raise_frozen_attr_error  # type: ignore[assignment]

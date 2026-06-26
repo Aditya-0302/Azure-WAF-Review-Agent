@@ -62,6 +62,7 @@ class AzureOpenAIProvider:
                 api_key=api_key,
             )
         else:
+            assert credential is not None  # guaranteed by __init__ validation above
             from azure.identity.aio import get_bearer_token_provider  # type: ignore[import-untyped]
 
             token_provider = get_bearer_token_provider(
