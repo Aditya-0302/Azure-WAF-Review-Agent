@@ -106,7 +106,10 @@ resource "azurerm_monitor_diagnostic_setting" "postgres" {
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
   enabled_log { category = "PostgreSQLLogs" }
-  metric { category = "AllMetrics" enabled = true }
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
 }
 
 # ── Redis Cache (zone-redundant, Standard C2) ─────────────────────────────────
@@ -151,13 +154,29 @@ resource "azurerm_monitor_diagnostic_setting" "redis" {
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
   enabled_log { category = "ConnectedClientList" }
-  metric { category = "AllMetrics" enabled = true }
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 
-output "postgres_fqdn"     { value = azurerm_postgresql_flexible_server.main.fqdn sensitive = true }
+output "postgres_fqdn" {
+  value     = azurerm_postgresql_flexible_server.main.fqdn
+  sensitive = true
+}
+
 output "postgres_server_id" { value = azurerm_postgresql_flexible_server.main.id }
-output "redis_hostname"    { value = azurerm_redis_cache.main.hostname sensitive = true }
-output "redis_port"        { value = azurerm_redis_cache.main.ssl_port }
-output "redis_primary_key" { value = azurerm_redis_cache.main.primary_access_key sensitive = true }
+
+output "redis_hostname" {
+  value     = azurerm_redis_cache.main.hostname
+  sensitive = true
+}
+
+output "redis_port" { value = azurerm_redis_cache.main.ssl_port }
+
+output "redis_primary_key" {
+  value     = azurerm_redis_cache.main.primary_access_key
+  sensitive = true
+}

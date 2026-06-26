@@ -57,6 +57,13 @@ resource "azurerm_storage_account" "reports" {
   shared_access_key_enabled     = true  # SAS token generation requires this.
   tags                          = var.tags
 
+  network_rules {
+    default_action             = "Deny"
+    bypass                     = ["AzureServices"]
+    virtual_network_subnet_ids = []
+    ip_rules                   = []
+  }
+
   blob_properties {
     versioning_enabled       = true
     change_feed_enabled      = true

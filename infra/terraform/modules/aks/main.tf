@@ -159,7 +159,10 @@ resource "azurerm_monitor_diagnostic_setting" "aks" {
   enabled_log { category = "kube-scheduler" }
   enabled_log { category = "kube-audit" }
   enabled_log { category = "kube-audit-admin" }
-  metric { category = "AllMetrics" enabled = true }
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
@@ -167,5 +170,8 @@ resource "azurerm_monitor_diagnostic_setting" "aks" {
 output "cluster_name"     { value = azurerm_kubernetes_cluster.main.name }
 output "cluster_id"       { value = azurerm_kubernetes_cluster.main.id }
 output "oidc_issuer_url"  { value = azurerm_kubernetes_cluster.main.oidc_issuer_url }
-output "kube_config"      { value = azurerm_kubernetes_cluster.main.kube_config[0] sensitive = true }
+output "kube_config" {
+  value     = azurerm_kubernetes_cluster.main.kube_config[0]
+  sensitive = true
+}
 output "kubelet_identity" { value = azurerm_kubernetes_cluster.main.kubelet_identity[0] }

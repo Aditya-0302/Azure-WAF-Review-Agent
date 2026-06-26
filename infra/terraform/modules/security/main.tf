@@ -3,6 +3,7 @@ variable "resource_group_name" { type = string }
 variable "location" { type = string }
 variable "subnet_pe_id" { type = string }
 variable "vnet_id" { type = string }
+variable "log_analytics_workspace_id" { type = string }
 variable "tags" { type = map(string) }
 
 data "azurerm_client_config" "current" {}
@@ -60,7 +61,10 @@ resource "azurerm_monitor_diagnostic_setting" "key_vault" {
 
   enabled_log { category = "AuditEvent" }
   enabled_log { category = "AzurePolicyEvaluationDetails" }
-  metric { category = "AllMetrics" enabled = true }
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────

@@ -39,14 +39,15 @@ module "networking" {
 module "security" {
   source = "./modules/security"
 
-  prefix              = local.prefix
-  resource_group_name = azurerm_resource_group.main.name
-  location            = var.location
-  subnet_pe_id        = module.networking.subnet_private_endpoints_id
-  vnet_id             = module.networking.vnet_id
-  tags                = local.common_tags
+  prefix                     = local.prefix
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = var.location
+  subnet_pe_id               = module.networking.subnet_private_endpoints_id
+  vnet_id                    = module.networking.vnet_id
+  log_analytics_workspace_id = module.observability.log_analytics_workspace_id
+  tags                       = local.common_tags
 
-  depends_on = [module.networking]
+  depends_on = [module.networking, module.observability]
 }
 
 # ── Managed Identities + RBAC ─────────────────────────────────────────────────
