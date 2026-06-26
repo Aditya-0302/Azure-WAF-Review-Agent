@@ -90,9 +90,7 @@ class AuthenticationService:
             )
             return CredentialHealth.INVALID
 
-    async def refresh_subscription_credential(
-        self, subscription_id: uuid.UUID
-    ) -> None:
+    async def refresh_subscription_credential(self, subscription_id: uuid.UUID) -> None:
         """Evict cached credential; next use re-reads the secret from Key Vault."""
         await self._cross_tenant.invalidate_cache(subscription_id)
         _logger.info(

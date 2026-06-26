@@ -26,14 +26,14 @@ class CloudEventEnvelope(BaseModel, Generic[T]):
     data: T
 
     @classmethod
-    def wrap(cls, event_type: str, source: str, data: T) -> "CloudEventEnvelope[T]":
+    def wrap(cls, event_type: str, source: str, data: T) -> CloudEventEnvelope[T]:
         return cls(type=event_type, source=source, data=data)
 
     def to_json_bytes(self) -> bytes:
         return self.model_dump_json().encode("utf-8")
 
     @classmethod
-    def from_json_bytes(cls, raw: bytes, data_type: type[T]) -> "CloudEventEnvelope[T]":
+    def from_json_bytes(cls, raw: bytes, data_type: type[T]) -> CloudEventEnvelope[T]:
         payload: dict[str, Any] = json.loads(raw)
         payload["data"] = data_type.model_validate(payload["data"])
         return cls.model_validate(payload)

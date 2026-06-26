@@ -56,7 +56,7 @@ class TraceabilityEntry:
 
 
 def build_traceability_matrix(
-    catalog: "WafCatalog",
+    catalog: WafCatalog,
     findings: list[dict[str, Any]],
 ) -> list[TraceabilityEntry]:
     """Build a traceability matrix from a list of finding dicts.
@@ -74,19 +74,21 @@ def build_traceability_matrix(
         finding_id = str(f.get("id") or f.get("finding_id", "unknown"))
         rule_id = str(f.get("rule_id", ""))
         enrichment = catalog.enrich_finding(rule_id)
-        matrix.append(TraceabilityEntry(
-            finding_id=finding_id,
-            rule_id=rule_id,
-            resource_id=str(f.get("resource_id", "")),
-            resource_type=str(f.get("resource_type", "")),
-            pillar=str(f.get("pillar", "")),
-            severity=str(f.get("severity", "")),
-            waf_codes=enrichment.waf_codes,
-            waf_titles=enrichment.waf_titles,
-            microsoft_urls=enrichment.microsoft_urls,
-            waf_pillars=enrichment.pillars,
-            is_mapped=enrichment.is_mapped,
-        ))
+        matrix.append(
+            TraceabilityEntry(
+                finding_id=finding_id,
+                rule_id=rule_id,
+                resource_id=str(f.get("resource_id", "")),
+                resource_type=str(f.get("resource_type", "")),
+                pillar=str(f.get("pillar", "")),
+                severity=str(f.get("severity", "")),
+                waf_codes=enrichment.waf_codes,
+                waf_titles=enrichment.waf_titles,
+                microsoft_urls=enrichment.microsoft_urls,
+                waf_pillars=enrichment.pillars,
+                is_mapped=enrichment.is_mapped,
+            )
+        )
     return matrix
 
 

@@ -15,16 +15,16 @@ from __future__ import annotations
 import io
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from waf_reporting.aggregator import AggregatedReport, FindingAggregator, PillarSummary
 from waf_reporting.excel_generator import ExcelGenerator
 from waf_reporting.handler import ReportingHandler
 from waf_reporting.pdf_generator import PdfGenerator
 from waf_reporting.storage_uploader import StorageUploader
 from waf_reporting.webhook_service import WebhookDeliveryError, WebhookService
+
 from waf_shared.domain.events.assessment_events import ReportingRequestedEvent
 from waf_shared.domain.events.base import CloudEventEnvelope
 from waf_shared.domain.models.assessment import Assessment, AssessmentStatus
@@ -44,6 +44,7 @@ _PDF_PATH = f"reports/{_TENANT_ID}/{_ASSESSMENT_ID}/report.pdf"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_assessment(status: AssessmentStatus = AssessmentStatus.REPORTING) -> Assessment:
     return Assessment(
@@ -95,9 +96,7 @@ def _make_aggregated(findings: list[Finding]) -> AggregatedReport:
         by_sev[f.severity.value] = by_sev.get(f.severity.value, 0) + 1
         if f.pillar not in by_pillar:
             by_pillar[f.pillar] = {}
-        by_pillar[f.pillar][f.severity.value] = (
-            by_pillar[f.pillar].get(f.severity.value, 0) + 1
-        )
+        by_pillar[f.pillar][f.severity.value] = by_pillar[f.pillar].get(f.severity.value, 0) + 1
     pillars = {
         p: PillarSummary(
             pillar=p,
@@ -244,6 +243,7 @@ def _build_handler(
 
 # ── Integration: happy path ───────────────────────────────────────────────────
 
+
 class TestReportingIntegrationHappyPath:
     @pytest.mark.asyncio
     async def test_end_to_end_without_webhook(self) -> None:
@@ -284,9 +284,7 @@ class TestReportingIntegrationHappyPath:
         handler, mocks = _build_handler(webhook_endpoint=None)
         await handler.process(_make_raw_event(total_findings=42))
 
-        mocks["assessment_repo"].get_by_id.assert_called_once_with(
-            _TENANT_ID, _ASSESSMENT_ID
-        )
+        mocks["assessment_repo"].get_by_id.assert_called_once_with(_TENANT_ID, _ASSESSMENT_ID)
 
     @pytest.mark.asyncio
     async def test_excel_generator_called_with_real_findings(self) -> None:
@@ -301,6 +299,7 @@ class TestReportingIntegrationHappyPath:
 
 
 # ── Integration: real generator smoke tests ───────────────────────────────────
+
 
 class TestRealGeneratorSmoke:
     @pytest.mark.asyncio
@@ -338,6 +337,7 @@ class TestRealGeneratorSmoke:
 
 
 # ── Integration: status guards ────────────────────────────────────────────────
+
 
 class TestReportingIntegrationStatusGuards:
     @pytest.mark.asyncio
@@ -381,6 +381,7 @@ class TestReportingIntegrationStatusGuards:
 
 
 # ── Integration: error isolation ─────────────────────────────────────────────
+
 
 class TestReportingIntegrationErrorIsolation:
     @pytest.mark.asyncio
@@ -439,6 +440,7 @@ class TestReportingIntegrationErrorIsolation:
 
 
 # ── Integration: report field validation ─────────────────────────────────────
+
 
 class TestReportFieldValidation:
     @pytest.mark.asyncio

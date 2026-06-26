@@ -9,13 +9,13 @@ asyncio_mode = "auto" is set project-wide so @pytest.mark.asyncio is not needed.
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from waf_extraction.handler import ExtractionHandler
 
 from waf_shared.auth.credential_provider import CrossTenantCredentialProvider
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
@@ -37,8 +37,6 @@ from waf_shared.domain.models.credential import CredentialHealth, SubscriptionCr
 from waf_shared.messaging.queue_names import REASONING_REQUESTED
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_extraction.handler import ExtractionHandler
-
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -89,7 +87,9 @@ def _make_credential(
     )
 
 
-def _rg_row(resource_id: str, resource_type: str = "microsoft.compute/virtualmachines") -> dict[str, Any]:
+def _rg_row(
+    resource_id: str, resource_type: str = "microsoft.compute/virtualmachines"
+) -> dict[str, Any]:
     parts = resource_id.lower().split("/")
     rg = ""
     try:
@@ -109,7 +109,10 @@ def _rg_row(resource_id: str, resource_type: str = "microsoft.compute/virtualmac
         "resourceGroup": rg,
         "subscriptionId": sub,
         "tenantId": str(uuid.uuid4()),
-        "properties": {"provisioningState": "Succeeded", "hardwareProfile": {"vmSize": "Standard_D4s_v5"}},
+        "properties": {
+            "provisioningState": "Succeeded",
+            "hardwareProfile": {"vmSize": "Standard_D4s_v5"},
+        },
         "tags": {"Environment": "production", "Owner": "platform-team"},
         "sku": None,
         "kind": None,
@@ -205,11 +208,19 @@ async def test_message_to_resources_to_reasoning_event_single_batch() -> None:
     ]
     total_batches = 1
 
-    assessment = _make_assessment(assessment_id=assessment_id, tenant_id=tenant_id, total_batches=total_batches)
+    assessment = _make_assessment(
+        assessment_id=assessment_id, tenant_id=tenant_id, total_batches=total_batches
+    )
     cred = _make_credential(tenant_id, sub_id)
     rg_rows = [_rg_row(rid) for rid in resource_ids]
     upserted_resources = [
-        _upserted(resource_id=rid, assessment_id=assessment_id, batch_id=batch_id, tenant_id=tenant_id, sub_id=sub_id)
+        _upserted(
+            resource_id=rid,
+            assessment_id=assessment_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            sub_id=sub_id,
+        )
         for rid in resource_ids
     ]
 
@@ -228,13 +239,19 @@ async def test_message_to_resources_to_reasoning_event_single_batch() -> None:
     pub.publish.return_value = None
 
     handler = _build_handler(
-        assessment_repo=ar, credential_repo=cr,
-        cross_tenant_provider=ctp, resource_graph=rg, publisher=pub,
+        assessment_repo=ar,
+        credential_repo=cr,
+        cross_tenant_provider=ctp,
+        resource_graph=rg,
+        publisher=pub,
     )
     await handler.process(
         _build_event_bytes(
-            assessment_id=assessment_id, tenant_id=tenant_id,
-            batch_id=batch_id, sub_id=sub_id, batch_index=0,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
+            batch_id=batch_id,
+            sub_id=sub_id,
+            batch_index=0,
             resource_ids=resource_ids,
         )
     )
@@ -307,13 +324,18 @@ async def test_partial_success_some_resources_missing() -> None:
     ar.upsert_resource.side_effect = capture_upsert
 
     handler = _build_handler(
-        assessment_repo=ar, credential_repo=cr,
-        cross_tenant_provider=ctp, resource_graph=rg, publisher=pub,
+        assessment_repo=ar,
+        credential_repo=cr,
+        cross_tenant_provider=ctp,
+        resource_graph=rg,
+        publisher=pub,
     )
     await handler.process(
         _build_event_bytes(
-            assessment_id=assessment_id, tenant_id=tenant_id,
-            batch_id=batch_id, sub_id=sub_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
+            batch_id=batch_id,
+            sub_id=sub_id,
             resource_ids=resource_ids,
         )
     )
@@ -347,7 +369,8 @@ async def test_cancellation_before_publish_stops_reasoning_event() -> None:
 
     assessment_active = _make_assessment(assessment_id=assessment_id, tenant_id=tenant_id)
     assessment_cancelled = _make_assessment(
-        assessment_id=assessment_id, tenant_id=tenant_id,
+        assessment_id=assessment_id,
+        tenant_id=tenant_id,
         cancellation_requested_at=_now(),
     )
     cred = _make_credential(tenant_id, sub_id)
@@ -373,13 +396,18 @@ async def test_cancellation_before_publish_stops_reasoning_event() -> None:
     pub.publish.return_value = None
 
     handler = _build_handler(
-        assessment_repo=ar, credential_repo=cr,
-        cross_tenant_provider=ctp, resource_graph=rg, publisher=pub,
+        assessment_repo=ar,
+        credential_repo=cr,
+        cross_tenant_provider=ctp,
+        resource_graph=rg,
+        publisher=pub,
     )
     await handler.process(
         _build_event_bytes(
-            assessment_id=assessment_id, tenant_id=tenant_id,
-            batch_id=batch_id, sub_id=sub_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
+            batch_id=batch_id,
+            sub_id=sub_id,
             resource_ids=[resource_id],
         )
     )
@@ -445,13 +473,18 @@ async def test_cloudevent_envelope_round_trip_full_properties() -> None:
     pub.publish.side_effect = capture_publish
 
     handler = _build_handler(
-        assessment_repo=ar, credential_repo=cr,
-        cross_tenant_provider=ctp, resource_graph=rg, publisher=pub,
+        assessment_repo=ar,
+        credential_repo=cr,
+        cross_tenant_provider=ctp,
+        resource_graph=rg,
+        publisher=pub,
     )
     await handler.process(
         _build_event_bytes(
-            assessment_id=assessment_id, tenant_id=tenant_id,
-            batch_id=batch_id, sub_id=sub_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
+            batch_id=batch_id,
+            sub_id=sub_id,
             resource_ids=[resource_id],
         )
     )
@@ -504,15 +537,20 @@ async def test_db_error_during_upsert_propagates_for_sb_abandon() -> None:
     ar.upsert_resource.side_effect = DatabaseError("connection pool exhausted")
 
     handler = _build_handler(
-        assessment_repo=ar, credential_repo=cr,
-        cross_tenant_provider=ctp, resource_graph=rg, publisher=pub,
+        assessment_repo=ar,
+        credential_repo=cr,
+        cross_tenant_provider=ctp,
+        resource_graph=rg,
+        publisher=pub,
     )
 
     with pytest.raises(DatabaseError, match="connection pool exhausted"):
         await handler.process(
             _build_event_bytes(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, sub_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                sub_id=sub_id,
                 resource_ids=[resource_id],
             )
         )

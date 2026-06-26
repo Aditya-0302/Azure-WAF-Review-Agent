@@ -17,6 +17,13 @@ from dependency_injector import providers
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from waf_api.config import AppEnvironment, Settings
+from waf_api.container import Container
+from waf_api.middleware.auth import AuthMiddleware
+from waf_api.middleware.security_headers import SecurityHeadersMiddleware
+from waf_api.middleware.telemetry import TelemetryMiddleware
+from waf_api.routers import assessments, health, human_review, system
+from waf_api.schemas.responses.error_response import ErrorDetail, ErrorResponse
 from waf_shared.domain.errors.application_errors import (
     ApplicationError,
     CancellationRequestedError,
@@ -24,8 +31,8 @@ from waf_shared.domain.errors.application_errors import (
 )
 from waf_shared.domain.errors.domain_errors import (
     AssessmentNotFoundError,
-    DSLValidationError,
     DomainError,
+    DSLValidationError,
     HumanReviewControlNotFoundError,
     HumanReviewNotFoundError,
     InvalidAssessmentScopeError,
@@ -43,14 +50,6 @@ from waf_shared.domain.errors.infrastructure_errors import (
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.telemetry.logging import configure_structlog, get_logger
 from waf_shared.telemetry.otel import configure_telemetry
-
-from waf_api.config import AppEnvironment, Settings
-from waf_api.container import Container
-from waf_api.middleware.auth import AuthMiddleware
-from waf_api.middleware.security_headers import SecurityHeadersMiddleware
-from waf_api.middleware.telemetry import TelemetryMiddleware
-from waf_api.routers import assessments, health, human_review, system
-from waf_api.schemas.responses.error_response import ErrorDetail, ErrorResponse
 
 _settings = Settings()
 _logger = get_logger(service="waf-api", version=_settings.app_version)
@@ -95,6 +94,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     if _settings.api_auth_mode == "development":
         from waf_api.dev_bootstrap import ensure_dev_tenant
+
         await ensure_dev_tenant(db_pool)
 
     # ── Service Bus publisher ────────────────────────────────────────────────
@@ -114,8 +114,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _logger.warning(
             "api.startup.dev_auth_enabled",
             message="Development authentication enabled. "
-                    "JWT validation is disabled. "
-                    "Never deploy with API_AUTH_MODE=development.",
+            "JWT validation is disabled. "
+            "Never deploy with API_AUTH_MODE=development.",
         )
 
     _logger.info("api.startup.complete", environment=_settings.app_env.value)
@@ -202,9 +202,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(IdempotencyConflictError)
-    async def handle_idempotency(
-        request: Request, exc: IdempotencyConflictError
-    ) -> JSONResponse:
+    async def handle_idempotency(request: Request, exc: IdempotencyConflictError) -> JSONResponse:
         return _make_error_response(request, exc.code, exc.message, 409)
 
     @app.exception_handler(InvalidAssessmentScopeError)
@@ -224,27 +222,25 @@ def create_app() -> FastAPI:
         return _make_error_response(request, exc.code, exc.message, 409)
 
     @app.exception_handler(CredentialUnavailableError)
-    async def handle_credential(
-        request: Request, exc: CredentialUnavailableError
-    ) -> JSONResponse:
-        return _make_error_response(request, exc.code, "A required credential is temporarily unavailable", 503)
+    async def handle_credential(request: Request, exc: CredentialUnavailableError) -> JSONResponse:
+        return _make_error_response(
+            request, exc.code, "A required credential is temporarily unavailable", 503
+        )
 
     @app.exception_handler(AzureRateLimitError)
-    async def handle_azure_rate_limit(
-        request: Request, exc: AzureRateLimitError
-    ) -> JSONResponse:
-        return _make_error_response(request, exc.code, "Azure service rate limit reached; try again later", 503)
+    async def handle_azure_rate_limit(request: Request, exc: AzureRateLimitError) -> JSONResponse:
+        return _make_error_response(
+            request, exc.code, "Azure service rate limit reached; try again later", 503
+        )
 
     @app.exception_handler(LLMRateLimitError)
-    async def handle_llm_rate_limit(
-        request: Request, exc: LLMRateLimitError
-    ) -> JSONResponse:
-        return _make_error_response(request, exc.code, "LLM rate limit reached; try again later", 503)
+    async def handle_llm_rate_limit(request: Request, exc: LLMRateLimitError) -> JSONResponse:
+        return _make_error_response(
+            request, exc.code, "LLM rate limit reached; try again later", 503
+        )
 
     @app.exception_handler(LLMQuotaExhaustedError)
-    async def handle_llm_quota(
-        request: Request, exc: LLMQuotaExhaustedError
-    ) -> JSONResponse:
+    async def handle_llm_quota(request: Request, exc: LLMQuotaExhaustedError) -> JSONResponse:
         return _make_error_response(request, exc.code, "LLM monthly quota exhausted", 503)
 
     @app.exception_handler(DatabaseError)

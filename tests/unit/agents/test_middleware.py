@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -190,4 +190,12 @@ class TestMiddlewareChainComposition:
             handler = _wrap
 
         await handler(_input(), _ctx())
-        assert call_order == ["A:before", "B:before", "C:before", "core", "C:after", "B:after", "A:after"]
+        assert call_order == [
+            "A:before",
+            "B:before",
+            "C:before",
+            "core",
+            "C:after",
+            "B:after",
+            "A:after",
+        ]

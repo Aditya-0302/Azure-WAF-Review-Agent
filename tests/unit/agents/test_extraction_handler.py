@@ -6,13 +6,13 @@ asyncio_mode = "auto" is set project-wide so @pytest.mark.asyncio is not needed.
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from waf_extraction.handler import ExtractionHandler
 
 from waf_shared.auth.credential_provider import CrossTenantCredentialProvider
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
@@ -28,7 +28,6 @@ from waf_shared.domain.events.assessment_events import ExtractionRequestedEvent
 from waf_shared.domain.events.base import CloudEventEnvelope
 from waf_shared.domain.models.assessment import (
     Assessment,
-    AssessmentBatch,
     AssessmentResource,
     AssessmentStatus,
     BatchStatus,
@@ -37,8 +36,6 @@ from waf_shared.domain.models.credential import CredentialHealth, SubscriptionCr
 from waf_shared.messaging.queue_names import REASONING_REQUESTED
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_extraction.handler import ExtractionHandler
-
 
 # ── Factories ──────────────────────────────────────────────────────────────────
 
@@ -92,7 +89,9 @@ def _make_credential_record(
     )
 
 
-def _make_rg_row(resource_id: str, *, resource_type: str = "microsoft.compute/virtualmachines") -> dict[str, Any]:
+def _make_rg_row(
+    resource_id: str, *, resource_type: str = "microsoft.compute/virtualmachines"
+) -> dict[str, Any]:
     """Return a fake Resource Graph row dict for the given resource ID."""
     parts = resource_id.lower().split("/")
     rg = ""
@@ -253,14 +252,19 @@ class TestExtractionHandlerHappyPath:
             subscription_id=sub_id,
         )
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
-            rg_rows=[rg_row], upserted_resources=[upserted],
+            m,
+            assessment=assessment,
+            credential_record=cred,
+            rg_rows=[rg_row],
+            upserted_resources=[upserted],
         )
 
         handler = m.build_handler()
         raw = _raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id,
-            batch_id=batch_id, subscription_id=sub_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
+            batch_id=batch_id,
+            subscription_id=sub_id,
             resource_ids=[resource_id],
         )
         await handler.process(raw)
@@ -284,25 +288,35 @@ class TestExtractionHandlerHappyPath:
             f"/providers/Microsoft.Compute/virtualMachines/vm-{i:02d}"
             for i in range(5)
         ]
-        assessment = _make_assessment(assessment_id=assessment_id, tenant_id=tenant_id, total_batches=2)
+        assessment = _make_assessment(
+            assessment_id=assessment_id, tenant_id=tenant_id, total_batches=2
+        )
         cred = _make_credential_record(tenant_id=tenant_id, subscription_id=sub_id)
         rg_rows = [_make_rg_row(rid) for rid in resource_ids]
         upserted = [
             _make_upserted_resource(
-                resource_id=rid, assessment_id=assessment_id,
-                batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+                resource_id=rid,
+                assessment_id=assessment_id,
+                batch_id=batch_id,
+                tenant_id=tenant_id,
+                subscription_id=sub_id,
             )
             for rid in resource_ids
         ]
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
-            rg_rows=rg_rows, upserted_resources=upserted,
+            m,
+            assessment=assessment,
+            credential_record=cred,
+            rg_rows=rg_rows,
+            upserted_resources=upserted,
         )
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 resource_ids=resource_ids,
             )
         )
@@ -328,18 +342,26 @@ class TestExtractionHandlerHappyPath:
         cred = _make_credential_record(tenant_id=tenant_id, subscription_id=sub_id)
         rg_row = _make_rg_row(resource_id)
         upserted = _make_upserted_resource(
-            resource_id=resource_id, assessment_id=assessment_id,
-            batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+            resource_id=resource_id,
+            assessment_id=assessment_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            subscription_id=sub_id,
         )
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
-            rg_rows=[rg_row], upserted_resources=[upserted],
+            m,
+            assessment=assessment,
+            credential_record=cred,
+            rg_rows=[rg_row],
+            upserted_resources=[upserted],
         )
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 batch_index=1,
                 resource_ids=[resource_id],
             )
@@ -370,20 +392,28 @@ class TestExtractionHandlerHappyPath:
         rg_rows = [_make_rg_row(rid) for rid in resource_ids]
         upserted = [
             _make_upserted_resource(
-                resource_id=rid, assessment_id=assessment_id,
-                batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+                resource_id=rid,
+                assessment_id=assessment_id,
+                batch_id=batch_id,
+                tenant_id=tenant_id,
+                subscription_id=sub_id,
             )
             for rid in resource_ids
         ]
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
-            rg_rows=rg_rows, upserted_resources=upserted,
+            m,
+            assessment=assessment,
+            credential_record=cred,
+            rg_rows=rg_rows,
+            upserted_resources=upserted,
         )
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 resource_ids=resource_ids,
             )
         )
@@ -404,15 +434,18 @@ class TestExtractionHandlerSkip:
         sub_id = uuid.uuid4()
 
         assessment = _make_assessment(
-            assessment_id=assessment_id, tenant_id=tenant_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
             status=AssessmentStatus.COMPLETED,
         )
         m.assessment_repo.get_by_id.return_value = assessment
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -428,15 +461,18 @@ class TestExtractionHandlerSkip:
         sub_id = uuid.uuid4()
 
         assessment = _make_assessment(
-            assessment_id=assessment_id, tenant_id=tenant_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
             status=AssessmentStatus.FAILED,
         )
         m.assessment_repo.get_by_id.return_value = assessment
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -451,15 +487,18 @@ class TestExtractionHandlerSkip:
         sub_id = uuid.uuid4()
 
         assessment = _make_assessment(
-            assessment_id=assessment_id, tenant_id=tenant_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
             status=AssessmentStatus.CANCELLED,
         )
         m.assessment_repo.get_by_id.return_value = assessment
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -475,8 +514,10 @@ class TestExtractionHandlerSkip:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=uuid.uuid4(), tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=uuid.uuid4(),
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -506,24 +547,34 @@ class TestExtractionHandlerPartialSuccess:
         cred = _make_credential_record(tenant_id=tenant_id, subscription_id=sub_id)
         rg_rows = [_make_rg_row(found_id)]  # missing_id NOT returned
         upserted_found = _make_upserted_resource(
-            resource_id=found_id, assessment_id=assessment_id,
-            batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+            resource_id=found_id,
+            assessment_id=assessment_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            subscription_id=sub_id,
         )
         upserted_missing = _make_upserted_resource(
-            resource_id=missing_id, assessment_id=assessment_id,
-            batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+            resource_id=missing_id,
+            assessment_id=assessment_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            subscription_id=sub_id,
             raw_properties={"_extraction_failed": True, "_error": "not found"},
         )
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
+            m,
+            assessment=assessment,
+            credential_record=cred,
             rg_rows=rg_rows,
             upserted_resources=[upserted_found, upserted_missing],
         )
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 resource_ids=[found_id, missing_id],
             )
         )
@@ -556,22 +607,29 @@ class TestExtractionHandlerPartialSuccess:
         # Resource Graph returns EMPTY — all resources vanished
         upserted = [
             _make_upserted_resource(
-                resource_id=rid, assessment_id=assessment_id,
-                batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+                resource_id=rid,
+                assessment_id=assessment_id,
+                batch_id=batch_id,
+                tenant_id=tenant_id,
+                subscription_id=sub_id,
                 raw_properties={"_extraction_failed": True},
             )
             for rid in resource_ids
         ]
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
+            m,
+            assessment=assessment,
+            credential_record=cred,
             rg_rows=[],
             upserted_resources=upserted,
         )
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 resource_ids=resource_ids,
             )
         )
@@ -597,15 +655,15 @@ class TestExtractionHandlerCredentialErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
         update_calls = m.assessment_repo.update_batch_status.call_args_list
-        failed_call = next(
-            (c for c in update_calls if c[0][2] == BatchStatus.FAILED), None
-        )
+        failed_call = next((c for c in update_calls if c[0][2] == BatchStatus.FAILED), None)
         assert failed_call is not None, "expected update_batch_status(FAILED) to be called"
         m.publisher.publish.assert_not_called()
 
@@ -625,16 +683,16 @@ class TestExtractionHandlerCredentialErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
         # Verify FAILED was called (error_detail contains error description)
         update_calls = m.assessment_repo.update_batch_status.call_args_list
-        failed_call = next(
-            (c for c in update_calls if c[0][2] == BatchStatus.FAILED), None
-        )
+        failed_call = next((c for c in update_calls if c[0][2] == BatchStatus.FAILED), None)
         assert failed_call is not None
         m.publisher.publish.assert_not_called()
 
@@ -654,8 +712,10 @@ class TestExtractionHandlerCredentialErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -682,8 +742,10 @@ class TestExtractionHandlerCredentialErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -710,8 +772,10 @@ class TestExtractionHandlerCredentialErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -743,8 +807,10 @@ class TestExtractionHandlerResourceGraphErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -772,8 +838,10 @@ class TestExtractionHandlerResourceGraphErrors:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
             )
         )
 
@@ -798,8 +866,10 @@ class TestExtractionHandlerResourceGraphErrors:
         with pytest.raises(DatabaseError):
             await m.build_handler().process(
                 _raw_event(
-                    assessment_id=assessment_id, tenant_id=tenant_id,
-                    batch_id=batch_id, subscription_id=sub_id,
+                    assessment_id=assessment_id,
+                    tenant_id=tenant_id,
+                    batch_id=batch_id,
+                    subscription_id=sub_id,
                 )
             )
 
@@ -822,14 +892,18 @@ class TestExtractionHandlerCancellation:
         # First get_by_id → EXTRACTING; second (post-batch) → cancellation pending
         assessment_active = _make_assessment(assessment_id=assessment_id, tenant_id=tenant_id)
         assessment_cancelled = _make_assessment(
-            assessment_id=assessment_id, tenant_id=tenant_id,
+            assessment_id=assessment_id,
+            tenant_id=tenant_id,
             cancellation_requested_at=_now(),
         )
         cred = _make_credential_record(tenant_id=tenant_id, subscription_id=sub_id)
         rg_row = _make_rg_row(resource_id)
         upserted = _make_upserted_resource(
-            resource_id=resource_id, assessment_id=assessment_id,
-            batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+            resource_id=resource_id,
+            assessment_id=assessment_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            subscription_id=sub_id,
         )
         _configure_happy_path(
             m,
@@ -842,8 +916,10 @@ class TestExtractionHandlerCancellation:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 resource_ids=[resource_id],
             )
         )
@@ -868,12 +944,18 @@ class TestExtractionHandlerCancellation:
         cred = _make_credential_record(tenant_id=tenant_id, subscription_id=sub_id)
         rg_row = _make_rg_row(resource_id)
         upserted = _make_upserted_resource(
-            resource_id=resource_id, assessment_id=assessment_id,
-            batch_id=batch_id, tenant_id=tenant_id, subscription_id=sub_id,
+            resource_id=resource_id,
+            assessment_id=assessment_id,
+            batch_id=batch_id,
+            tenant_id=tenant_id,
+            subscription_id=sub_id,
         )
         _configure_happy_path(
-            m, assessment=assessment, credential_record=cred,
-            rg_rows=[rg_row], upserted_resources=[upserted],
+            m,
+            assessment=assessment,
+            credential_record=cred,
+            rg_rows=[rg_row],
+            upserted_resources=[upserted],
         )
 
         call_order: list[str] = []
@@ -891,8 +973,10 @@ class TestExtractionHandlerCancellation:
 
         await m.build_handler().process(
             _raw_event(
-                assessment_id=assessment_id, tenant_id=tenant_id,
-                batch_id=batch_id, subscription_id=sub_id,
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                batch_id=batch_id,
+                subscription_id=sub_id,
                 resource_ids=[resource_id],
             )
         )

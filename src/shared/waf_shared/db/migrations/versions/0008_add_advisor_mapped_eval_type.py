@@ -18,8 +18,8 @@ execute_if to short-circuit on databases that don't need the change.
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # ---------------------------------------------------------------------------
 # Alembic revision identifiers
@@ -33,9 +33,7 @@ depends_on = None
 def upgrade() -> None:
     # ADD VALUE IF NOT EXISTS is idempotent — safe to run against databases
     # that already have the value (e.g. a fresh clone from the patched 0003).
-    op.execute(
-        sa.text("ALTER TYPE evaluation_type ADD VALUE IF NOT EXISTS 'advisor_mapped'")
-    )
+    op.execute(sa.text("ALTER TYPE evaluation_type ADD VALUE IF NOT EXISTS 'advisor_mapped'"))
 
 
 def downgrade() -> None:

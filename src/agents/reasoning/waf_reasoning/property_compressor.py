@@ -73,6 +73,7 @@ class PropertyCompressor:
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _extract_paths(node: dict[str, Any]) -> list[str]:
     """Recursively collect all 'path' values from a DSL condition tree."""
     paths: list[str] = []
@@ -132,7 +133,7 @@ def _truncate_to_budget(
                 serialised = s
             else:
                 # Truncate properties to a string summary
-                summary = s[:max_chars - len(serialised) - 50]
+                summary = s[: max_chars - len(serialised) - 50]
                 result[key] = {"_truncated": True, "_preview": summary}
                 serialised = json.dumps(result, default=str)
 

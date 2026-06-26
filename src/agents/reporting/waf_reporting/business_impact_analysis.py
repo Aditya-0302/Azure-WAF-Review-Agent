@@ -16,57 +16,59 @@ Safety rules:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from waf_shared.domain.models.finding import Finding
 
-
 # ── Data types ─────────────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class BusinessImpact:
     """Business impact classification for a single finding."""
 
-    risk_category: str   # Security Risk | Compliance Risk | Operational Risk | Financial Risk | Reputation Risk
+    risk_category: (
+        str  # Security Risk | Compliance Risk | Operational Risk | Financial Risk | Reputation Risk
+    )
     finding_impact: str  # qualitative business impact sentence (hedged language)
-    priority: str        # P1 (critical) → P5 (informational)
-    impact_score: int    # 100 / 75 / 50 / 25 / 0
+    priority: str  # P1 (critical) → P5 (informational)
+    impact_score: int  # 100 / 75 / 50 / 25 / 0
 
 
 # ── Lookup tables ──────────────────────────────────────────────────────────────
 
 _SEV_SCORE: dict[str, int] = {
-    "critical":      100,
-    "high":           75,
-    "medium":         50,
-    "low":            25,
-    "informational":   0,
+    "critical": 100,
+    "high": 75,
+    "medium": 50,
+    "low": 25,
+    "informational": 0,
 }
 
 _SEV_PRIORITY: dict[str, str] = {
-    "critical":      "P1",
-    "high":          "P2",
-    "medium":        "P3",
-    "low":           "P4",
+    "critical": "P1",
+    "high": "P2",
+    "medium": "P3",
+    "low": "P4",
     "informational": "P5",
 }
 
 _SEV_IMPACT_LEVEL: dict[str, str] = {
-    "critical":      "High",
-    "high":          "High",
-    "medium":        "Medium",
-    "low":           "Low",
+    "critical": "High",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
     "informational": "Low",
 }
 
 # Primary risk category per WAF pillar — used as the "Risk Category" column value
 _PILLAR_PRIMARY_CATEGORY: dict[str, str] = {
-    "security":               "Security Risk",
-    "reliability":            "Operational Risk",
+    "security": "Security Risk",
+    "reliability": "Operational Risk",
     "operational_excellence": "Operational Risk",
     "performance_efficiency": "Operational Risk",
-    "cost_optimization":      "Financial Risk",
+    "cost_optimization": "Financial Risk",
 }
 
 # All risk categories each pillar contributes to — used for aggregate PDF table
@@ -200,12 +202,10 @@ _FINDING_IMPACT_TEMPLATES: dict[str, dict[str, str]] = {
             "opportunities to improve cost efficiency."
         ),
         "low": (
-            "Minor cost optimisation opportunity; limited direct financial impact "
-            "in isolation."
+            "Minor cost optimisation opportunity; limited direct financial impact " "in isolation."
         ),
         "informational": (
-            "Cost awareness observation; minimal direct financial impact "
-            "at current scale."
+            "Cost awareness observation; minimal direct financial impact " "at current scale."
         ),
     },
 }
@@ -228,6 +228,7 @@ _LEVEL_ORDER = ["High", "Medium", "Low"]
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def build_business_impact_analysis(finding: Finding) -> BusinessImpact:
     """Classify a finding's business impact using qualitative, hedged language.
@@ -323,11 +324,11 @@ def build_executive_business_impact_summary(findings: Sequence[Finding]) -> str:
         dominant_pillar = max(pillar_counts, key=lambda p: pillar_counts[p])
 
         _PILLAR_DOMAIN: dict[str, str] = {
-            "security":               "data protection and access controls",
-            "reliability":            "business continuity and availability controls",
+            "security": "data protection and access controls",
+            "reliability": "business continuity and availability controls",
             "operational_excellence": "operational governance and monitoring controls",
             "performance_efficiency": "application performance controls",
-            "cost_optimization":      "cloud cost management controls",
+            "cost_optimization": "cloud cost management controls",
         }
         domain = _PILLAR_DOMAIN.get(dominant_pillar, "infrastructure controls")
 
@@ -346,11 +347,11 @@ def build_executive_business_impact_summary(findings: Sequence[Finding]) -> str:
 
         # Highest priority control area
         _PILLAR_PRIORITY_LABEL: dict[str, str] = {
-            "security":               "security controls",
-            "reliability":            "resilience and availability controls",
+            "security": "security controls",
+            "reliability": "resilience and availability controls",
             "operational_excellence": "operational monitoring and governance",
             "performance_efficiency": "application performance configuration",
-            "cost_optimization":      "cloud cost management",
+            "cost_optimization": "cloud cost management",
         }
         priority_label = _PILLAR_PRIORITY_LABEL.get(dominant_pillar, "infrastructure controls")
 

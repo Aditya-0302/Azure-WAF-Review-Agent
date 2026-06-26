@@ -84,12 +84,8 @@ class AzureAdvisorClient:
             )
             return recs
         except HttpResponseError as exc:
-            self._metrics.api_errors.add(
-                1, {"service": "advisor", "operation": "list"}
-            )
-            raise AdvisorAccessError(
-                subscription_id=subscription_id, reason=str(exc)
-            ) from exc
+            self._metrics.api_errors.add(1, {"service": "advisor", "operation": "list"})
+            raise AdvisorAccessError(subscription_id=subscription_id, reason=str(exc)) from exc
         finally:
             self._metrics.api_call_duration.record(
                 time.perf_counter() - t0,
@@ -102,9 +98,7 @@ class AzureAdvisorClient:
         subscription_id: uuid.UUID,
     ) -> list[AdvisorRecommendation]:
         """Convenience: fetch only Security category recommendations."""
-        return await self.list_recommendations(
-            credential, subscription_id, category="Security"
-        )
+        return await self.list_recommendations(credential, subscription_id, category="Security")
 
     async def list_high_availability_recommendations(
         self,
@@ -117,9 +111,7 @@ class AzureAdvisorClient:
         )
 
 
-def _map_recommendation(
-    rec: object, subscription_id: uuid.UUID
-) -> AdvisorRecommendation:
+def _map_recommendation(rec: object, subscription_id: uuid.UUID) -> AdvisorRecommendation:
     short_desc = ""
     long_desc: str | None = None
     sd = getattr(rec, "short_description", None)

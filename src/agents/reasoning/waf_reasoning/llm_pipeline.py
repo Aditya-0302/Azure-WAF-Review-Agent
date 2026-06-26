@@ -28,6 +28,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from waf_reasoning.property_compressor import PropertyCompressor
+
 from waf_shared.domain.errors.infrastructure_errors import (
     LLMQuotaExhaustedError,
     LLMRateLimitError,
@@ -37,7 +39,6 @@ from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.rule import EvaluationType, WafRule
 from waf_shared.llm.provider import LLMProvider
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_reasoning.property_compressor import PropertyCompressor
 
 _RESULT_PASS = "PASS"
 _RESULT_FAIL = "FAIL"
@@ -238,6 +239,7 @@ class LLMPipeline:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _build_user_prompt(
     resource: AssessmentResource,

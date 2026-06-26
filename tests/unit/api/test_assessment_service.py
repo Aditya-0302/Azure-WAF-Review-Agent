@@ -54,9 +54,9 @@ class TestAssessmentServiceCreate:
     @pytest.mark.asyncio
     async def test_create_raises_when_exceeds_subscription_limit(self) -> None:
         from waf_api.services.assessment_service import (
+            _MAX_SUBSCRIPTIONS,
             AssessmentService,
             CreateAssessmentRequest,
-            _MAX_SUBSCRIPTIONS,
         )
 
         pool = MagicMock()

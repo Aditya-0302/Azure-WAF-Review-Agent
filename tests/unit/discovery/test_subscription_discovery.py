@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from azure.core.exceptions import HttpResponseError
 
+from waf_shared.discovery.models import AzureSubscription, SubscriptionState
 from waf_shared.discovery.subscription_discovery import (
     SubscriptionDiscoveryService,
     _map_subscription,
 )
-from waf_shared.discovery.models import AzureSubscription, SubscriptionState
 from waf_shared.domain.errors.domain_errors import SubscriptionNotFoundError
 from waf_shared.domain.errors.infrastructure_errors import ResourceDiscoveryError
 
@@ -46,7 +46,7 @@ def _make_subscription_client(
     client.__aexit__ = AsyncMock(return_value=False)
 
     async def _list_iter():
-        for item in (list_items or []):
+        for item in list_items or []:
             yield item
 
     client.subscriptions = AsyncMock()

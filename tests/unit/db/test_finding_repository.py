@@ -243,6 +243,7 @@ class TestFindingRepositoryCountBySeverity:
 
 # ── JSONB evidence column tests ───────────────────────────────────────────────
 
+
 @pytest.mark.unit
 class TestFindingRepositoryEvidenceJsonb:
     """evidence column must be correctly normalised from any asyncpg return type."""
@@ -276,7 +277,10 @@ class TestFindingRepositoryEvidenceJsonb:
 
         tenant_id = uuid.uuid4()
         finding_id = uuid.uuid4()
-        evidence: dict[str, Any] = {"wafMode": "Detection", "recommendation": "Switch to Prevention"}
+        evidence: dict[str, Any] = {
+            "wafMode": "Detection",
+            "recommendation": "Switch to Prevention",
+        }
 
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(

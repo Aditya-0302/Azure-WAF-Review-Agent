@@ -43,9 +43,7 @@ class ServiceBusPublisher:
         connection_string: str | None = None,
         logger: StructuredLogger | None = None,
     ) -> None:
-        if connection_string is None and (
-            fully_qualified_namespace is None or credential is None
-        ):
+        if connection_string is None and (fully_qualified_namespace is None or credential is None):
             raise ValueError(
                 "Provide either connection_string OR (fully_qualified_namespace AND credential)"
             )
@@ -96,9 +94,7 @@ class ServiceBusPublisher:
                 message_id=str(envelope.id),
             )
         except ServiceBusError as exc:
-            raise ServiceBusDeliveryError(
-                queue_name=queue_name, reason=str(exc)
-            ) from exc
+            raise ServiceBusDeliveryError(queue_name=queue_name, reason=str(exc)) from exc
 
     async def close(self) -> None:
         """Close all senders and the underlying client connection."""

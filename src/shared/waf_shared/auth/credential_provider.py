@@ -56,6 +56,7 @@ def _SyncClientSecretCredential(*args, **kwargs) -> ClientSecretCredential:
     """
     return ClientSecretCredential(*args, **kwargs)
 
+
 from waf_shared.auth.config import AuthMode, PlatformAuthConfig
 from waf_shared.domain.errors.infrastructure_errors import (
     CredentialUnavailableError,
@@ -114,7 +115,7 @@ def _parse_sp_secret(secret_value: str, secret_name: str = "") -> dict[str, str]
     if inner.startswith("{") and inner.endswith("}"):
         inner = inner[1:-1]
 
-    # Choose split strategy: multi-line → newline-separated (A/B); single-line → comma-separated (C).
+    # Choose split strategy: multi-line → newline-separated (A/B); single-line → comma-separated (C).  # noqa: E501
     if "\n" in inner:
         parts = [p.strip() for p in inner.splitlines() if p.strip()]
     else:
@@ -361,9 +362,7 @@ class CrossTenantCredentialProvider:
         try:
             secret = await kv.get_secret(keyvault_secret_name)
         except Exception as exc:
-            raise KeyVaultAccessError(
-                secret_name=keyvault_secret_name, reason=str(exc)
-            ) from exc
+            raise KeyVaultAccessError(secret_name=keyvault_secret_name, reason=str(exc)) from exc
 
         try:
             sp_config = _parse_sp_secret(secret.value or "", secret_name=keyvault_secret_name)
@@ -378,7 +377,7 @@ class CrossTenantCredentialProvider:
         if missing:
             raise CrossTenantAuthError(
                 subscription_id=subscription_id,
-                reason=f"Key Vault secret '{keyvault_secret_name}' is missing required fields: {missing}",
+                reason=f"Key Vault secret '{keyvault_secret_name}' is missing required fields: {missing}",  # noqa: E501
             )
 
         try:
@@ -422,9 +421,7 @@ class CrossTenantCredentialProvider:
         try:
             secret = await kv.get_secret(keyvault_secret_name)
         except Exception as exc:
-            raise KeyVaultAccessError(
-                secret_name=keyvault_secret_name, reason=str(exc)
-            ) from exc
+            raise KeyVaultAccessError(secret_name=keyvault_secret_name, reason=str(exc)) from exc
 
         try:
             sp_config = _parse_sp_secret(secret.value or "", secret_name=keyvault_secret_name)
@@ -439,7 +436,7 @@ class CrossTenantCredentialProvider:
         if missing:
             raise CrossTenantAuthError(
                 subscription_id=subscription_id,
-                reason=f"Key Vault secret '{keyvault_secret_name}' is missing required fields: {missing}",
+                reason=f"Key Vault secret '{keyvault_secret_name}' is missing required fields: {missing}",  # noqa: E501
             )
 
         try:
@@ -501,9 +498,7 @@ class _DefaultAzureCredentialProvider(CredentialProvider):
         try:
             return await cred.get_token(*scopes)
         except Exception as exc:
-            raise CredentialUnavailableError(
-                f"DefaultAzureCredential failed: {exc}"
-            ) from exc
+            raise CredentialUnavailableError(f"DefaultAzureCredential failed: {exc}") from exc
 
     async def close(self) -> None:
         if self._credential is not None:
@@ -517,15 +512,11 @@ class _DefaultAzureCredentialProvider(CredentialProvider):
 def create_platform_provider(config: PlatformAuthConfig) -> CredentialProvider:
     """Return the correct platform credential provider for the given auth mode."""
     if config.mode == AuthMode.MANAGED_IDENTITY:
-        return ManagedIdentityCredentialProvider(
-            client_id=config.managed_identity.client_id
-        )
+        return ManagedIdentityCredentialProvider(client_id=config.managed_identity.client_id)
 
     if config.mode == AuthMode.WORKLOAD_IDENTITY:
         if config.workload_identity is None:
-            raise ValueError(
-                "workload_identity config is required for WORKLOAD_IDENTITY mode"
-            )
+            raise ValueError("workload_identity config is required for WORKLOAD_IDENTITY mode")
         wi = config.workload_identity
         return WorkloadIdentityCredentialProvider(
             tenant_id=wi.tenant_id,
@@ -535,9 +526,7 @@ def create_platform_provider(config: PlatformAuthConfig) -> CredentialProvider:
 
     if config.mode == AuthMode.SERVICE_PRINCIPAL:
         if config.service_principal is None:
-            raise ValueError(
-                "service_principal config is required for SERVICE_PRINCIPAL mode"
-            )
+            raise ValueError("service_principal config is required for SERVICE_PRINCIPAL mode")
         sp = config.service_principal
         return ServicePrincipalCredentialProvider(
             tenant_id=sp.tenant_id,

@@ -17,7 +17,7 @@ import pytest
 from waf_shared.agents.base_agent import BaseAgent
 from waf_shared.agents.contracts import AgentContext
 from waf_shared.agents.events import AgentEventType
-from waf_shared.agents.middleware import LoggingMiddleware, MetricsMiddleware
+from waf_shared.agents.middleware import LoggingMiddleware
 from waf_shared.agents.orchestrator import WorkflowOrchestrator
 from waf_shared.agents.pipeline import (
     LocalEventBus,
@@ -30,7 +30,6 @@ from waf_shared.agents.retry import RetryPolicy
 from waf_shared.agents.state import AgentState
 from waf_shared.domain.errors.infrastructure_errors import WorkflowError
 from waf_shared.telemetry.logging import StructuredLogger
-
 
 # ── Concrete agents used across all integration tests ─────────────────────────
 
@@ -173,9 +172,7 @@ class TestOrchestratorLifecycle:
             PipelineStage(name="a", agent=EchoAgent(), retry_policy=_no_retry()),
             PipelineStage(name="b", agent=UpperAgent(), retry_policy=_no_retry()),
         ]
-        pipeline = Pipeline(
-            stages=stages, config=PipelineConfig(name="lifecycle-pipeline")
-        )
+        pipeline = Pipeline(stages=stages, config=PipelineConfig(name="lifecycle-pipeline"))
         ctx = _ctx()
 
         # State should not exist before execution
@@ -214,9 +211,7 @@ class TestOrchestratorLifecycle:
                 agent=_CancelAfterFirstAgent(cancel_event),
                 retry_policy=_no_retry(),
             ),
-            PipelineStage(
-                name="should-not-run", agent=EchoAgent(), retry_policy=_no_retry()
-            ),
+            PipelineStage(name="should-not-run", agent=EchoAgent(), retry_policy=_no_retry()),
         ]
 
         # Wire cancel_event directly into pipeline (bypassing orchestrator wrapper)
@@ -232,9 +227,7 @@ class TestOrchestratorLifecycle:
     @pytest.mark.asyncio
     async def test_orchestrator_raises_workflow_error_on_pipeline_failure(self) -> None:
         orch = WorkflowOrchestrator()
-        stage = PipelineStage(
-            name="bad", agent=AlwaysFailAgent(), retry_policy=_no_retry()
-        )
+        stage = PipelineStage(name="bad", agent=AlwaysFailAgent(), retry_policy=_no_retry())
         pipeline = Pipeline(stages=[stage], config=PipelineConfig(name="fail-pipeline"))
         ctx = _ctx()
 

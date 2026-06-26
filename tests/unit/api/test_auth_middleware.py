@@ -9,9 +9,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from starlette.requests import Request
-from starlette.responses import Response
 
-from waf_api.middleware.auth import AuthMiddleware, _PUBLIC_PATHS
+from waf_api.middleware.auth import _PUBLIC_PATHS, AuthMiddleware
 
 
 def _make_app_with_auth(settings: MagicMock) -> FastAPI:
@@ -247,7 +246,7 @@ class TestMissingClaims:
 class TestJwksCacheTTL:
     async def test_cache_hit_within_ttl(self) -> None:
         """Second call within TTL must not hit the HTTP endpoint again."""
-        from waf_api.middleware.auth import _JwksCache, _fetch_jwks
+        from waf_api.middleware.auth import _JwksCache
 
         cache = _JwksCache()
         mock_response = {"keys": [{"kid": "key-1", "kty": "RSA"}]}
@@ -267,7 +266,6 @@ class TestJwksCacheTTL:
 
     async def test_cache_miss_after_ttl_expired(self) -> None:
         """After TTL expiry, the next call must re-fetch from the network."""
-        import time as _time
 
         from waf_api.middleware.auth import _JwksCache
 
@@ -354,10 +352,12 @@ class TestPlatformAdminSentinel:
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(return_value=tenant_id)
-        mock_pool.acquire_read = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock(return_value=False),
-        ))
+        mock_pool.acquire_read = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
 
         claims = {"oid": oid, "tid": azure_tid, "roles": ["Tenant.User"]}
         result = await _resolve_tenant_id(
@@ -368,17 +368,17 @@ class TestPlatformAdminSentinel:
         assert result == tenant_id
 
     async def test_regular_user_unknown_tenant_raises_401(self) -> None:
-        import uuid
-
         from waf_api.middleware.auth import _resolve_tenant_id
 
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(return_value=None)  # Not found in DB
-        mock_pool.acquire_read = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock(return_value=False),
-        ))
+        mock_pool.acquire_read = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
 
         claims = {"oid": "unknown-oid", "tid": "unknown-tid", "roles": ["Tenant.User"]}
 

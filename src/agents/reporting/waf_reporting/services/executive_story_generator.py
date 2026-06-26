@@ -15,29 +15,29 @@ Safety rules:
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from waf_reporting.aggregator import AggregatedReport
-from waf_shared.domain.models.finding import Finding
 
+from waf_shared.domain.models.finding import Finding
 
 # ── Lookup tables ──────────────────────────────────────────────────────────────
 
 _PILLAR_DISPLAY: dict[str, str] = {
-    "security":               "Security",
-    "reliability":            "Reliability",
+    "security": "Security",
+    "reliability": "Reliability",
     "operational_excellence": "Operational Excellence",
     "performance_efficiency": "Performance Efficiency",
-    "cost_optimization":      "Cost Optimization",
+    "cost_optimization": "Cost Optimization",
 }
 
 _PILLAR_DOMAIN: dict[str, str] = {
-    "security":               "data protection and access controls",
-    "reliability":            "service reliability and availability controls",
+    "security": "data protection and access controls",
+    "reliability": "service reliability and availability controls",
     "operational_excellence": "operational governance and monitoring controls",
     "performance_efficiency": "application performance and capacity controls",
-    "cost_optimization":      "cloud cost management controls",
+    "cost_optimization": "cloud cost management controls",
 }
 
 _PILLAR_BUSINESS_RISK: dict[str, str] = {
@@ -58,35 +58,43 @@ _PILLAR_BUSINESS_RISK: dict[str, str] = {
         "and capacity management effectiveness"
     ),
     "cost_optimization": (
-        "potential unnecessary cloud expenditure and budget allocation "
-        "inefficiencies"
+        "potential unnecessary cloud expenditure and budget allocation " "inefficiencies"
     ),
 }
 
 _SEVERITY_DEDUCTIONS: dict[str, int] = {
-    "critical": 15, "high": 10, "medium": 5, "low": 2, "informational": 0,
+    "critical": 15,
+    "high": 10,
+    "medium": 5,
+    "low": 2,
+    "informational": 0,
 }
 
 _PILLAR_SCORE_ORDER = [
-    "security", "reliability", "operational_excellence",
-    "performance_efficiency", "cost_optimization",
+    "security",
+    "reliability",
+    "operational_excellence",
+    "performance_efficiency",
+    "cost_optimization",
 ]
 
 
 # ── Data type ──────────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class ExecutiveNarrative:
     """Five professional narrative paragraphs derived from WAF assessment data."""
 
-    executive_overview: str           # A. overall health, pillars, compliance, risk
-    primary_risk_drivers: str         # B. why risk exists, resources, misconfigs
-    business_consequences: str        # C. cautious business impact (may/could/potentially)
-    remediation_outlook: str          # D. projected compliance improvement
-    executive_recommendation: str     # E. prioritised action plan across three horizons
+    executive_overview: str  # A. overall health, pillars, compliance, risk
+    primary_risk_drivers: str  # B. why risk exists, resources, misconfigs
+    business_consequences: str  # C. cautious business impact (may/could/potentially)
+    remediation_outlook: str  # D. projected compliance improvement
+    executive_recommendation: str  # E. prioritised action plan across three horizons
 
 
 # ── Private helpers ────────────────────────────────────────────────────────────
+
 
 def _local_pillar_scores(
     findings: list[Finding],
@@ -118,13 +126,17 @@ def _local_pillar_scores(
             if pk not in by_pillar:
                 continue
             c = by_pillar[pk]
-            score = max(0, 100 - sum(
-                _SEVERITY_DEDUCTIONS.get(sev, 0) * cnt for sev, cnt in c.items()
-            ))
-            if score >= 90:   status = "Excellent"
-            elif score >= 75: status = "Good"
-            elif score >= 60: status = "Needs Improvement"
-            else:             status = "High Risk"
+            score = max(
+                0, 100 - sum(_SEVERITY_DEDUCTIONS.get(sev, 0) * cnt for sev, cnt in c.items())
+            )
+            if score >= 90:
+                status = "Excellent"
+            elif score >= 75:
+                status = "Good"
+            elif score >= 60:
+                status = "Needs Improvement"
+            else:
+                status = "High Risk"
             result.append((_PILLAR_DISPLAY.get(pk, pk), score, status))
             seen.add(pk)
 
@@ -132,13 +144,17 @@ def _local_pillar_scores(
             if pk in seen:
                 continue
             c = by_pillar[pk]
-            score = max(0, 100 - sum(
-                _SEVERITY_DEDUCTIONS.get(sev, 0) * cnt for sev, cnt in c.items()
-            ))
-            if score >= 90:   status = "Excellent"
-            elif score >= 75: status = "Good"
-            elif score >= 60: status = "Needs Improvement"
-            else:             status = "High Risk"
+            score = max(
+                0, 100 - sum(_SEVERITY_DEDUCTIONS.get(sev, 0) * cnt for sev, cnt in c.items())
+            )
+            if score >= 90:
+                status = "Excellent"
+            elif score >= 75:
+                status = "Good"
+            elif score >= 60:
+                status = "Needs Improvement"
+            else:
+                status = "High Risk"
             result.append((_PILLAR_DISPLAY.get(pk, pk), score, status))
 
         return result
@@ -154,11 +170,11 @@ def _project_compliance(agg: AggregatedReport) -> tuple[float, float]:
     Returns (current, current) on error or when no projection is possible.
     """
     try:
-        sev   = agg.findings_by_severity
-        crit  = sev.get("critical", 0)
-        high  = sev.get("high", 0)
-        med   = sev.get("medium", 0)
-        low   = sev.get("low", 0)
+        sev = agg.findings_by_severity
+        crit = sev.get("critical", 0)
+        high = sev.get("high", 0)
+        med = sev.get("medium", 0)
+        low = sev.get("low", 0)
         total = agg.total_findings
         current = agg.overall_compliance_score
 
@@ -185,14 +201,19 @@ def _project_compliance(agg: AggregatedReport) -> tuple[float, float]:
 
 
 def _maturity_label(compliance: float) -> str:
-    if compliance >= 90: return "enterprise-ready"
-    if compliance >= 80: return "strong"
-    if compliance >= 70: return "moderate"
-    if compliance >= 60: return "developing"
+    if compliance >= 90:
+        return "enterprise-ready"
+    if compliance >= 80:
+        return "strong"
+    if compliance >= 70:
+        return "moderate"
+    if compliance >= 60:
+        return "developing"
     return "early-stage"
 
 
 # ── Paragraph builders ─────────────────────────────────────────────────────────
+
 
 def _build_executive_overview(
     agg: AggregatedReport,
@@ -233,16 +254,12 @@ def _build_executive_overview(
     else:
         urgency = ""
 
-    risk_desc = (
-        "elevated" if risk >= 70
-        else "moderate" if risk >= 40
-        else "manageable"
-    )
+    risk_desc = "elevated" if risk >= 70 else "moderate" if risk >= 40 else "manageable"
 
     pillar_clause = ""
     if pillar_scores and len(pillar_scores) >= 2:
         strongest = max(pillar_scores, key=lambda x: x[1])
-        weakest   = min(pillar_scores, key=lambda x: x[1])
+        weakest = min(pillar_scores, key=lambda x: x[1])
         if strongest[0] != weakest[0]:
             pillar_clause = (
                 f" The {strongest[0]} pillar demonstrates the strongest compliance "
@@ -332,17 +349,15 @@ def _build_primary_risk_drivers(
         )
 
     dominant_pillar = max(pillar_counts, key=lambda p: pillar_counts[p])
-    dominant_count  = pillar_counts[dominant_pillar]
-    dominant_pct    = round(dominant_count / total * 100)
-    domain          = _PILLAR_DOMAIN.get(dominant_pillar, "infrastructure controls")
-    display         = _PILLAR_DISPLAY.get(dominant_pillar, dominant_pillar.replace("_", " ").title())
+    dominant_count = pillar_counts[dominant_pillar]
+    dominant_pct = round(dominant_count / total * 100)
+    domain = _PILLAR_DOMAIN.get(dominant_pillar, "infrastructure controls")
+    display = _PILLAR_DISPLAY.get(dominant_pillar, dominant_pillar.replace("_", " ").title())
 
     # Recurring resource type from raw findings or aggregated inventory
     rt_clause = ""
     if findings:
-        rt_counts: Counter[str] = Counter(
-            f.resource_type for f in findings if f.resource_type
-        )
+        rt_counts: Counter[str] = Counter(f.resource_type for f in findings if f.resource_type)
         if rt_counts:
             top_rt, rt_count = rt_counts.most_common(1)[0]
             short_rt = top_rt.rsplit("/", 1)[-1] if "/" in top_rt else top_rt
@@ -354,7 +369,8 @@ def _build_primary_risk_drivers(
             )
     elif agg.resource_type_inventory:
         most_affected = max(
-            agg.resource_type_inventory.values(), key=lambda s: s.with_findings,
+            agg.resource_type_inventory.values(),
+            key=lambda s: s.with_findings,
         )
         if most_affected.with_findings > 0:
             short = most_affected.resource_type.rsplit("/", 1)[-1]
@@ -478,7 +494,7 @@ def _build_remediation_outlook(
     findings: list[Finding],
 ) -> str:
     """Paragraph D — projected compliance improvement after High and Medium remediation."""
-    total   = agg.total_findings
+    total = agg.total_findings
     current = agg.overall_compliance_score
 
     if total == 0:
@@ -497,11 +513,11 @@ def _build_remediation_outlook(
 
     crit = agg.findings_by_severity.get("critical", 0)
     high = agg.findings_by_severity.get("high", 0)
-    med  = agg.findings_by_severity.get("medium", 0)
+    med = agg.findings_by_severity.get("medium", 0)
 
     after_high, after_hm = _project_compliance(agg)
     high_gain = round(after_high - current, 1)
-    hm_gain   = round(after_hm  - current, 1)
+    hm_gain = round(after_hm - current, 1)
 
     if high > 0 and high_gain > 0:
         high_clause = (
@@ -564,9 +580,9 @@ def _build_executive_recommendation(
 ) -> str:
     """Paragraph E — prioritised action plan across three horizons."""
     total = agg.total_findings
-    crit  = agg.findings_by_severity.get("critical", 0)
-    high  = agg.findings_by_severity.get("high", 0)
-    med   = agg.findings_by_severity.get("medium", 0)
+    crit = agg.findings_by_severity.get("critical", 0)
+    high = agg.findings_by_severity.get("high", 0)
+    med = agg.findings_by_severity.get("medium", 0)
 
     if total == 0:
         return (
@@ -603,7 +619,8 @@ def _build_executive_recommendation(
 
     most_affected = (
         max(agg.findings_by_pillar, key=lambda p: agg.findings_by_pillar[p].total_findings)
-        if agg.findings_by_pillar else None
+        if agg.findings_by_pillar
+        else None
     )
     if most_affected:
         display = _PILLAR_DISPLAY.get(most_affected, most_affected.replace("_", " ").title())
@@ -688,6 +705,7 @@ def _build_fallback_narrative() -> ExecutiveNarrative:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def generate_executive_narrative(
     aggregated: AggregatedReport,
     findings: Sequence[Finding],
@@ -702,10 +720,10 @@ def generate_executive_narrative(
         findings_list = list(findings)
         pillar_scores = _local_pillar_scores(findings_list, aggregated)
 
-        overview       = _build_executive_overview(aggregated, findings_list, pillar_scores)
-        drivers        = _build_primary_risk_drivers(aggregated, findings_list)
-        consequences   = _build_business_consequences(aggregated, findings_list)
-        outlook        = _build_remediation_outlook(aggregated, findings_list)
+        overview = _build_executive_overview(aggregated, findings_list, pillar_scores)
+        drivers = _build_primary_risk_drivers(aggregated, findings_list)
+        consequences = _build_business_consequences(aggregated, findings_list)
+        outlook = _build_remediation_outlook(aggregated, findings_list)
         recommendation = _build_executive_recommendation(aggregated, findings_list)
 
         return ExecutiveNarrative(

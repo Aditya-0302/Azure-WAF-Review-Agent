@@ -136,9 +136,7 @@ class PreparationHandler:
     # ── Orchestration ──────────────────────────────────────────────────────────
 
     async def _handle(self, event: AssessmentCreatedEvent, log: StructuredLogger) -> None:
-        assessment = await self._assessment_repo.get_by_id(
-            event.tenant_id, event.assessment_id
-        )
+        assessment = await self._assessment_repo.get_by_id(event.tenant_id, event.assessment_id)
         if assessment is None:
             log.error("preparation.handler.assessment_not_found")
             return
@@ -212,9 +210,7 @@ class PreparationHandler:
             )
 
         # Step 5 — final cancellation gate before publishing downstream events
-        refreshed = await self._assessment_repo.get_by_id(
-            assessment.tenant_id, assessment.id
-        )
+        refreshed = await self._assessment_repo.get_by_id(assessment.tenant_id, assessment.id)
         if refreshed is not None and refreshed.is_cancellation_pending:
             log.info("preparation.handler.cancelled_before_publish")
             await self._assessment_repo.update_status(
@@ -267,9 +263,8 @@ class PreparationHandler:
         if not existing_batches:
             return await self._discover_and_create_batches(assessment, log)
 
-        if (
-            assessment.total_batches is not None
-            and assessment.total_batches == len(existing_batches)
+        if assessment.total_batches is not None and assessment.total_batches == len(
+            existing_batches
         ):
             log.warning(
                 "preparation.handler.redelivery_reusing_batches",
@@ -315,7 +310,7 @@ class PreparationHandler:
         # Assign globally unique batch_index values AFTER all resources are
         # collected so parallel coroutines cannot collide on the same index.
         all_batches: list[AssessmentBatch] = []
-        for sub_id, resources in zip(assessment.subscription_ids, results):
+        for sub_id, resources in zip(assessment.subscription_ids, results, strict=False):
             resources_list: list[AzureResource] = resources  # type: ignore[assignment]
             for chunk in _chunks(resources_list, BATCH_SIZE):
                 batch = await self._assessment_repo.create_batch(
@@ -391,9 +386,7 @@ class PreparationHandler:
         # 5. Apply tag filter client-side (ResourceInventoryService has no tag param).
         if tag_filter:
             resources = [
-                r
-                for r in resources
-                if all(r.tags.get(k) == v for k, v in tag_filter.items())
+                r for r in resources if all(r.tags.get(k) == v for k, v in tag_filter.items())
             ]
 
         log.info(

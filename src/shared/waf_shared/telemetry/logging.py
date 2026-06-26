@@ -13,9 +13,7 @@ from typing import Any
 import structlog
 from opentelemetry import trace
 
-_SENSITIVE_FIELD_PATTERN = re.compile(
-    r"(?:secret|password|key|token|credential)", re.IGNORECASE
-)
+_SENSITIVE_FIELD_PATTERN = re.compile(r"(?:secret|password|key|token|credential)", re.IGNORECASE)
 _SUBSCRIPTION_ID_PATTERN = re.compile(
     r"/subscriptions/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
     re.IGNORECASE,
@@ -121,7 +119,7 @@ class StructuredLogger:
     def critical(self, event: str, exc_info: bool = False, **kwargs: Any) -> None:
         self._log.critical(event, exc_info=exc_info, **kwargs)
 
-    def bind(self, **kwargs: Any) -> "StructuredLogger":
+    def bind(self, **kwargs: Any) -> StructuredLogger:
         copy = object.__new__(StructuredLogger)
         copy._log = self._log.bind(**kwargs)  # noqa: SLF001
         return copy

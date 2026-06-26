@@ -25,7 +25,7 @@ import uuid
 import pytest
 
 from waf_shared.discovery.config import DiscoveryConfig
-from waf_shared.discovery.models import AdvisorCategory, AzureResource, AzureSubscription
+from waf_shared.discovery.models import AzureResource, AzureSubscription
 
 _AZURE_INTEGRATION = pytest.mark.skipif(
     os.environ.get("AZURE_INTEGRATION_TESTS") != "1"
@@ -300,13 +300,13 @@ class TestDiscoveryServiceSnapshotIntegration:
     @_AZURE_INTEGRATION
     @pytest.mark.asyncio
     async def test_snapshot_subscription_returns_complete_result(self) -> None:
+        from waf_api.services.discovery_service import DiscoveryService
         from waf_shared.auth.auth_service import AuthenticationService
         from waf_shared.auth.config import PlatformAuthConfig
         from waf_shared.auth.credential_provider import (
             CrossTenantCredentialProvider,
         )
         from waf_shared.auth.token_provider import TokenProvider
-        from waf_api.services.discovery_service import DiscoveryService
 
         sub_id = _sub_id()
         platform = _make_platform_credential()

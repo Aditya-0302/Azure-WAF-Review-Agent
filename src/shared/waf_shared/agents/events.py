@@ -160,10 +160,20 @@ def _raise_frozen_attr_error(self: object, name: str, value: object) -> None:
 
 
 for _cls in [
-    AgentEvent, AgentStartedEvent, AgentCompletedEvent, AgentFailedEvent,
-    AgentRetryingEvent, StageStartedEvent, StageCompletedEvent, StageFailedEvent,
-    PipelineStartedEvent, PipelineCompletedEvent, PipelineFailedEvent,
-    WorkflowStartedEvent, WorkflowCompletedEvent, WorkflowFailedEvent,
+    AgentEvent,
+    AgentStartedEvent,
+    AgentCompletedEvent,
+    AgentFailedEvent,
+    AgentRetryingEvent,
+    StageStartedEvent,
+    StageCompletedEvent,
+    StageFailedEvent,
+    PipelineStartedEvent,
+    PipelineCompletedEvent,
+    PipelineFailedEvent,
+    WorkflowStartedEvent,
+    WorkflowCompletedEvent,
+    WorkflowFailedEvent,
     WorkflowCancelledEvent,
 ]:
     _cls.__setattr__ = _raise_frozen_attr_error  # type: ignore[method-assign]

@@ -11,17 +11,15 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from waf_reporting.aggregator import (
     AggregatedReport,
     FindingAggregator,
-    PillarSummary,
     _pillar_compliance_score,
 )
+
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
 from waf_shared.db.repositories.finding_repository import FindingRepository
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
-
 
 # ---------------------------------------------------------------------------
 # _pillar_compliance_score — pure function
@@ -50,12 +48,14 @@ class TestPillarComplianceScore:
     def test_mixed_severities(self) -> None:
         # critical=1 (1.0), medium=1 (0.5), low=1 (0.25), informational=1 (0.0)
         # total=4; weighted=1.75; score=1.0 - 1.75/4 = 1 - 0.4375 = 0.5625
-        score = _pillar_compliance_score({
-            "critical": 1,
-            "medium": 1,
-            "low": 1,
-            "informational": 1,
-        })
+        score = _pillar_compliance_score(
+            {
+                "critical": 1,
+                "medium": 1,
+                "low": 1,
+                "informational": 1,
+            }
+        )
         assert score == pytest.approx(0.5625, abs=1e-4)
 
     def test_unknown_severity_uses_default_weight(self) -> None:
@@ -151,9 +151,7 @@ class TestFindingAggregatorAggregate:
 
     async def test_total_findings_from_severity_counts(self) -> None:
         tid, aid = uuid.uuid4(), uuid.uuid4()
-        agg, _, _ = _make_aggregator(
-            by_severity={"critical": 2, "high": 5, "medium": 3}
-        )
+        agg, _, _ = _make_aggregator(by_severity={"critical": 2, "high": 5, "medium": 3})
 
         result = await agg.aggregate(tid, aid)
         assert result.total_findings == 10
@@ -209,9 +207,7 @@ class TestFindingAggregatorAggregate:
 
     async def test_pillar_compliance_score_all_critical(self) -> None:
         tid, aid = uuid.uuid4(), uuid.uuid4()
-        agg, _, _ = _make_aggregator(
-            pillar_severity={"reliability": {"critical": 10}}
-        )
+        agg, _, _ = _make_aggregator(pillar_severity={"reliability": {"critical": 10}})
 
         result = await agg.aggregate(tid, aid)
         assert result.findings_by_pillar["reliability"].compliance_score == 0.0

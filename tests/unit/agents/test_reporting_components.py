@@ -6,7 +6,6 @@ webhook service in isolation — all DB / HTTP / Azure calls are mocked.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
 import io
@@ -16,7 +15,6 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from waf_reporting.aggregator import (
     AggregatedReport,
     FindingAggregator,
@@ -25,8 +23,9 @@ from waf_reporting.aggregator import (
 )
 from waf_reporting.excel_generator import ExcelGenerator
 from waf_reporting.pdf_generator import PdfGenerator
-from waf_reporting.storage_uploader import StorageUploadError, StorageUploader
+from waf_reporting.storage_uploader import StorageUploader, StorageUploadError
 from waf_reporting.webhook_service import WebhookDeliveryError, WebhookService
+
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.webhook import WebhookDelivery
 
@@ -93,6 +92,7 @@ def _make_aggregated(
 
 # ── Aggregator tests ──────────────────────────────────────────────────────────
 
+
 class TestPillarComplianceScore:
     def test_all_critical_gives_zero(self) -> None:
         score = _pillar_compliance_score({"critical": 5})
@@ -131,9 +131,7 @@ class TestFindingAggregator:
         finding_repo.aggregate_pillar_severity = AsyncMock(
             return_value=pillar_severity or {"security": {"critical": 1, "medium": 2}}
         )
-        finding_repo.count_distinct_resources = AsyncMock(
-            return_value=resources_with_findings
-        )
+        finding_repo.count_distinct_resources = AsyncMock(return_value=resources_with_findings)
         finding_repo.list_by_assessment = AsyncMock(
             return_value=top_critical or [_make_finding("critical")]
         )
@@ -162,25 +160,19 @@ class TestFindingAggregator:
 
     @pytest.mark.asyncio
     async def test_total_findings_sum_of_severity_counts(self) -> None:
-        agg, _, _ = self._build_aggregator(
-            by_severity={"critical": 2, "high": 3, "medium": 5}
-        )
+        agg, _, _ = self._build_aggregator(by_severity={"critical": 2, "high": 3, "medium": 5})
         result = await agg.aggregate(_TENANT_ID, _ASSESSMENT_ID)
         assert result.total_findings == 10
 
     @pytest.mark.asyncio
     async def test_coverage_percentage(self) -> None:
-        agg, _, _ = self._build_aggregator(
-            total_resources=20, resources_with_findings=5
-        )
+        agg, _, _ = self._build_aggregator(total_resources=20, resources_with_findings=5)
         result = await agg.aggregate(_TENANT_ID, _ASSESSMENT_ID)
         assert result.coverage_percentage == pytest.approx(0.25, abs=1e-4)
 
     @pytest.mark.asyncio
     async def test_zero_resources_coverage_is_zero(self) -> None:
-        agg, _, _ = self._build_aggregator(
-            total_resources=0, resources_with_findings=0
-        )
+        agg, _, _ = self._build_aggregator(total_resources=0, resources_with_findings=0)
         result = await agg.aggregate(_TENANT_ID, _ASSESSMENT_ID)
         assert result.coverage_percentage == 0.0
 
@@ -218,6 +210,7 @@ class TestFindingAggregator:
 
 
 # ── Excel generator tests ─────────────────────────────────────────────────────
+
 
 class TestExcelGenerator:
     def _gen(self) -> ExcelGenerator:
@@ -288,6 +281,7 @@ class TestExcelGenerator:
 
 # ── PDF generator tests ───────────────────────────────────────────────────────
 
+
 class TestPdfGenerator:
     def _gen(self) -> PdfGenerator:
         return PdfGenerator()
@@ -322,8 +316,8 @@ class TestPdfGenerator:
     def test_waf_codes_render_control_pages(self) -> None:
         findings = [
             _make_finding("critical", "security", waf_codes=["SE-05", "SE-08"]),
-            _make_finding("high",     "security", waf_codes=["SE-05"]),
-            _make_finding("medium",   "reliability", waf_codes=["RE-01"]),
+            _make_finding("high", "security", waf_codes=["SE-05"]),
+            _make_finding("medium", "reliability", waf_codes=["RE-01"]),
         ]
         agg = _make_aggregated(total_findings=3)
         result = self._gen().generate(agg, findings)
@@ -332,9 +326,16 @@ class TestPdfGenerator:
 
     def test_resource_group_breakdown_parses_arm_ids(self) -> None:
         findings = [
-            _make_finding(resource_id="/subscriptions/s1/resourceGroups/rg-frontend/providers/Some/r"),
-            _make_finding(resource_id="/subscriptions/s1/resourceGroups/rg-backend/providers/Some/r"),
-            _make_finding("critical", resource_id="/subscriptions/s1/resourceGroups/rg-frontend/providers/Some/r2"),
+            _make_finding(
+                resource_id="/subscriptions/s1/resourceGroups/rg-frontend/providers/Some/r"
+            ),
+            _make_finding(
+                resource_id="/subscriptions/s1/resourceGroups/rg-backend/providers/Some/r"
+            ),
+            _make_finding(
+                "critical",
+                resource_id="/subscriptions/s1/resourceGroups/rg-frontend/providers/Some/r2",
+            ),
         ]
         agg = _make_aggregated(total_findings=3)
         result = self._gen().generate(agg, findings)
@@ -356,9 +357,9 @@ class TestPdfGenerator:
             ),
         }
         findings = [
-            _make_finding("critical", "security",     waf_codes=["SE-05"]),
-            _make_finding("medium",   "reliability",  waf_codes=["RE-01"]),
-            _make_finding("medium",   "reliability"),
+            _make_finding("critical", "security", waf_codes=["SE-05"]),
+            _make_finding("medium", "reliability", waf_codes=["RE-01"]),
+            _make_finding("medium", "reliability"),
         ]
         agg = _make_aggregated(total_findings=3, pillars=pillars)
         result = self._gen().generate(agg, findings)
@@ -498,12 +499,8 @@ class TestGroupFindingsForReporting:
 
     def test_waf_codes_merged_across_findings(self) -> None:
         findings = [
-            _make_finding_for_group(
-                resource_id="/rg/s/st1", waf_codes=["SE-03"]
-            ),
-            _make_finding_for_group(
-                resource_id="/rg/s/st2", waf_codes=["SE-03", "SE-07"]
-            ),
+            _make_finding_for_group(resource_id="/rg/s/st1", waf_codes=["SE-03"]),
+            _make_finding_for_group(resource_id="/rg/s/st2", waf_codes=["SE-03", "SE-07"]),
         ]
         groups = group_findings_for_reporting(findings)
         assert len(groups) == 1
@@ -513,14 +510,10 @@ class TestGroupFindingsForReporting:
 
     def test_most_voted_recommendation_is_selected(self) -> None:
         findings = [
-            _make_finding_for_group(
-                resource_id=f"/rg/s/st{i}", recommendation="Enable HTTPS."
-            )
+            _make_finding_for_group(resource_id=f"/rg/s/st{i}", recommendation="Enable HTTPS.")
             for i in range(3)
         ] + [
-            _make_finding_for_group(
-                resource_id="/rg/s/st99", recommendation="Use secure transfer."
-            )
+            _make_finding_for_group(resource_id="/rg/s/st99", recommendation="Use secure transfer.")
         ]
         groups = group_findings_for_reporting(findings)
         assert len(groups) == 1
@@ -528,9 +521,7 @@ class TestGroupFindingsForReporting:
 
     def test_evidence_summary_populated(self) -> None:
         findings = [
-            _make_finding_for_group(
-                resource_id=f"/rg/s/st{i}", evidence={"result": "FAIL"}
-            )
+            _make_finding_for_group(resource_id=f"/rg/s/st{i}", evidence={"result": "FAIL"})
             for i in range(2)
         ]
         groups = group_findings_for_reporting(findings)
@@ -580,10 +571,7 @@ class TestGroupFindingsForReporting:
 
     def test_pdf_generates_successfully_with_grouped_findings(self) -> None:
         """Integration smoke test: PDF generator uses group_findings_for_reporting."""
-        findings = [
-            _make_finding_for_group(resource_id=f"/rg/s/st{i}")
-            for i in range(4)
-        ]
+        findings = [_make_finding_for_group(resource_id=f"/rg/s/st{i}") for i in range(4)]
         agg = _make_aggregated(
             total_findings=4,
             pillars={
@@ -602,12 +590,11 @@ class TestGroupFindingsForReporting:
 
 # ── Storage uploader tests ─────────────────────────────────────────────────────
 
+
 class TestStorageUploader:
     def _build_uploader(self, upload_error: Exception | None = None) -> StorageUploader:
         blob_client = AsyncMock()
-        blob_client.upload_blob = AsyncMock(
-            side_effect=upload_error if upload_error else None
-        )
+        blob_client.upload_blob = AsyncMock(side_effect=upload_error if upload_error else None)
         container_client = MagicMock()
         container_client.get_blob_client = MagicMock(return_value=blob_client)
         blob_service = MagicMock()
@@ -616,7 +603,9 @@ class TestStorageUploader:
         logger.bind = MagicMock(return_value=logger)
         logger.info = MagicMock()
         logger.error = MagicMock()
-        return StorageUploader(blob_service=blob_service, container_name="waf-reports", logger=logger)
+        return StorageUploader(
+            blob_service=blob_service, container_name="waf-reports", logger=logger
+        )
 
     @pytest.mark.asyncio
     async def test_returns_blob_path_not_sas_url(self) -> None:
@@ -661,6 +650,7 @@ class TestStorageUploader:
 
 # ── Webhook service tests ──────────────────────────────────────────────────────
 
+
 class TestWebhookService:
     def _build_service(
         self,
@@ -680,12 +670,10 @@ class TestWebhookService:
         svc = WebhookService(webhook_repo=webhook_repo, logger=logger)
         return svc, webhook_repo
 
-    def _patch_aiohttp(
-        self, status_codes: list[int], errors: list[Exception | None] | None = None
-    ):
+    def _patch_aiohttp(self, status_codes: list[int], errors: list[Exception | None] | None = None):
         responses = []
         err_list = errors or [None] * len(status_codes)
-        for code, err in zip(status_codes, err_list):
+        for code, err in zip(status_codes, err_list, strict=False):
             if err:
                 responses.append(err)
             else:
@@ -776,9 +764,7 @@ class TestWebhookService:
             )
 
         # Verify the HMAC header matches independent calculation.
-        expected_sig = hmac.new(
-            secret, captured_body, hashlib.sha256
-        ).hexdigest()
+        expected_sig = hmac.new(secret, captured_body, hashlib.sha256).hexdigest()
         assert captured_headers["X-WAF-Signature"] == f"sha256={expected_sig}"
 
     @pytest.mark.asyncio
@@ -790,8 +776,10 @@ class TestWebhookService:
         mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
         mock_resp.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("aiohttp.ClientSession") as mock_cls, \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("aiohttp.ClientSession") as mock_cls,
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             session = MagicMock()
             session.__aenter__ = AsyncMock(return_value=session)
             session.__aexit__ = AsyncMock(return_value=False)
@@ -863,7 +851,9 @@ class TestCalculatePillarScores:
         assert rel[1] == 90
 
     def test_medium_deducts_5(self) -> None:
-        scores = calculate_pillar_scores([_make_finding(severity="medium", pillar="cost_optimization")])
+        scores = calculate_pillar_scores(
+            [_make_finding(severity="medium", pillar="cost_optimization")]
+        )
         co = next(s for s in scores if s[0] == "Cost Optimization")
         assert co[1] == 95
 
@@ -873,16 +863,18 @@ class TestCalculatePillarScores:
         assert sec[1] == 98
 
     def test_informational_no_deduction(self) -> None:
-        scores = calculate_pillar_scores([_make_finding(severity="informational", pillar="security")])
+        scores = calculate_pillar_scores(
+            [_make_finding(severity="informational", pillar="security")]
+        )
         sec = next(s for s in scores if s[0] == "Security")
         assert sec[1] == 100
 
     def test_mixed_severities_summed(self) -> None:
         findings = [
             _make_finding(severity="critical", pillar="security"),
-            _make_finding(severity="high",     pillar="security"),
-            _make_finding(severity="medium",   pillar="security"),
-            _make_finding(severity="low",      pillar="security"),
+            _make_finding(severity="high", pillar="security"),
+            _make_finding(severity="medium", pillar="security"),
+            _make_finding(severity="low", pillar="security"),
         ]
         scores = calculate_pillar_scores(findings)
         sec = next(s for s in scores if s[0] == "Security")
@@ -891,7 +883,7 @@ class TestCalculatePillarScores:
     def test_multiple_pillars_scored_independently(self) -> None:
         findings = [
             _make_finding(severity="critical", pillar="security"),
-            _make_finding(severity="high",     pillar="reliability"),
+            _make_finding(severity="high", pillar="reliability"),
         ]
         scores = calculate_pillar_scores(findings)
         sec = next(s for s in scores if s[0] == "Security")
@@ -906,7 +898,9 @@ class TestCalculatePillarScores:
         assert sec[1] == 0  # 100 - 7×15 = -5, floored to 0
 
     def test_score_ceiling_at_100(self) -> None:
-        scores = calculate_pillar_scores([_make_finding(severity="informational", pillar="security")])
+        scores = calculate_pillar_scores(
+            [_make_finding(severity="informational", pillar="security")]
+        )
         sec = next(s for s in scores if s[0] == "Security")
         assert sec[1] == 100
 
@@ -920,8 +914,8 @@ class TestCalculatePillarScores:
     def test_status_good_at_75(self) -> None:
         # 2 high + 1 medium = -(20+5) = -25 → score 75 → Good
         findings = [
-            _make_finding(severity="high",   pillar="security"),
-            _make_finding(severity="high",   pillar="security"),
+            _make_finding(severity="high", pillar="security"),
+            _make_finding(severity="high", pillar="security"),
             _make_finding(severity="medium", pillar="security"),
         ]
         scores = calculate_pillar_scores(findings)
@@ -955,17 +949,17 @@ class TestCalculatePillarScores:
     def test_finding_counts_correct(self) -> None:
         findings = [
             _make_finding(severity="critical", pillar="security"),
-            _make_finding(severity="high",     pillar="security"),
-            _make_finding(severity="medium",   pillar="security"),
+            _make_finding(severity="high", pillar="security"),
+            _make_finding(severity="medium", pillar="security"),
         ]
         scores = calculate_pillar_scores(findings)
         sec = next(s for s in scores if s[0] == "Security")
         # tuple: (name, score, status, total, crit, high, med, low)
-        assert sec[3] == 3   # total
-        assert sec[4] == 1   # critical
-        assert sec[5] == 1   # high
-        assert sec[6] == 1   # medium
-        assert sec[7] == 0   # low
+        assert sec[3] == 3  # total
+        assert sec[4] == 1  # critical
+        assert sec[5] == 1  # high
+        assert sec[6] == 1  # medium
+        assert sec[7] == 0  # low
 
 
 # ── calculate_maturity_rating tests ───────────────────────────────────────────
@@ -1124,9 +1118,7 @@ class TestBuildEvidenceSnapshot:
         assert snap["supportsHttpsTrafficOnly"] is False
 
     def test_tls_version_finding_evidence(self) -> None:
-        snap = build_evidence_snapshot(
-            self._finding_with_evidence({"minimumTlsVersion": "TLS1_0"})
-        )
+        snap = build_evidence_snapshot(self._finding_with_evidence({"minimumTlsVersion": "TLS1_0"}))
         assert snap["minimumTlsVersion"] == "TLS1_0"
 
     def test_private_endpoint_finding_evidence(self) -> None:
@@ -1136,9 +1128,7 @@ class TestBuildEvidenceSnapshot:
         assert snap["privateEndpointConnections"] == []
 
     def test_rbac_finding_evidence(self) -> None:
-        snap = build_evidence_snapshot(
-            self._finding_with_evidence({"roleAssignments": 0})
-        )
+        snap = build_evidence_snapshot(self._finding_with_evidence({"roleAssignments": 0}))
         assert snap["roleAssignments"] == 0
 
     def test_multiple_clean_fields_all_returned(self) -> None:
@@ -1339,7 +1329,9 @@ class TestBuildExecutiveRemediationRoadmap:
 
     def test_effort_reflects_resource_count(self) -> None:
         findings = [
-            self._make_finding("low", "cost_optimization", rule_id="WAF-001", resource_id=f"/rg/r{i}")
+            self._make_finding(
+                "low", "cost_optimization", rule_id="WAF-001", resource_id=f"/rg/r{i}"
+            )
             for i in range(7)
         ]
         phases = build_executive_remediation_roadmap(findings)
@@ -1348,7 +1340,7 @@ class TestBuildExecutiveRemediationRoadmap:
     def test_phase1_sorted_by_priority_descending(self) -> None:
         findings = [
             self._make_finding("critical", "reliability", rule_id="WAF-A", resource_id="/rg/r1"),
-            self._make_finding("critical", "security",   rule_id="WAF-B", resource_id="/rg/r2"),
+            self._make_finding("critical", "security", rule_id="WAF-B", resource_id="/rg/r2"),
         ]
         phases = build_executive_remediation_roadmap(findings)
         items = phases[0]["items"]
@@ -1359,7 +1351,15 @@ class TestBuildExecutiveRemediationRoadmap:
         findings = [self._make_finding("critical", "security")]
         phases = build_executive_remediation_roadmap(findings)
         item = phases[0]["items"][0]
-        for key in ("title", "severity", "pillar", "resource_count", "priority", "effort", "recommendation"):
+        for key in (
+            "title",
+            "severity",
+            "pillar",
+            "resource_count",
+            "priority",
+            "effort",
+            "recommendation",
+        ):
             assert key in item
 
 
@@ -1544,10 +1544,9 @@ class TestExpectedRiskReduction:
 
 from waf_reporting.business_impact_analysis import (  # noqa: E402
     BusinessImpact,
+    aggregate_risk_category_levels,
     build_business_impact_analysis,
     calculate_business_impact_score,
-    aggregate_risk_category_levels,
-    build_executive_business_impact_summary,
 )
 
 
@@ -1605,10 +1604,7 @@ class TestBuildBusinessImpactAnalysis:
     def test_finding_impact_uses_hedged_language(self) -> None:
         f = _make_impact_finding(pillar="security", severity="critical")
         biz = build_business_impact_analysis(f)
-        hedged = any(
-            word in biz.finding_impact.lower()
-            for word in ["potential", "may", "could"]
-        )
+        hedged = any(word in biz.finding_impact.lower() for word in ["potential", "may", "could"])
         assert hedged, f"Expected hedged language, got: {biz.finding_impact}"
 
     def test_priority_critical_is_p1(self) -> None:
@@ -1659,7 +1655,7 @@ class TestCalculateBusinessImpactScore:
     def test_average_critical_and_medium(self) -> None:
         findings = [
             _make_impact_finding(severity="critical"),  # 100
-            _make_impact_finding(severity="medium"),    # 50
+            _make_impact_finding(severity="medium"),  # 50
         ]
         assert calculate_business_impact_score(findings) == 75.0
 
@@ -1669,8 +1665,8 @@ class TestCalculateBusinessImpactScore:
 
     def test_multiple_findings_averages_correctly(self) -> None:
         findings = [
-            _make_impact_finding(severity="high"),    # 75
-            _make_impact_finding(severity="low"),     # 25
+            _make_impact_finding(severity="high"),  # 75
+            _make_impact_finding(severity="low"),  # 25
         ]
         assert calculate_business_impact_score(findings) == 50.0
 
@@ -1724,8 +1720,11 @@ class TestAggregateRiskCategoryLevels:
     def test_returns_all_five_categories(self) -> None:
         levels = aggregate_risk_category_levels([])
         expected_keys = {
-            "Security Risk", "Compliance Risk", "Operational Risk",
-            "Financial Risk", "Reputation Risk",
+            "Security Risk",
+            "Compliance Risk",
+            "Operational Risk",
+            "Financial Risk",
+            "Reputation Risk",
         }
         assert set(levels.keys()) == expected_keys
 
@@ -1733,7 +1732,6 @@ class TestAggregateRiskCategoryLevels:
 # ── Executive Insights ────────────────────────────────────────────────────────
 
 from waf_reporting.executive_insights import (  # noqa: E402
-    ExecutiveInsight,
     ExecutiveInsights,
     StrategicRecommendations,
     calculate_insight_confidence,
@@ -1770,6 +1768,7 @@ def _make_insight_finding(
 
 # ── TestCalculateInsightConfidence ────────────────────────────────────────────
 
+
 class TestCalculateInsightConfidence:
     def test_zero_total_returns_low(self) -> None:
         assert calculate_insight_confidence(0, 0) == "Low"
@@ -1802,6 +1801,7 @@ class TestCalculateInsightConfidence:
 
 
 # ── TestGenerateExecutiveInsights ─────────────────────────────────────────────
+
 
 class TestGenerateExecutiveInsights:
     def test_empty_findings_returns_executive_insights(self) -> None:
@@ -1907,6 +1907,7 @@ class TestGenerateExecutiveInsights:
 
 # ── TestExecutiveInsightsNarrative ────────────────────────────────────────────
 
+
 class TestExecutiveInsightsNarrative:
     def test_narrative_is_non_empty_string(self) -> None:
         findings = [_make_insight_finding(severity="high") for _ in range(3)]
@@ -1952,6 +1953,7 @@ class TestExecutiveInsightsNarrative:
 
 # ── TestExcelSheetExecutiveInsights ───────────────────────────────────────────
 
+
 class TestExcelSheetExecutiveInsights:
     def _gen_excel(self, findings: list[Finding]) -> bytes:
         agg = _make_aggregated(total_findings=len(findings))
@@ -1959,6 +1961,7 @@ class TestExcelSheetExecutiveInsights:
 
     def test_ai_executive_insights_sheet_created(self) -> None:
         import openpyxl
+
         findings = [_make_insight_finding() for _ in range(3)]
         data = self._gen_excel(findings)
         wb = openpyxl.load_workbook(io.BytesIO(data))
@@ -1966,6 +1969,7 @@ class TestExcelSheetExecutiveInsights:
 
     def test_sheet_has_expected_headers(self) -> None:
         import openpyxl
+
         findings = [_make_insight_finding(severity="high") for _ in range(3)]
         data = self._gen_excel(findings)
         wb = openpyxl.load_workbook(io.BytesIO(data))
@@ -1975,12 +1979,14 @@ class TestExcelSheetExecutiveInsights:
 
     def test_sheet_generates_without_findings(self) -> None:
         import openpyxl
+
         data = self._gen_excel([])
         wb = openpyxl.load_workbook(io.BytesIO(data))
         assert "AI Executive Insights" in wb.sheetnames
 
 
 # ── TestPdfSectionExecutiveInsights ──────────────────────────────────────────
+
 
 class TestPdfSectionExecutiveInsights:
     def _gen_pdf(self, findings: list[Finding]) -> bytes:

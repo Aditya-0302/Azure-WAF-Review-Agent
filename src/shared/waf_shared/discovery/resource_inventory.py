@@ -122,9 +122,7 @@ class ResourceInventoryService:
             subscription_id=str(subscription_id),
             resource_group=resource_group_name.lower(),
         )
-        rows = await self._graph.query_all(
-            credential, [str(subscription_id)], kql
-        )
+        rows = await self._graph.query_all(credential, [str(subscription_id)], kql)
         return [_map_resource(row) for row in rows]
 
     async def get_resource(
@@ -135,9 +133,7 @@ class ResourceInventoryService:
     ) -> AzureResource | None:
         """Return a single resource by full ARM resource ID, or None if not found."""
         kql = _SINGLE_RESOURCE_KQL.format(resource_id=resource_id.replace("'", "\\'"))
-        rows = await self._graph.query_all(
-            credential, [str(subscription_id)], kql
-        )
+        rows = await self._graph.query_all(credential, [str(subscription_id)], kql)
         return _map_resource(rows[0]) if rows else None
 
 

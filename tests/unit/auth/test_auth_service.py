@@ -22,9 +22,7 @@ def _make_service(
 ) -> tuple[AuthenticationService, MagicMock, MagicMock]:
     mock_tokens = AsyncMock()
     if validate_side_effect:
-        mock_tokens.get_subscription_token = AsyncMock(
-            side_effect=validate_side_effect
-        )
+        mock_tokens.get_subscription_token = AsyncMock(side_effect=validate_side_effect)
     else:
         mock_tokens.get_subscription_token = AsyncMock(return_value=subscription_token)
     mock_tokens.get_arm_token = AsyncMock(return_value="arm-tok")
@@ -32,9 +30,7 @@ def _make_service(
     mock_tokens.get_keyvault_token = AsyncMock(return_value="kv-tok")
 
     mock_cross = AsyncMock()
-    mock_cross.get_credential_for_subscription = AsyncMock(
-        return_value=MagicMock()
-    )
+    mock_cross.get_credential_for_subscription = AsyncMock(return_value=MagicMock())
     mock_cross.invalidate_cache = AsyncMock()
 
     svc = AuthenticationService(

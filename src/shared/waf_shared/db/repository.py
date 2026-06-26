@@ -209,9 +209,7 @@ class BaseRepository:
     # ── Unit-of-work context manager ─────────────────────────────────────────
 
     @asynccontextmanager
-    async def _uow(
-        self, tenant_id: uuid.UUID
-    ) -> AsyncGenerator[asyncpg.Connection, None]:  # type: ignore[type-arg]
+    async def _uow(self, tenant_id: uuid.UUID) -> AsyncGenerator[asyncpg.Connection, None]:  # type: ignore[type-arg]
         """Open a transaction as an async context manager.
 
         Acquires a write connection, sets the tenant RLS context, begins a
@@ -224,7 +222,7 @@ class BaseRepository:
         """
         if self._pool is None:
             raise DatabaseError(
-                "Pool is required for _uow; cannot open a nested transaction on an existing connection",
+                "Pool is required for _uow; cannot open a nested transaction on an existing connection",  # noqa: E501
                 code="POOL_NOT_READY",
             )
         async with self._pool.acquire_write() as conn:

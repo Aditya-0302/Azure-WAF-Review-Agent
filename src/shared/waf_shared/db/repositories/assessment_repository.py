@@ -39,9 +39,13 @@ _RESOURCE_COLS = """
 """
 
 _ACTIVE_STATUSES = (
-    "pending", "preparing", "extracting", "reasoning", "reporting", "partial_failure"
+    "pending",
+    "preparing",
+    "extracting",
+    "reasoning",
+    "reporting",
+    "partial_failure",
 )
-
 
 
 class _AzureSDKEncoder(json.JSONEncoder):
@@ -130,8 +134,7 @@ class AssessmentRepository(BaseRepository, IAssessmentRepository):
         assessment_id: uuid.UUID,
     ) -> Assessment | None:
         row = await self._read_one(
-            f"SELECT {_ASSESSMENT_COLS} FROM assessments "
-            "WHERE tenant_id = $1 AND id = $2",
+            f"SELECT {_ASSESSMENT_COLS} FROM assessments " "WHERE tenant_id = $1 AND id = $2",
             tenant_id,
             tenant_id,
             assessment_id,
@@ -351,7 +354,11 @@ class AssessmentRepository(BaseRepository, IAssessmentRepository):
     ) -> AssessmentBatch:
         now = datetime.now(UTC)
         started_at = now if status == BatchStatus.IN_PROGRESS else None
-        completed_at = now if status in (BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.DEAD_LETTERED) else None
+        completed_at = (
+            now
+            if status in (BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.DEAD_LETTERED)
+            else None
+        )
 
         row = await self._write_one(
             f"""
@@ -373,6 +380,7 @@ class AssessmentRepository(BaseRepository, IAssessmentRepository):
         )
         if row is None:
             from waf_shared.domain.errors.infrastructure_errors import DatabaseError
+
             raise DatabaseError(f"Batch {batch_id} not found for tenant {tenant_id}")
         return _row_to_batch(row)
 
@@ -484,10 +492,7 @@ class AssessmentRepository(BaseRepository, IAssessmentRepository):
             tenant_id,
             assessment_id,
         )
-        return [
-            (r["resource_type"], int(r["total"]), int(r["with_findings"]))
-            for r in rows
-        ]
+        return [(r["resource_type"], int(r["total"]), int(r["with_findings"])) for r in rows]
 
     async def list_resources_by_batch(
         self,
@@ -521,7 +526,8 @@ class AssessmentRepository(BaseRepository, IAssessmentRepository):
         calling this for different batch_ids will each get their own incremented
         count.  Exactly one pod sees the final count that equals total_batches.
         """
-        async def _execute(conn: "asyncpg.Connection") -> bool:  # type: ignore[name-defined]
+
+        async def _execute(conn: asyncpg.Connection) -> bool:  # type: ignore[name-defined]
             await conn.execute(
                 "SELECT set_config('app.current_tenant_id', $1, true)",
                 str(tenant_id),
@@ -575,4 +581,5 @@ class AssessmentRepository(BaseRepository, IAssessmentRepository):
                     return await _execute(conn)
         except asyncpg.PostgresError as exc:
             from waf_shared.domain.errors.infrastructure_errors import DatabaseError
+
             raise DatabaseError(f"Fan-in check failed: {exc}") from exc

@@ -29,6 +29,13 @@ from typing import Any
 from azure.servicebus.aio import ServiceBusClient
 from azure.servicebus.exceptions import ServiceBusError
 from azure.storage.blob.aio import BlobServiceClient
+from waf_reporting.aggregator import FindingAggregator
+from waf_reporting.config import ReportingConfig
+from waf_reporting.excel_generator import ExcelGenerator
+from waf_reporting.handler import ReportingHandler
+from waf_reporting.pdf_generator import PdfGenerator
+from waf_reporting.storage_uploader import StorageUploader
+from waf_reporting.webhook_service import WebhookService
 
 from waf_shared.auth.config import AuthMode, PlatformAuthConfig
 from waf_shared.auth.credential_provider import create_platform_provider
@@ -43,16 +50,9 @@ from waf_shared.infra.keyvault import KeyVaultClient
 from waf_shared.messaging.queue_names import REPORTING_REQUESTED
 from waf_shared.runtime.signals import install_signal_handlers
 from waf_shared.telemetry.logging import StructuredLogger, configure_structlog
-from waf_reporting.aggregator import FindingAggregator
-from waf_reporting.config import ReportingConfig
-from waf_reporting.excel_generator import ExcelGenerator
-from waf_reporting.handler import ReportingHandler
-from waf_reporting.pdf_generator import PdfGenerator
-from waf_reporting.storage_uploader import StorageUploader
-from waf_reporting.webhook_service import WebhookService
 
 _LOCK_RENEWAL_INTERVAL = 30  # seconds; must be < Service Bus lock duration (default 60 s)
-_RECEIVE_TIMEOUT = 5.0       # max seconds to wait for next message before re-checking stop
+_RECEIVE_TIMEOUT = 5.0  # max seconds to wait for next message before re-checking stop
 
 
 async def main() -> None:
@@ -82,12 +82,12 @@ async def main() -> None:
         credential=platform_credential,
     )
 
-    assessment_repo    = AssessmentRepository(pool=db)
-    finding_repo       = FindingRepository(pool=db)
-    report_repo        = ReportRepository(pool=db)
-    webhook_repo       = WebhookRepository(pool=db)
-    human_review_repo  = HumanReviewRepository(pool=db)
-    rule_repo          = WafRuleRepository(pool=db)
+    assessment_repo = AssessmentRepository(pool=db)
+    finding_repo = FindingRepository(pool=db)
+    report_repo = ReportRepository(pool=db)
+    webhook_repo = WebhookRepository(pool=db)
+    human_review_repo = HumanReviewRepository(pool=db)
+    rule_repo = WafRuleRepository(pool=db)
 
     aggregator = FindingAggregator(
         finding_repo=finding_repo,
@@ -182,9 +182,7 @@ async def _process_one(
     msg: Any,
     logger: StructuredLogger,
 ) -> None:
-    renewal_task = asyncio.create_task(
-        _renew_lock_periodically(receiver, msg, logger)
-    )
+    renewal_task = asyncio.create_task(_renew_lock_periodically(receiver, msg, logger))
     try:
         body = b"".join(msg.body)
         await handler.process(body)

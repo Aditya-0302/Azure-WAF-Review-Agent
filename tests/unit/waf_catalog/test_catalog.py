@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
-
-from waf_catalog.catalog import WafCatalog, WafControl, WafEnrichment
+from waf_catalog.catalog import WafCatalog, WafEnrichment
 
 _CONTROLS = [
     {

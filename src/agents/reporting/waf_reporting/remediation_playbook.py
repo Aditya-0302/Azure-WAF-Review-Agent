@@ -21,11 +21,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from waf_shared.domain.models.finding import Finding
 from waf_reporting.remediation_templates import get_remediation_detail
 
+from waf_shared.domain.models.finding import Finding
 
 # ── Data types ─────────────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class PlaybookEntry:
@@ -98,9 +99,9 @@ _register(
     ),
     powershell=(
         "# No native Az module cmdlet — use Invoke-AzRestMethod\n"
-        "$body = '{\"properties\":{\"policies\":{\"trustPolicy\":{\"status\":\"enabled\",\"type\":\"Notary\"}}}}'\n"
+        '$body = \'{"properties":{"policies":{"trustPolicy":{"status":"enabled","type":"Notary"}}}}\'\n'
         "Invoke-AzRestMethod `\n"
-        "  -Path \"/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.ContainerRegistry/registries/<registry>?api-version=2023-07-01\" `\n"
+        '  -Path "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.ContainerRegistry/registries/<registry>?api-version=2023-07-01" `\n'
         "  -Method PATCH `\n"
         "  -Payload $body"
     ),
@@ -144,7 +145,7 @@ _register(
         "# Add VNet integration via REST API (no native Az module cmdlet)\n"
         "$body = ConvertTo-Json @{ properties = @{ vnetResourceId = '<subnet-resource-id>'; isSwift = $true } }\n"
         "Invoke-AzRestMethod `\n"
-        "  -Path \"/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app>/networkConfig/virtualNetwork?api-version=2023-01-01\" `\n"
+        '  -Path "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app>/networkConfig/virtualNetwork?api-version=2023-01-01" `\n'
         "  -Method PUT -Payload $body\n\n"
         "# Enable route-all outbound traffic through VNet\n"
         "Set-AzWebApp -Name '<app-name>' -ResourceGroupName '<rg>' `\n"
@@ -355,7 +356,7 @@ _register(
         "# (No native Az module cmdlet available for this resource type)\n"
         "$body = ConvertTo-Json @{ location = '<location>'; properties = @{ description = 'Baseline load test' } }\n"
         "Invoke-AzRestMethod `\n"
-        "  -Path \"/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.LoadTestService/loadTests/<name>?api-version=2022-12-01\" `\n"
+        '  -Path "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.LoadTestService/loadTests/<name>?api-version=2022-12-01" `\n'
         "  -Method PUT -Payload $body"
     ),
     change_type="architecture",
@@ -392,7 +393,7 @@ _register(
         "  }\n"
         "}\n"
         "Invoke-AzRestMethod `\n"
-        "  -Path \"/subscriptions/<sub-id>/providers/Microsoft.Consumption/budgets/<budget-name>?api-version=2023-05-01\" `\n"
+        '  -Path "/subscriptions/<sub-id>/providers/Microsoft.Consumption/budgets/<budget-name>?api-version=2023-05-01" `\n'
         "  -Method PUT -Payload $body"
     ),
     change_type="simple_config",
@@ -444,6 +445,7 @@ _register(
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def build_remediation_playbook(finding: Finding) -> PlaybookEntry | None:
     """Return a PlaybookEntry for the finding's rule_id, or None if no playbook exists.

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any
 from dataclasses import dataclass
 
 import pytest
@@ -16,12 +15,10 @@ from waf_shared.agents.pipeline import (
     Pipeline,
     PipelineConfig,
     PipelineContext,
-    PipelineResult,
     PipelineStage,
 )
 from waf_shared.agents.retry import RetryPolicy
 from waf_shared.agents.state import AgentState
-
 
 # ── Concrete test agents ──────────────────────────────────────────────────────
 
@@ -67,7 +64,7 @@ class TransientFailAgent(BaseAgent[str, str]):
     async def process(self, payload: str, context: AgentContext) -> str:
         self._call_count += 1
         if self._call_count <= self._fail_times:
-            raise IOError(f"transient #{self._call_count}")
+            raise OSError(f"transient #{self._call_count}")
         return f"recovered-{payload}"
 
 
@@ -187,9 +184,7 @@ class TestPipelineFailurePath:
 
     @pytest.mark.asyncio
     async def test_failed_result_has_error_set(self) -> None:
-        stage = PipelineStage(
-            name="bad", agent=AlwaysFailAgent(), retry_policy=_no_retry()
-        )
+        stage = PipelineStage(name="bad", agent=AlwaysFailAgent(), retry_policy=_no_retry())
         pipeline = Pipeline(stages=[stage], config=PipelineConfig(name="p"))
         result = await pipeline.run("x", _context())
         assert result.error is not None
@@ -273,9 +268,7 @@ class TestPipelineEventBus:
     async def test_events_emitted_for_successful_run(self) -> None:
         bus = LocalEventBus()
         stage = PipelineStage(name="echo", agent=EchoAgent(), retry_policy=_no_retry())
-        pipeline = Pipeline(
-            stages=[stage], config=PipelineConfig(name="p"), event_bus=bus
-        )
+        pipeline = Pipeline(stages=[stage], config=PipelineConfig(name="p"), event_bus=bus)
         await pipeline.run("x", _context())
 
         event_types = [e.event_type for e in bus.events]
@@ -289,12 +282,8 @@ class TestPipelineEventBus:
     @pytest.mark.asyncio
     async def test_events_emitted_for_failed_run(self) -> None:
         bus = LocalEventBus()
-        stage = PipelineStage(
-            name="bad", agent=AlwaysFailAgent(), retry_policy=_no_retry()
-        )
-        pipeline = Pipeline(
-            stages=[stage], config=PipelineConfig(name="p"), event_bus=bus
-        )
+        stage = PipelineStage(name="bad", agent=AlwaysFailAgent(), retry_policy=_no_retry())
+        pipeline = Pipeline(stages=[stage], config=PipelineConfig(name="p"), event_bus=bus)
         await pipeline.run("x", _context())
 
         event_types = [e.event_type for e in bus.events]

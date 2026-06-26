@@ -50,6 +50,7 @@ from typing import Any
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _rule(
     rule_id: str,
     pillar: str,
@@ -570,7 +571,7 @@ CST_COST_TAG_001 = _rule(
     recommendation=(
         "Apply cost allocation tags to the resource: "
         "az tag update --resource-id <resource-id> --operation Merge "
-        '--tags CostCenter=<code> Team=<team-name>. '
+        "--tags CostCenter=<code> Team=<team-name>. "
         "Enforce mandatory tagging at scale via Azure Policy "
         "(Require tag and its value), applied at the subscription or management "
         "group level. Track compliance in Azure Policy → Compliance dashboard."
@@ -1153,9 +1154,9 @@ CST_NIC_001 = _rule(
         "Before deleting, verify the NIC is truly unused by confirming no stopped "
         "VMs or Azure services reference it. "
         "Automate orphan detection using Azure Resource Graph: "
-        "az graph query -q \"Resources | where type == "
+        'az graph query -q "Resources | where type == '
         "'microsoft.network/networkinterfaces' "
-        "and isnull(properties.virtualMachine)\"."
+        'and isnull(properties.virtualMachine)".'
     ),
     condition_dsl={
         "op": "is_null",
@@ -1222,7 +1223,7 @@ CST_SCALE_001 = _rule(
         "Add a scale-out rule: "
         "az monitor autoscale rule create --autoscale-name <autoscale-name> "
         "--resource-group <rg> --scale out 1 "
-        "--condition \"CpuPercentage > 70 avg 5m\". "
+        '--condition "CpuPercentage > 70 avg 5m". '
         "Add a scale-in rule (CPU < 30%) to reduce cost during off-peak hours."
     ),
     condition_dsl={
@@ -1815,7 +1816,7 @@ OPS_APP_003 = _rule(
     recommendation=(
         "Configure a health check path on the App Service: "
         "az webapp config set --name <app> --resource-group <rg> "
-        "--generic-configurations '{\"healthCheckPath\": \"/health\"}'. "
+        '--generic-configurations \'{"healthCheckPath": "/health"}\'. '
         "Implement the /health endpoint to verify database connectivity, downstream "
         "service availability, and application readiness — not just an HTTP 200. "
         "Set an appropriate timeout and failure threshold in the App Service configuration. "
@@ -3417,98 +3418,126 @@ NEW_RULES: list[dict[str, Any]] = [
 # Controls these rules newly cover (informational — used by the seed script summary)
 NEWLY_COVERED_CONTROLS: list[str] = [
     # Phase 3
-    "SE-02", "OE-02",   # SEC-CR-001
-    "SE-02", "SE-09",   # SEC-DEF-001
-    "SE-06",            # SEC-NET-004
-    "RE-04",            # REL-AGW-002
-    "RE-06",            # REL-SB-001
-    "RE-09",            # REL-ASR-001
-    "OE-08",            # OPS-DIAG-001
-    "OE-09", "OE-11",   # OPS-SLOT-001
-    "OE-10", "PE-04",   # OPS-MON-001
-    "PE-01",            # PER-ALERT-001
-    "PE-03", "PE-09",   # PER-ADV-001
-    "PE-12",            # PER-LT-001
-    "CO-01", "CO-04",   # CST-BUDGET-001
-    "CO-02",            # CST-COST-TAG-001
-    "CO-08", "CO-12",   # CST-ADV-001
+    "SE-02",
+    "OE-02",  # SEC-CR-001
+    "SE-02",
+    "SE-09",  # SEC-DEF-001
+    "SE-06",  # SEC-NET-004
+    "RE-04",  # REL-AGW-002
+    "RE-06",  # REL-SB-001
+    "RE-09",  # REL-ASR-001
+    "OE-08",  # OPS-DIAG-001
+    "OE-09",
+    "OE-11",  # OPS-SLOT-001
+    "OE-10",
+    "PE-04",  # OPS-MON-001
+    "PE-01",  # PER-ALERT-001
+    "PE-03",
+    "PE-09",  # PER-ADV-001
+    "PE-12",  # PER-LT-001
+    "CO-01",
+    "CO-04",  # CST-BUDGET-001
+    "CO-02",  # CST-COST-TAG-001
+    "CO-08",
+    "CO-12",  # CST-ADV-001
     # Phase 4 — Reliability expansion
-    "RE-08",            # REL-STOR-004
-    "RE-04", "RE-05",   # REL-LB-002
-    "RE-02", "RE-03",   # REL-COSMOS-001
-    "RE-02",            # REL-AKS-001
-    "RE-02",            # REL-APP-004
-    "RE-06",            # REL-EH-001
-    "RE-02", "RE-08",   # REL-MYSQL-001
-    "RE-02", "RE-08",   # REL-POSTGRES-001
-    "RE-02",            # REL-REDIS-001
-    "RE-02",            # REL-AGW-003
+    "RE-08",  # REL-STOR-004
+    "RE-04",
+    "RE-05",  # REL-LB-002
+    "RE-02",
+    "RE-03",  # REL-COSMOS-001
+    "RE-02",  # REL-AKS-001
+    "RE-02",  # REL-APP-004
+    "RE-06",  # REL-EH-001
+    "RE-02",
+    "RE-08",  # REL-MYSQL-001
+    "RE-02",
+    "RE-08",  # REL-POSTGRES-001
+    "RE-02",  # REL-REDIS-001
+    "RE-02",  # REL-AGW-003
     # Phase 5 — Cost Optimization expansion
-    "CO-07", "CO-10",   # CST-STOR-003
-    "CO-06",            # CST-APP-001
-    "CO-07",            # CST-SNAP-001
-    "CO-07",            # CST-NIC-001
-    "CO-07", "CO-10",   # CST-LOG-001
-    "CO-05",            # CST-SCALE-001
-    "CO-06",            # CST-PREM-001
-    "CO-05",            # CST-AKS-001
-    "CO-06",            # CST-AGW-002
-    "CO-06",            # CST-GW-001
-    "CO-06",            # CST-SQL-002
-    "CO-06",            # CST-COSMOS-001
+    "CO-07",
+    "CO-10",  # CST-STOR-003
+    "CO-06",  # CST-APP-001
+    "CO-07",  # CST-SNAP-001
+    "CO-07",  # CST-NIC-001
+    "CO-07",
+    "CO-10",  # CST-LOG-001
+    "CO-05",  # CST-SCALE-001
+    "CO-06",  # CST-PREM-001
+    "CO-05",  # CST-AKS-001
+    "CO-06",  # CST-AGW-002
+    "CO-06",  # CST-GW-001
+    "CO-06",  # CST-SQL-002
+    "CO-06",  # CST-COSMOS-001
     # Phase 6 — Operational Excellence expansion
-    "OE-07", "OE-10",   # OPS-AKS-001
-    "OE-12",            # OPS-AKS-002
-    "OE-07",            # OPS-NSG-001
-    "OE-07", "OE-08",   # OPS-COSMOS-001
-    "OE-08",            # OPS-STOR-001
-    "OE-12",            # OPS-VMSS-001
-    "OE-07", "OE-08",   # OPS-REDIS-001
-    "OE-09", "OE-11",   # OPS-APP-003
-    "OE-08",            # OPS-MYSQL-001
-    "OE-08",            # OPS-POSTGRES-001
-    "OE-07", "OE-10",   # OPS-ACT-001
-    "OE-07", "OE-10",   # OPS-SQL-003
+    "OE-07",
+    "OE-10",  # OPS-AKS-001
+    "OE-12",  # OPS-AKS-002
+    "OE-07",  # OPS-NSG-001
+    "OE-07",
+    "OE-08",  # OPS-COSMOS-001
+    "OE-08",  # OPS-STOR-001
+    "OE-12",  # OPS-VMSS-001
+    "OE-07",
+    "OE-08",  # OPS-REDIS-001
+    "OE-09",
+    "OE-11",  # OPS-APP-003
+    "OE-08",  # OPS-MYSQL-001
+    "OE-08",  # OPS-POSTGRES-001
+    "OE-07",
+    "OE-10",  # OPS-ACT-001
+    "OE-07",
+    "OE-10",  # OPS-SQL-003
     # Phase 7 — Performance Efficiency expansion
-    "PE-05", "PE-07",   # PER-VM-004
-    "PE-05",            # PER-DISK-001
-    "PE-05", "PE-06",   # PER-APP-004
-    "PE-06",            # PER-APP-005
-    "PE-08",            # PER-SQL-002
-    "PE-11",            # PER-REDIS-001
-    "PE-05",            # PER-LB-001
-    "PE-05",            # PER-AGW-001
-    "PE-10",            # PER-CDN-002
-    "PE-08", "PE-09",   # PER-SQL-003
-    "PE-08",            # PER-COSMOS-001
-    "PE-05",            # PER-AKS-001
+    "PE-05",
+    "PE-07",  # PER-VM-004
+    "PE-05",  # PER-DISK-001
+    "PE-05",
+    "PE-06",  # PER-APP-004
+    "PE-06",  # PER-APP-005
+    "PE-08",  # PER-SQL-002
+    "PE-11",  # PER-REDIS-001
+    "PE-05",  # PER-LB-001
+    "PE-05",  # PER-AGW-001
+    "PE-10",  # PER-CDN-002
+    "PE-08",
+    "PE-09",  # PER-SQL-003
+    "PE-08",  # PER-COSMOS-001
+    "PE-05",  # PER-AKS-001
     # Phase 8 — Cross-pillar resource coverage expansion
-    "SE-01", "SE-02",   # SEC-KV-006
-    "SE-06",            # SEC-KV-007
-    "SE-09",            # SEC-AFW-001
-    "SE-07",            # SEC-CA-001
-    "SE-06",            # SEC-SQLMI-001
-    "SE-07",            # SEC-SQLMI-002
-    "SE-06",            # SEC-EG-001
-    "SE-01", "SE-02",   # SEC-EG-002
-    "SE-07",            # SEC-APP-005
-    "SE-07",            # SEC-APP-006
-    "SE-01",            # SEC-APP-007
-    "SE-01",            # SEC-VM-004
-    "SE-01", "SE-02",   # SEC-AKS-001
-    "SE-06",            # SEC-AKS-002
-    "RE-06",            # REL-KV-001
-    "RE-04", "RE-05",   # REL-VNET-001
-    "RE-04",            # REL-AFW-001
-    "RE-04",            # REL-CA-001
-    "RE-04",            # REL-AVSET-001
-    "RE-04",            # REL-AVSET-002
-    "RE-04",            # REL-SQLMI-001
-    "OE-07",            # OPS-VNET-001
-    "OE-07",            # OPS-CA-001
-    "OE-07", "OE-10",   # OPS-AI-001
-    "OE-07", "OE-08",   # OPS-AG-001
-    "CO-06",            # CST-AI-001
+    "SE-01",
+    "SE-02",  # SEC-KV-006
+    "SE-06",  # SEC-KV-007
+    "SE-09",  # SEC-AFW-001
+    "SE-07",  # SEC-CA-001
+    "SE-06",  # SEC-SQLMI-001
+    "SE-07",  # SEC-SQLMI-002
+    "SE-06",  # SEC-EG-001
+    "SE-01",
+    "SE-02",  # SEC-EG-002
+    "SE-07",  # SEC-APP-005
+    "SE-07",  # SEC-APP-006
+    "SE-01",  # SEC-APP-007
+    "SE-01",  # SEC-VM-004
+    "SE-01",
+    "SE-02",  # SEC-AKS-001
+    "SE-06",  # SEC-AKS-002
+    "RE-06",  # REL-KV-001
+    "RE-04",
+    "RE-05",  # REL-VNET-001
+    "RE-04",  # REL-AFW-001
+    "RE-04",  # REL-CA-001
+    "RE-04",  # REL-AVSET-001
+    "RE-04",  # REL-AVSET-002
+    "RE-04",  # REL-SQLMI-001
+    "OE-07",  # OPS-VNET-001
+    "OE-07",  # OPS-CA-001
+    "OE-07",
+    "OE-10",  # OPS-AI-001
+    "OE-07",
+    "OE-08",  # OPS-AG-001
+    "CO-06",  # CST-AI-001
 ]
 
 HUMAN_REVIEW_REQUIRED: list[str] = [

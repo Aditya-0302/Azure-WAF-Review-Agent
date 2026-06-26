@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -29,9 +29,7 @@ class TestQuotaServiceConcurrentLimit:
 
         pool = MagicMock()
         conn = AsyncMock()
-        conn.fetchrow = AsyncMock(
-            return_value={"lim": 3, "current_count": 3}
-        )
+        conn.fetchrow = AsyncMock(return_value={"lim": 3, "current_count": 3})
         pool.acquire_read = MagicMock()
         pool.acquire_read.return_value.__aenter__ = AsyncMock(return_value=conn)
         pool.acquire_read.return_value.__aexit__ = AsyncMock(return_value=None)
@@ -52,9 +50,7 @@ class TestQuotaServiceConcurrentLimit:
 
         pool = MagicMock()
         conn = AsyncMock()
-        conn.fetchrow = AsyncMock(
-            return_value={"lim": 3, "current_count": 1}
-        )
+        conn.fetchrow = AsyncMock(return_value={"lim": 3, "current_count": 1})
         pool.acquire_read = MagicMock()
         pool.acquire_read.return_value.__aenter__ = AsyncMock(return_value=conn)
         pool.acquire_read.return_value.__aexit__ = AsyncMock(return_value=None)

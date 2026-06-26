@@ -24,7 +24,6 @@ from typing import Any
 import httpx
 import pytest
 
-
 pytestmark = [pytest.mark.e2e, pytest.mark.slow]
 
 
@@ -193,9 +192,9 @@ class TestAssessmentLifecycle:
                 interval_s=poll_interval,
             )
 
-        assert final["status"] == "completed", (
-            f"Assessment {assessment_id} ended in unexpected status: {final['status']}"
-        )
+        assert (
+            final["status"] == "completed"
+        ), f"Assessment {assessment_id} ended in unexpected status: {final['status']}"
 
     def test_completed_assessment_has_findings(
         self,

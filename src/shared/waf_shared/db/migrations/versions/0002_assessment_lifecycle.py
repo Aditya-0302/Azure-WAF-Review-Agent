@@ -57,9 +57,7 @@ def upgrade() -> None:
         CREATE INDEX idx_assessments_status ON assessments(status)
             WHERE status NOT IN ('completed', 'failed', 'cancelled')
     """)
-    op.execute(
-        "CREATE INDEX idx_assessments_created_at ON assessments(tenant_id, created_at DESC)"
-    )
+    op.execute("CREATE INDEX idx_assessments_created_at ON assessments(tenant_id, created_at DESC)")
 
     # ── assessment_batches ────────────────────────────────────────────────────
     # tenant_id is denormalised here (not FK-constrained) for query performance;
@@ -80,9 +78,7 @@ def upgrade() -> None:
             UNIQUE (assessment_id, batch_index)
         )
     """)
-    op.execute(
-        "CREATE INDEX idx_batches_assessment_id ON assessment_batches(assessment_id)"
-    )
+    op.execute("CREATE INDEX idx_batches_assessment_id ON assessment_batches(assessment_id)")
     op.execute("""
         CREATE INDEX idx_batches_tenant_status ON assessment_batches(tenant_id, status)
             WHERE status NOT IN ('completed', 'dead_lettered')
@@ -106,12 +102,8 @@ def upgrade() -> None:
             UNIQUE (assessment_id, resource_id)
         )
     """)
-    op.execute(
-        "CREATE INDEX idx_resources_assessment_id ON assessment_resources(assessment_id)"
-    )
-    op.execute(
-        "CREATE INDEX idx_resources_resource_type ON assessment_resources(resource_type)"
-    )
+    op.execute("CREATE INDEX idx_resources_assessment_id ON assessment_resources(assessment_id)")
+    op.execute("CREATE INDEX idx_resources_resource_type ON assessment_resources(resource_type)")
 
     # ── Row-Level Security ────────────────────────────────────────────────────
     op.execute("ALTER TABLE assessments ENABLE ROW LEVEL SECURITY")

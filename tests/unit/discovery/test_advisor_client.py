@@ -23,7 +23,9 @@ def _make_sdk_recommendation(
     resource_id: str | None = None,
 ) -> MagicMock:
     rec = MagicMock()
-    rec.id = rec_id or f"/subscriptions/sub/providers/Microsoft.Advisor/recommendations/{uuid.uuid4()}"
+    rec.id = (
+        rec_id or f"/subscriptions/sub/providers/Microsoft.Advisor/recommendations/{uuid.uuid4()}"
+    )
     rec.name = name or str(uuid.uuid4())
     rec.category = category
     rec.impact = impact
@@ -54,7 +56,7 @@ def _make_advisor_client(
     async def _list_iter(**kwargs):
         if list_error:
             raise list_error
-        for item in (list_items or []):
+        for item in list_items or []:
             yield item
 
     client.recommendations = AsyncMock()
@@ -191,9 +193,7 @@ class TestAzureAdvisorClientConvenience:
 class TestMapRecommendation:
     def test_maps_short_description(self) -> None:
         sub_id = uuid.uuid4()
-        rec = _make_sdk_recommendation(
-            problem="WAF not enabled", solution="Enable WAF"
-        )
+        rec = _make_sdk_recommendation(problem="WAF not enabled", solution="Enable WAF")
         result = _map_recommendation(rec, sub_id)
         assert result.short_description == "WAF not enabled"
         assert result.long_description == "Enable WAF"

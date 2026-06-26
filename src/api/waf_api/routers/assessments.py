@@ -7,6 +7,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from waf_api.dependencies.db import get_db_pool
+from waf_api.dependencies.rbac import require_role
+from waf_api.schemas.requests.assessment_requests import CreateAssessmentSchema
+from waf_api.schemas.responses.pagination_response import PaginatedResponse, PaginationMeta
+from waf_api.services.assessment_service import AssessmentService, CreateAssessmentRequest
 from waf_shared.db.pool import DatabasePool
 from waf_shared.db.repositories.finding_repository import FindingRepository
 from waf_shared.db.repositories.report_repository import ReportRepository
@@ -15,12 +20,6 @@ from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.report import AssessmentReport
 from waf_shared.domain.models.tenant import UserRole
 from waf_shared.telemetry.logging import StructuredLogger
-
-from waf_api.dependencies.db import get_db_pool
-from waf_api.dependencies.rbac import get_auth_context, require_role
-from waf_api.schemas.requests.assessment_requests import CreateAssessmentSchema
-from waf_api.schemas.responses.pagination_response import PaginatedResponse, PaginationMeta
-from waf_api.services.assessment_service import AssessmentService, CreateAssessmentRequest
 
 router = APIRouter(prefix="/v1/assessments", tags=["assessments"])
 _logger = StructuredLogger(service="waf-api", version="0.1.0")
@@ -66,7 +65,12 @@ async def create_assessment(
 )
 async def get_assessment(
     assessment_id: uuid.UUID,
-    auth: Annotated[object, Depends(require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN))],
+    auth: Annotated[
+        object,
+        Depends(
+            require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN)
+        ),
+    ],
     svc: AssessmentService = Depends(_get_assessment_service),
 ) -> Assessment:
     from waf_api.middleware.auth import AuthContext
@@ -82,7 +86,12 @@ async def get_assessment(
     summary="List assessments for the caller's tenant",
 )
 async def list_assessments(
-    auth: Annotated[object, Depends(require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN))],
+    auth: Annotated[
+        object,
+        Depends(
+            require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN)
+        ),
+    ],
     svc: AssessmentService = Depends(_get_assessment_service),
     limit: int = 50,
     cursor: uuid.UUID | None = None,
@@ -126,7 +135,12 @@ async def cancel_assessment(
 )
 async def list_findings(
     assessment_id: uuid.UUID,
-    auth: Annotated[object, Depends(require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN))],
+    auth: Annotated[
+        object,
+        Depends(
+            require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN)
+        ),
+    ],
     pool: DatabasePool = Depends(get_db_pool),
     severity: Severity | None = None,
     pillar: str | None = None,
@@ -165,7 +179,12 @@ async def list_findings(
 )
 async def get_report(
     assessment_id: uuid.UUID,
-    auth: Annotated[object, Depends(require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN))],
+    auth: Annotated[
+        object,
+        Depends(
+            require_role(UserRole.TENANT_ADMIN, UserRole.TENANT_VIEWER, UserRole.PLATFORM_ADMIN)
+        ),
+    ],
     pool: DatabasePool = Depends(get_db_pool),
 ) -> AssessmentReport:
     from waf_api.middleware.auth import AuthContext

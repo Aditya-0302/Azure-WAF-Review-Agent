@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 import pytest
 
 # ── Path bootstrap (mirrors scripts/seed_rules.py) ───────────────────────────
@@ -21,45 +22,94 @@ for _pkg in ["src/shared", "src/agents/reasoning"]:
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from waf_reasoning.dsl_evaluator import evaluate_condition  # noqa: E402
 from waf_catalog.rule_definitions import (  # noqa: E402
-    SEC_CR_001, SEC_DEF_001, SEC_NET_004,
-    REL_AGW_002, REL_SB_001, REL_ASR_001,
-    REL_STOR_004, REL_LB_002, REL_COSMOS_001, REL_AKS_001, REL_APP_004,
-    REL_EH_001, REL_MYSQL_001, REL_POSTGRES_001, REL_REDIS_001, REL_AGW_003,
-    OPS_DIAG_001, OPS_SLOT_001, OPS_MON_001,
-    PER_ALERT_001,
-    CST_BUDGET_001, CST_COST_TAG_001,
-    CST_STOR_003, CST_APP_001, CST_SNAP_001, CST_NIC_001, CST_LOG_001,
-    CST_SCALE_001, CST_PREM_001, CST_AKS_001, CST_AGW_002, CST_GW_001,
-    CST_SQL_002, CST_COSMOS_001,
-    OPS_AKS_001, OPS_AKS_002, OPS_NSG_001, OPS_COSMOS_001, OPS_STOR_001,
-    OPS_VMSS_001, OPS_REDIS_001, OPS_APP_003, OPS_MYSQL_001, OPS_POSTGRES_001,
-    OPS_ACT_001, OPS_SQL_003,
-    PER_VM_004, PER_DISK_001, PER_APP_004, PER_APP_005, PER_SQL_002,
-    PER_REDIS_001, PER_LB_001, PER_AGW_001, PER_CDN_002, PER_SQL_003,
-    PER_COSMOS_001, PER_AKS_001,
-    # Phase 8 — cross-pillar resource coverage expansion
-    SEC_KV_006, SEC_KV_007,
-    SEC_AFW_001,
-    SEC_CA_001,
-    SEC_SQLMI_001, SEC_SQLMI_002,
-    SEC_EG_001, SEC_EG_002,
-    SEC_APP_005, SEC_APP_006, SEC_APP_007,
-    SEC_VM_004,
-    SEC_AKS_001, SEC_AKS_002,
-    REL_KV_001,
-    REL_VNET_001,
-    REL_AFW_001,
-    REL_CA_001,
-    REL_AVSET_001, REL_AVSET_002,
-    REL_SQLMI_001,
-    OPS_VNET_001,
-    OPS_CA_001,
-    OPS_AI_001,
-    OPS_AG_001,
+    CST_AGW_002,
     CST_AI_001,
+    CST_AKS_001,
+    CST_APP_001,
+    CST_BUDGET_001,
+    CST_COSMOS_001,
+    CST_COST_TAG_001,
+    CST_GW_001,
+    CST_LOG_001,
+    CST_NIC_001,
+    CST_PREM_001,
+    CST_SCALE_001,
+    CST_SNAP_001,
+    CST_SQL_002,
+    CST_STOR_003,
+    OPS_ACT_001,
+    OPS_AG_001,
+    OPS_AI_001,
+    OPS_AKS_001,
+    OPS_AKS_002,
+    OPS_APP_003,
+    OPS_CA_001,
+    OPS_COSMOS_001,
+    OPS_DIAG_001,
+    OPS_MON_001,
+    OPS_MYSQL_001,
+    OPS_NSG_001,
+    OPS_POSTGRES_001,
+    OPS_REDIS_001,
+    OPS_SLOT_001,
+    OPS_SQL_003,
+    OPS_STOR_001,
+    OPS_VMSS_001,
+    OPS_VNET_001,
+    PER_AGW_001,
+    PER_AKS_001,
+    PER_ALERT_001,
+    PER_APP_004,
+    PER_APP_005,
+    PER_CDN_002,
+    PER_COSMOS_001,
+    PER_DISK_001,
+    PER_LB_001,
+    PER_REDIS_001,
+    PER_SQL_002,
+    PER_SQL_003,
+    PER_VM_004,
+    REL_AFW_001,
+    REL_AGW_002,
+    REL_AGW_003,
+    REL_AKS_001,
+    REL_APP_004,
+    REL_ASR_001,
+    REL_AVSET_001,
+    REL_AVSET_002,
+    REL_CA_001,
+    REL_COSMOS_001,
+    REL_EH_001,
+    REL_KV_001,
+    REL_LB_002,
+    REL_MYSQL_001,
+    REL_POSTGRES_001,
+    REL_REDIS_001,
+    REL_SB_001,
+    REL_SQLMI_001,
+    REL_STOR_004,
+    REL_VNET_001,
+    SEC_AFW_001,
+    SEC_AKS_001,
+    SEC_AKS_002,
+    SEC_APP_005,
+    SEC_APP_006,
+    SEC_APP_007,
+    SEC_CA_001,
+    SEC_CR_001,
+    SEC_DEF_001,
+    SEC_EG_001,
+    SEC_EG_002,
+    # Phase 8 — cross-pillar resource coverage expansion
+    SEC_KV_006,
+    SEC_KV_007,
+    SEC_NET_004,
+    SEC_SQLMI_001,
+    SEC_SQLMI_002,
+    SEC_VM_004,
 )
+from waf_reasoning.dsl_evaluator import evaluate_condition  # noqa: E402
 
 
 def _eval(condition: dict, resource: dict) -> bool:
@@ -70,6 +120,7 @@ def _eval(condition: dict, resource: dict) -> bool:
 # ===========================================================================
 # Security Rules
 # ===========================================================================
+
 
 @pytest.mark.unit
 class TestSecCr001:
@@ -154,6 +205,7 @@ class TestSecNet004:
 # Reliability Rules
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestRelAgw002:
     """REL-AGW-002 — Application Gateway no custom health probes."""
@@ -227,19 +279,11 @@ class TestRelAsr001:
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_crr_disabled(self) -> None:
-        resource = {
-            "properties": {
-                "redundancySettings": {"crossRegionRestore": "Disabled"}
-            }
-        }
+        resource = {"properties": {"redundancySettings": {"crossRegionRestore": "Disabled"}}}
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_crr_not_set(self) -> None:
-        resource = {
-            "properties": {
-                "redundancySettings": {"storageModelType": "GeoRedundant"}
-            }
-        }
+        resource = {"properties": {"redundancySettings": {"storageModelType": "GeoRedundant"}}}
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_crr_enabled(self) -> None:
@@ -262,6 +306,7 @@ class TestRelAsr001:
 # Operational Excellence Rules
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestOpsDiag001:
     """OPS-DIAG-001 — VM boot diagnostics disabled."""
@@ -277,13 +322,7 @@ class TestOpsDiag001:
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_boot_diagnostics_disabled(self) -> None:
-        resource = {
-            "properties": {
-                "diagnosticsProfile": {
-                    "bootDiagnostics": {"enabled": False}
-                }
-            }
-        }
+        resource = {"properties": {"diagnosticsProfile": {"bootDiagnostics": {"enabled": False}}}}
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_boot_diagnostics_enabled(self) -> None:
@@ -402,6 +441,7 @@ class TestOpsMon001:
 # Performance Efficiency Rules
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestPerAlert001:
     """PER-ALERT-001 — Metric alert rule has no action group."""
@@ -441,6 +481,7 @@ class TestPerAlert001:
 # ===========================================================================
 # Cost Optimization Rules
 # ===========================================================================
+
 
 @pytest.mark.unit
 class TestCstBudget001:
@@ -530,6 +571,7 @@ class TestCstCostTag001:
 # Reliability Rules — Phase 4 expansion
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestRelStor004:
     """REL-STOR-004 — Blob versioning not enabled."""
@@ -541,27 +583,17 @@ class TestRelStor004:
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_versioning_false(self) -> None:
-        resource = {
-            "properties": {
-                "blobServiceProperties": {"isVersioningEnabled": False}
-            }
-        }
+        resource = {"properties": {"blobServiceProperties": {"isVersioningEnabled": False}}}
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_versioning_absent(self) -> None:
         resource = {
-            "properties": {
-                "blobServiceProperties": {"deleteRetentionPolicy": {"enabled": True}}
-            }
+            "properties": {"blobServiceProperties": {"deleteRetentionPolicy": {"enabled": True}}}
         }
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_versioning_enabled(self) -> None:
-        resource = {
-            "properties": {
-                "blobServiceProperties": {"isVersioningEnabled": True}
-            }
-        }
+        resource = {"properties": {"blobServiceProperties": {"isVersioningEnabled": True}}}
         assert _eval(self._dsl, resource) is False
 
     def test_metadata(self) -> None:
@@ -623,11 +655,7 @@ class TestRelCosmos001:
 
     def test_fires_when_single_region(self) -> None:
         resource = {
-            "properties": {
-                "locations": [
-                    {"locationName": "East US", "failoverPriority": 0}
-                ]
-            }
+            "properties": {"locations": [{"locationName": "East US", "failoverPriority": 0}]}
         }
         assert _eval(self._dsl, resource) is True
 
@@ -664,21 +692,13 @@ class TestRelAks001:
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_pool_has_no_zones(self) -> None:
-        resource = {
-            "properties": {
-                "agentPoolProfiles": [
-                    {"name": "system", "count": 3}
-                ]
-            }
-        }
+        resource = {"properties": {"agentPoolProfiles": [{"name": "system", "count": 3}]}}
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_pool_has_single_zone(self) -> None:
         resource = {
             "properties": {
-                "agentPoolProfiles": [
-                    {"name": "system", "count": 3, "availabilityZones": ["1"]}
-                ]
+                "agentPoolProfiles": [{"name": "system", "count": 3, "availabilityZones": ["1"]}]
             }
         }
         assert _eval(self._dsl, resource) is True
@@ -934,12 +954,14 @@ class TestRelAgw003:
 # Advisor-mapped rules: structural validation only (no DSL to evaluate)
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestAdvisorMappedRules:
     """Validate that advisor_mapped rules have correct metadata and no condition_dsl."""
 
     def test_per_adv_001_metadata(self) -> None:
         from waf_catalog.rule_definitions import PER_ADV_001
+
         assert PER_ADV_001["rule_id"] == "PER-ADV-001"
         assert PER_ADV_001["evaluation_type"] == "advisor_mapped"
         assert PER_ADV_001["condition_dsl"] is None
@@ -948,6 +970,7 @@ class TestAdvisorMappedRules:
 
     def test_per_lt_001_metadata(self) -> None:
         from waf_catalog.rule_definitions import PER_LT_001
+
         assert PER_LT_001["rule_id"] == "PER-LT-001"
         assert PER_LT_001["evaluation_type"] == "advisor_mapped"
         assert PER_LT_001["condition_dsl"] is None
@@ -955,6 +978,7 @@ class TestAdvisorMappedRules:
 
     def test_cst_adv_001_metadata(self) -> None:
         from waf_catalog.rule_definitions import CST_ADV_001
+
         assert CST_ADV_001["rule_id"] == "CST-ADV-001"
         assert CST_ADV_001["evaluation_type"] == "advisor_mapped"
         assert CST_ADV_001["condition_dsl"] is None
@@ -965,15 +989,24 @@ class TestAdvisorMappedRules:
 # Catalogue integrity
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestCatalogueIntegrity:
     """Cross-cutting checks across all NEW_RULES entries."""
 
     def test_all_rules_have_required_fields(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
+
         required = {
-            "rule_id", "pillar", "resource_types", "evaluation_type",
-            "severity", "title", "description", "recommendation", "is_active",
+            "rule_id",
+            "pillar",
+            "resource_types",
+            "evaluation_type",
+            "severity",
+            "title",
+            "description",
+            "recommendation",
+            "is_active",
         }
         for rule in NEW_RULES:
             missing = required - set(rule.keys())
@@ -981,55 +1014,63 @@ class TestCatalogueIntegrity:
 
     def test_deterministic_rules_have_condition_dsl(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
+
         for rule in NEW_RULES:
             if rule["evaluation_type"] == "deterministic":
-                assert rule.get("condition_dsl") is not None, (
-                    f"Deterministic rule {rule['rule_id']} has no condition_dsl"
-                )
+                assert (
+                    rule.get("condition_dsl") is not None
+                ), f"Deterministic rule {rule['rule_id']} has no condition_dsl"
 
     def test_advisor_rules_have_no_condition_dsl(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
+
         for rule in NEW_RULES:
             if rule["evaluation_type"] == "advisor_mapped":
-                assert rule.get("condition_dsl") is None, (
-                    f"Advisor-mapped rule {rule['rule_id']} should not have condition_dsl"
-                )
-                assert rule.get("prompt_template_ref") is not None, (
-                    f"Advisor-mapped rule {rule['rule_id']} should have prompt_template_ref"
-                )
+                assert (
+                    rule.get("condition_dsl") is None
+                ), f"Advisor-mapped rule {rule['rule_id']} should not have condition_dsl"
+                assert (
+                    rule.get("prompt_template_ref") is not None
+                ), f"Advisor-mapped rule {rule['rule_id']} should have prompt_template_ref"
 
     def test_rule_ids_are_unique(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
+
         ids = [r["rule_id"] for r in NEW_RULES]
         assert len(ids) == len(set(ids)), "Duplicate rule_id detected in NEW_RULES"
 
     def test_eighty_seven_new_rules_defined(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
-        assert len(NEW_RULES) == 87, (
-            f"Expected 87 new rules, got {len(NEW_RULES)}"
-        )
+
+        assert len(NEW_RULES) == 87, f"Expected 87 new rules, got {len(NEW_RULES)}"
 
     def test_all_pillars_have_valid_values(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
+
         valid_pillars = {
-            "security", "reliability", "cost_optimization",
-            "operational_excellence", "performance_efficiency",
+            "security",
+            "reliability",
+            "cost_optimization",
+            "operational_excellence",
+            "performance_efficiency",
         }
         for rule in NEW_RULES:
-            assert rule["pillar"] in valid_pillars, (
-                f"Rule {rule['rule_id']} has invalid pillar '{rule['pillar']}'"
-            )
+            assert (
+                rule["pillar"] in valid_pillars
+            ), f"Rule {rule['rule_id']} has invalid pillar '{rule['pillar']}'"
 
     def test_severity_values_are_valid(self) -> None:
         from waf_catalog.rule_definitions import NEW_RULES
+
         valid = {"critical", "high", "medium", "low", "informational"}
         for rule in NEW_RULES:
-            assert rule["severity"] in valid, (
-                f"Rule {rule['rule_id']} has invalid severity '{rule['severity']}'"
-            )
+            assert (
+                rule["severity"] in valid
+            ), f"Rule {rule['rule_id']} has invalid severity '{rule['severity']}'"
 
     def test_human_review_controls_documented(self) -> None:
         from waf_catalog.rule_definitions import HUMAN_REVIEW_REQUIRED
+
         assert "SE-10" in HUMAN_REVIEW_REQUIRED
         assert "OE-03" in HUMAN_REVIEW_REQUIRED
         assert "OE-04" in HUMAN_REVIEW_REQUIRED
@@ -1038,17 +1079,40 @@ class TestCatalogueIntegrity:
     def test_mapping_coverage_expected_controls(self) -> None:
         """Verify expected WAF codes appear in NEWLY_COVERED_CONTROLS."""
         from waf_catalog.rule_definitions import NEWLY_COVERED_CONTROLS
+
         expected = {
             # Phase 3
-            "SE-02", "SE-06", "SE-09",
-            "RE-04", "RE-06", "RE-09",
-            "OE-02", "OE-08", "OE-09", "OE-10", "OE-11",
-            "PE-01", "PE-03", "PE-04", "PE-09", "PE-12",
-            "CO-01", "CO-02", "CO-04", "CO-08", "CO-12",
+            "SE-02",
+            "SE-06",
+            "SE-09",
+            "RE-04",
+            "RE-06",
+            "RE-09",
+            "OE-02",
+            "OE-08",
+            "OE-09",
+            "OE-10",
+            "OE-11",
+            "PE-01",
+            "PE-03",
+            "PE-04",
+            "PE-09",
+            "PE-12",
+            "CO-01",
+            "CO-02",
+            "CO-04",
+            "CO-08",
+            "CO-12",
             # Phase 4 — Reliability expansion
-            "RE-02", "RE-03", "RE-05", "RE-08",
+            "RE-02",
+            "RE-03",
+            "RE-05",
+            "RE-08",
             # Phase 5 — Cost Optimization expansion
-            "CO-05", "CO-06", "CO-07", "CO-10",
+            "CO-05",
+            "CO-06",
+            "CO-07",
+            "CO-10",
             # Phase 6 — Operational Excellence expansion
             "OE-12",
         }
@@ -1059,6 +1123,7 @@ class TestCatalogueIntegrity:
 # ===========================================================================
 # Cost Optimization Rules — Phase 5 expansion
 # ===========================================================================
+
 
 @pytest.mark.unit
 class TestCstStor003:
@@ -1074,9 +1139,7 @@ class TestCstStor003:
         resource = {
             "kind": "StorageV2",
             "properties": {
-                "blobServiceProperties": {
-                    "lastAccessTimeTrackingPolicy": {"enable": False}
-                }
+                "blobServiceProperties": {"lastAccessTimeTrackingPolicy": {"enable": False}}
             },
         }
         assert _eval(self._dsl, resource) is True
@@ -1092,9 +1155,7 @@ class TestCstStor003:
         resource = {
             "kind": "StorageV2",
             "properties": {
-                "blobServiceProperties": {
-                    "lastAccessTimeTrackingPolicy": {"enable": True}
-                }
+                "blobServiceProperties": {"lastAccessTimeTrackingPolicy": {"enable": True}}
             },
         }
         assert _eval(self._dsl, resource) is False
@@ -1326,19 +1387,13 @@ class TestCstAks001:
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_pool_autoscaling_absent(self) -> None:
-        resource = {
-            "properties": {
-                "agentPoolProfiles": [{"name": "nodepool1", "count": 3}]
-            }
-        }
+        resource = {"properties": {"agentPoolProfiles": [{"name": "nodepool1", "count": 3}]}}
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_pool_autoscaling_false(self) -> None:
         resource = {
             "properties": {
-                "agentPoolProfiles": [
-                    {"name": "nodepool1", "count": 3, "enableAutoScaling": False}
-                ]
+                "agentPoolProfiles": [{"name": "nodepool1", "count": 3, "enableAutoScaling": False}]
             }
         }
         assert _eval(self._dsl, resource) is True
@@ -1347,8 +1402,13 @@ class TestCstAks001:
         resource = {
             "properties": {
                 "agentPoolProfiles": [
-                    {"name": "system", "count": 3, "enableAutoScaling": True,
-                     "minCount": 1, "maxCount": 5},
+                    {
+                        "name": "system",
+                        "count": 3,
+                        "enableAutoScaling": True,
+                        "minCount": 1,
+                        "maxCount": 5,
+                    },
                     {"name": "user", "count": 3, "enableAutoScaling": False},
                 ]
             }
@@ -1359,10 +1419,20 @@ class TestCstAks001:
         resource = {
             "properties": {
                 "agentPoolProfiles": [
-                    {"name": "system", "count": 3, "enableAutoScaling": True,
-                     "minCount": 1, "maxCount": 5},
-                    {"name": "user", "count": 3, "enableAutoScaling": True,
-                     "minCount": 1, "maxCount": 10},
+                    {
+                        "name": "system",
+                        "count": 3,
+                        "enableAutoScaling": True,
+                        "minCount": 1,
+                        "maxCount": 5,
+                    },
+                    {
+                        "name": "user",
+                        "count": 3,
+                        "enableAutoScaling": True,
+                        "minCount": 1,
+                        "maxCount": 10,
+                    },
                 ]
             }
         }
@@ -1502,9 +1572,7 @@ class TestCstCosmos001:
         resource = {
             "properties": {
                 "enableMultipleWriteLocations": True,
-                "locations": [
-                    {"locationName": "East US", "failoverPriority": 0}
-                ],
+                "locations": [{"locationName": "East US", "failoverPriority": 0}],
             }
         }
         assert _eval(self._dsl, resource) is True
@@ -1558,6 +1626,7 @@ class TestCstCosmos001:
 # ===========================================================================
 # Operational Excellence Rules — Phase 6 expansion
 # ===========================================================================
+
 
 @pytest.mark.unit
 class TestOpsAks001:
@@ -1647,7 +1716,9 @@ class TestOpsNsg001:
         resource = {
             "properties": {
                 "flowLogs": [
-                    {"id": "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.Network/networkWatchers/nw/flowLogs/fl1"}
+                    {
+                        "id": "/subscriptions/xxx/resourceGroups/rg/providers/Microsoft.Network/networkWatchers/nw/flowLogs/fl1"
+                    }
                 ]
             }
         }
@@ -1672,13 +1743,23 @@ class TestOpsCosmos001:
     def test_fires_when_backup_policy_periodic(self) -> None:
         resource = {
             "properties": {
-                "backupPolicy": {"type": "Periodic", "periodicModeProperties": {"backupIntervalInMinutes": 240}}
+                "backupPolicy": {
+                    "type": "Periodic",
+                    "periodicModeProperties": {"backupIntervalInMinutes": 240},
+                }
             }
         }
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_backup_continuous(self) -> None:
-        resource = {"properties": {"backupPolicy": {"type": "Continuous", "continuousModeProperties": {"tier": "Continuous30Days"}}}}
+        resource = {
+            "properties": {
+                "backupPolicy": {
+                    "type": "Continuous",
+                    "continuousModeProperties": {"tier": "Continuous30Days"},
+                }
+            }
+        }
         assert _eval(self._dsl, resource) is False
 
     def test_metadata(self) -> None:
@@ -1701,9 +1782,7 @@ class TestOpsStor001:
     def test_fires_when_soft_delete_disabled(self) -> None:
         resource = {
             "properties": {
-                "blobServiceProperties": {
-                    "deleteRetentionPolicy": {"enabled": False, "days": 7}
-                }
+                "blobServiceProperties": {"deleteRetentionPolicy": {"enabled": False, "days": 7}}
             }
         }
         assert _eval(self._dsl, resource) is True
@@ -1715,9 +1794,7 @@ class TestOpsStor001:
     def test_no_fire_when_soft_delete_enabled(self) -> None:
         resource = {
             "properties": {
-                "blobServiceProperties": {
-                    "deleteRetentionPolicy": {"enabled": True, "days": 14}
-                }
+                "blobServiceProperties": {"deleteRetentionPolicy": {"enabled": True, "days": 14}}
             }
         }
         assert _eval(self._dsl, resource) is False
@@ -1741,9 +1818,7 @@ class TestOpsVmss001:
     def test_fires_when_enable_automatic_upgrade_false(self) -> None:
         resource = {
             "properties": {
-                "upgradePolicy": {
-                    "automaticOSUpgradePolicy": {"enableAutomaticOSUpgrade": False}
-                }
+                "upgradePolicy": {"automaticOSUpgradePolicy": {"enableAutomaticOSUpgrade": False}}
             }
         }
         assert _eval(self._dsl, resource) is True
@@ -1751,9 +1826,7 @@ class TestOpsVmss001:
     def test_no_fire_when_autoupgrade_enabled(self) -> None:
         resource = {
             "properties": {
-                "upgradePolicy": {
-                    "automaticOSUpgradePolicy": {"enableAutomaticOSUpgrade": True}
-                }
+                "upgradePolicy": {"automaticOSUpgradePolicy": {"enableAutomaticOSUpgrade": True}}
             }
         }
         assert _eval(self._dsl, resource) is False
@@ -1921,7 +1994,9 @@ class TestOpsAct001:
             "properties": {
                 "actions": {
                     "actionGroups": [
-                        {"actionGroupId": "/subscriptions/xxx/resourceGroups/rg/providers/microsoft.insights/actionGroups/ag1"}
+                        {
+                            "actionGroupId": "/subscriptions/xxx/resourceGroups/rg/providers/microsoft.insights/actionGroups/ag1"
+                        }
                     ]
                 }
             }
@@ -1974,6 +2049,7 @@ class TestOpsSql003:
 # Performance Efficiency Rules — Phase 7 expansion
 # ===========================================================================
 
+
 @pytest.mark.unit
 class TestPerVm004:
     """PER-VM-004 — VM OS disk using Standard HDD (Standard_LRS)."""
@@ -2003,16 +2079,20 @@ class TestPerVm004:
     def test_no_fire_when_os_disk_premium_ssd(self) -> None:
         resource = {
             "properties": {
-                "storageProfile": {
-                    "osDisk": {"managedDisk": {"storageAccountType": "Premium_LRS"}}
-                }
+                "storageProfile": {"osDisk": {"managedDisk": {"storageAccountType": "Premium_LRS"}}}
             }
         }
         assert _eval(self._dsl, resource) is False
 
     def test_no_fire_when_managed_disk_absent(self) -> None:
         """Unmanaged disk (legacy) — Not Applicable for this check."""
-        resource = {"properties": {"storageProfile": {"osDisk": {"vhd": {"uri": "https://sa.blob.core.windows.net/vhds/disk.vhd"}}}}}
+        resource = {
+            "properties": {
+                "storageProfile": {
+                    "osDisk": {"vhd": {"uri": "https://sa.blob.core.windows.net/vhds/disk.vhd"}}
+                }
+            }
+        }
         assert _eval(self._dsl, resource) is False
 
     def test_metadata(self) -> None:
@@ -2340,11 +2420,7 @@ class TestPerCosmos001:
     _dsl = PER_COSMOS_001["condition_dsl"]
 
     def test_fires_when_strong_consistency(self) -> None:
-        resource = {
-            "properties": {
-                "consistencyPolicy": {"defaultConsistencyLevel": "Strong"}
-            }
-        }
+        resource = {"properties": {"consistencyPolicy": {"defaultConsistencyLevel": "Strong"}}}
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_bounded_staleness(self) -> None:
@@ -2359,26 +2435,16 @@ class TestPerCosmos001:
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_session_consistency(self) -> None:
-        resource = {
-            "properties": {
-                "consistencyPolicy": {"defaultConsistencyLevel": "Session"}
-            }
-        }
+        resource = {"properties": {"consistencyPolicy": {"defaultConsistencyLevel": "Session"}}}
         assert _eval(self._dsl, resource) is False
 
     def test_no_fire_when_eventual_consistency(self) -> None:
-        resource = {
-            "properties": {
-                "consistencyPolicy": {"defaultConsistencyLevel": "Eventual"}
-            }
-        }
+        resource = {"properties": {"consistencyPolicy": {"defaultConsistencyLevel": "Eventual"}}}
         assert _eval(self._dsl, resource) is False
 
     def test_no_fire_when_consistent_prefix(self) -> None:
         resource = {
-            "properties": {
-                "consistencyPolicy": {"defaultConsistencyLevel": "ConsistentPrefix"}
-            }
+            "properties": {"consistencyPolicy": {"defaultConsistencyLevel": "ConsistentPrefix"}}
         }
         assert _eval(self._dsl, resource) is False
 
@@ -2457,6 +2523,7 @@ class TestPerAks001:
 # Key Vault
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestSecKv006:
     """SEC-KV-006 — Key Vault RBAC authorization not enabled."""
@@ -2534,6 +2601,7 @@ class TestRelKv001:
 # Virtual Network
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestRelVnet001:
     """REL-VNET-001 — VNet has no DDoS protection plan."""
@@ -2596,6 +2664,7 @@ class TestOpsVnet001:
 # Azure Firewall
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestSecAfw001:
     """SEC-AFW-001 — Azure Firewall threat intelligence mode is Off."""
@@ -2656,6 +2725,7 @@ class TestRelAfw001:
 # Container Apps
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestSecCa001:
     """SEC-CA-001 — Container App ingress allows insecure HTTP."""
@@ -2664,17 +2734,13 @@ class TestSecCa001:
 
     def test_fires_when_allow_insecure_true(self) -> None:
         resource = {
-            "properties": {
-                "configuration": {"ingress": {"external": True, "allowInsecure": True}}
-            }
+            "properties": {"configuration": {"ingress": {"external": True, "allowInsecure": True}}}
         }
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_allow_insecure_false(self) -> None:
         resource = {
-            "properties": {
-                "configuration": {"ingress": {"external": True, "allowInsecure": False}}
-            }
+            "properties": {"configuration": {"ingress": {"external": True, "allowInsecure": False}}}
         }
         assert _eval(self._dsl, resource) is False
 
@@ -2747,7 +2813,9 @@ class TestOpsCa001:
         resource = {
             "identity": {
                 "type": "UserAssigned",
-                "userAssignedIdentities": {"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id1": {}},
+                "userAssignedIdentities": {
+                    "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id1": {}
+                },
             }
         }
         assert _eval(self._dsl, resource) is False
@@ -2761,6 +2829,7 @@ class TestOpsCa001:
 # ---------------------------------------------------------------------------
 # Availability Sets
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestRelAvset001:
@@ -2817,6 +2886,7 @@ class TestRelAvset002:
 # ---------------------------------------------------------------------------
 # SQL Managed Instance
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestSecSqlmi001:
@@ -2907,6 +2977,7 @@ class TestRelSqlmi001:
 # Event Grid Topics
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestSecEg001:
     """SEC-EG-001 — Event Grid topic allows public network access."""
@@ -2958,6 +3029,7 @@ class TestSecEg002:
 # ---------------------------------------------------------------------------
 # Application Insights
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestOpsAi001:
@@ -3021,6 +3093,7 @@ class TestCstAi001:
 # Action Groups
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestOpsAg001:
     """OPS-AG-001 — Action Group has no email or webhook receivers."""
@@ -3048,7 +3121,9 @@ class TestOpsAg001:
         resource = {
             "properties": {
                 "emailReceivers": [],
-                "webhookReceivers": [{"name": "pagerduty", "serviceUri": "https://events.pagerduty.com/v2/enqueue"}],
+                "webhookReceivers": [
+                    {"name": "pagerduty", "serviceUri": "https://events.pagerduty.com/v2/enqueue"}
+                ],
             }
         }
         assert _eval(self._dsl, resource) is False
@@ -3057,7 +3132,9 @@ class TestOpsAg001:
         resource = {
             "properties": {
                 "emailReceivers": [{"name": "eng", "emailAddress": "eng@example.com"}],
-                "webhookReceivers": [{"name": "slack", "serviceUri": "https://hooks.slack.com/services/abc"}],
+                "webhookReceivers": [
+                    {"name": "slack", "serviceUri": "https://hooks.slack.com/services/abc"}
+                ],
             }
         }
         assert _eval(self._dsl, resource) is False
@@ -3071,6 +3148,7 @@ class TestOpsAg001:
 # ---------------------------------------------------------------------------
 # App Service — expanded security
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestSecApp005:
@@ -3164,6 +3242,7 @@ class TestSecApp007:
 # Virtual Machines — expanded security
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestSecVm004:
     """SEC-VM-004 — VM has no managed identity assigned."""
@@ -3179,9 +3258,7 @@ class TestSecVm004:
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_system_assigned(self) -> None:
-        resource = {
-            "identity": {"type": "SystemAssigned", "principalId": "pid", "tenantId": "tid"}
-        }
+        resource = {"identity": {"type": "SystemAssigned", "principalId": "pid", "tenantId": "tid"}}
         assert _eval(self._dsl, resource) is False
 
     def test_no_fire_when_user_assigned(self) -> None:
@@ -3197,6 +3274,7 @@ class TestSecVm004:
 # ---------------------------------------------------------------------------
 # AKS — expanded security
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestSecAks001:
@@ -3237,11 +3315,7 @@ class TestSecAks002:
         assert _eval(self._dsl, resource) is True
 
     def test_fires_when_private_cluster_false(self) -> None:
-        resource = {
-            "properties": {
-                "apiServerAccessProfile": {"enablePrivateCluster": False}
-            }
-        }
+        resource = {"properties": {"apiServerAccessProfile": {"enablePrivateCluster": False}}}
         assert _eval(self._dsl, resource) is True
 
     def test_no_fire_when_private_cluster_true(self) -> None:

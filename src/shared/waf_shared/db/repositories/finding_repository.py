@@ -114,8 +114,7 @@ class FindingRepository(BaseRepository, IFindingRepository):
         finding_id: uuid.UUID,
     ) -> Finding | None:
         row = await self._read_one(
-            f"SELECT {_FINDING_COLS} FROM assessment_findings "
-            "WHERE tenant_id = $1 AND id = $2",
+            f"SELECT {_FINDING_COLS} FROM assessment_findings " "WHERE tenant_id = $1 AND id = $2",
             tenant_id,
             tenant_id,
             finding_id,

@@ -63,17 +63,18 @@ __all__ = ["ScoringResult", "compute_scores", "CatalogRule"]
 class ScoringResult:
     """All enterprise scores for one assessment."""
 
-    overall_compliance_score: float     # 0–100; 100 = fully compliant
-    overall_risk_score: float           # 0–100; 100 = maximum risk
-    weighted_severity_score: float      # 0–100; captures severity mix
-    business_impact_score: float        # 0–100; weighted by pillar importance
-    pillar_scores: dict[str, float]     # pillar name → 0–100 compliance
-    methodology: str                    # human-readable formula description
+    overall_compliance_score: float  # 0–100; 100 = fully compliant
+    overall_risk_score: float  # 0–100; 100 = maximum risk
+    weighted_severity_score: float  # 0–100; captures severity mix
+    business_impact_score: float  # 0–100; weighted by pillar importance
+    pillar_scores: dict[str, float]  # pillar name → 0–100 compliance
+    methodology: str  # human-readable formula description
 
 
 # ---------------------------------------------------------------------------
 # Public API — signature unchanged for backward compatibility
 # ---------------------------------------------------------------------------
+
 
 def compute_scores(
     findings_by_pillar: dict[str, PillarSummary],
@@ -141,16 +142,13 @@ def compute_scores(
     risk_score = engine.compute_risk_score(findings_by_severity, overall_compliance)
     weighted_sev = engine.compute_weighted_severity_score(findings_by_severity)
 
-    pillar_finding_counts = {
-        pillar: ps.total_findings for pillar, ps in findings_by_pillar.items()
-    }
+    pillar_finding_counts = {pillar: ps.total_findings for pillar, ps in findings_by_pillar.items()}
     biz_impact = engine.compute_business_impact_score(pillar_scores, pillar_finding_counts)
 
     # ── Methodology string (stored in report for Appendix) ────────────────────
     w = weights or DEFAULT_SCORING_WEIGHTS
     pillar_weight_str = ", ".join(
-        f"{p.replace('_', ' ').title()} {int(v * 100)}%"
-        for p, v in w.pillar_weights.items()
+        f"{p.replace('_', ' ').title()} {int(v * 100)}%" for p, v in w.pillar_weights.items()
     )
     methodology = (
         "Weighted pass-rate model: pillar_score = weighted_passed / weighted_applicable × 100. "

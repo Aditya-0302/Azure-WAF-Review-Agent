@@ -55,10 +55,12 @@ _AUTOMATED_COVERED = 53
 _TOTAL_CONTROLS = 57
 _AUTOMATED_PERCENTAGE = round(_AUTOMATED_COVERED / _TOTAL_CONTROLS * 100, 1)
 
-_COMPLIANT_STATUSES = frozenset({
-    ComplianceStatus.COMPLIANT,
-    ComplianceStatus.PARTIALLY_COMPLIANT,
-})
+_COMPLIANT_STATUSES = frozenset(
+    {
+        ComplianceStatus.COMPLIANT,
+        ComplianceStatus.PARTIALLY_COMPLIANT,
+    }
+)
 
 
 def _load_controls() -> dict[str, HumanReviewControl]:
@@ -142,7 +144,11 @@ class HumanReviewService:
         ]
         cs = ComplianceStatus(compliance_status)
         reviewed_at = now if cs != ComplianceStatus.NOT_ASSESSED else None
-        status = ReviewStatus.COMPLETED if cs != ComplianceStatus.NOT_ASSESSED else ReviewStatus.IN_PROGRESS
+        status = (
+            ReviewStatus.COMPLETED
+            if cs != ComplianceStatus.NOT_ASSESSED
+            else ReviewStatus.IN_PROGRESS
+        )
 
         if existing is not None:
             existing.reviewer_oid = reviewer_oid

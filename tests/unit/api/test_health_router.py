@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from waf_shared.domain.errors.infrastructure_errors import DatabaseError
-
 from waf_api.routers.health import router
+from waf_shared.domain.errors.infrastructure_errors import DatabaseError
 
 
 def _make_test_app(db_pool_mock: MagicMock) -> FastAPI:
     """Create a minimal FastAPI app with the health router and a mocked db pool."""
-    from fastapi import Request
 
     app = FastAPI()
     app.state.db_pool = db_pool_mock

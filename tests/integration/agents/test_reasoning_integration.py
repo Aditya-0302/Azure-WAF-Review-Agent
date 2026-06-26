@@ -17,13 +17,12 @@ import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from waf_shared.domain.events.assessment_events import (
     ReasoningRequestedEvent,
-    ReportingRequestedEvent,
 )
 from waf_shared.domain.events.base import CloudEventEnvelope
 from waf_shared.domain.models.assessment import (
@@ -35,8 +34,8 @@ from waf_shared.domain.models.assessment import (
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.rule import EvaluationType, Pillar, WafRule
 
-
 # ── Fake infrastructure helpers ────────────────────────────────────────────────
+
 
 def _ts() -> datetime:
     return datetime.now(UTC)
@@ -226,6 +225,7 @@ def _build_handler(
 
 # ── Test: Full happy path (single batch, single finding) ──────────────────────
 
+
 class TestReasoningIntegrationHappyPath:
     @pytest.mark.asyncio
     async def test_single_resource_finding_triggers_reporting(self):
@@ -321,6 +321,7 @@ class TestReasoningIntegrationHappyPath:
 
 # ── Test: Terminal and cancelled assessments ───────────────────────────────────
 
+
 class TestReasoningIntegrationSkipGuards:
     @pytest.mark.asyncio
     async def test_completed_assessment_is_skipped(self):
@@ -398,6 +399,7 @@ class TestReasoningIntegrationSkipGuards:
 
 # ── Test: Extraction-failed resources ─────────────────────────────────────────
 
+
 class TestReasoningIntegrationExtractionFailed:
     @pytest.mark.asyncio
     async def test_extraction_failed_resource_is_skipped(self):
@@ -427,11 +429,10 @@ class TestReasoningIntegrationExtractionFailed:
 
 # ── Test: LLM pipeline integration ────────────────────────────────────────────
 
+
 class TestReasoningIntegrationLLMPipeline:
     @pytest.mark.asyncio
     async def test_llm_findings_merged_with_deterministic(self):
-        from waf_shared.domain.errors.infrastructure_errors import LLMQuotaExhaustedError
-
         assessment = _make_assessment()
         resource = _make_resource(assessment)
         det_rule = _make_rule(evaluation_type=EvaluationType.DETERMINISTIC)
@@ -505,9 +506,7 @@ class TestReasoningIntegrationLLMPipeline:
             include_llm_pipeline=True,
             fanin_result=True,
         )
-        handler._llm_pipeline.evaluate = AsyncMock(
-            side_effect=RuntimeError("transient error")
-        )
+        handler._llm_pipeline.evaluate = AsyncMock(side_effect=RuntimeError("transient error"))
         handler._finding_repo.count_by_pillar = AsyncMock(return_value={})
 
         raw = _build_raw_event(assessment)
@@ -519,6 +518,7 @@ class TestReasoningIntegrationLLMPipeline:
 
 
 # ── Test: Pillar filter restricts rules ───────────────────────────────────────
+
 
 class TestReasoningIntegrationPillarFilter:
     @pytest.mark.asyncio
@@ -569,6 +569,7 @@ class TestReasoningIntegrationPillarFilter:
 
 
 # ── Test: Reporting event correctness ─────────────────────────────────────────
+
 
 class TestReasoningIntegrationReportingEvent:
     @pytest.mark.asyncio

@@ -76,8 +76,7 @@ class WafCatalog:
 
         # Drop the _comment and schema_version meta-keys if present.
         clean_mapping = {
-            k: v for k, v in mapping_raw.items()
-            if not k.startswith("_") and k != "schema_version"
+            k: v for k, v in mapping_raw.items() if not k.startswith("_") and k != "schema_version"
         }
 
         # Reject duplicate control codes before loading into the dict.

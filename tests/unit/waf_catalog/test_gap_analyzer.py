@@ -6,25 +6,42 @@ import json
 from pathlib import Path
 
 import pytest
-
 from waf_catalog.catalog import WafCatalog
 from waf_catalog.gap_analyzer import compute_gaps
 
 _CONTROLS = [
     {
-        "code": "SE-07", "pillar": "Security", "title": "Protect secrets",
-        "description": ".", "microsoft_url": "https://example.com/SE-07",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "SE-07",
+        "pillar": "Security",
+        "title": "Protect secrets",
+        "description": ".",
+        "microsoft_url": "https://example.com/SE-07",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
     {
-        "code": "RE-02", "pillar": "Reliability", "title": "Design for redundancy",
-        "description": ".", "microsoft_url": "https://example.com/RE-02",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "RE-02",
+        "pillar": "Reliability",
+        "title": "Design for redundancy",
+        "description": ".",
+        "microsoft_url": "https://example.com/RE-02",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
     {
-        "code": "CO-06", "pillar": "Cost Optimization", "title": "Rightsize assets",
-        "description": ".", "microsoft_url": "https://example.com/CO-06",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "CO-06",
+        "pillar": "Cost Optimization",
+        "title": "Rightsize assets",
+        "description": ".",
+        "microsoft_url": "https://example.com/CO-06",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
 ]
 
@@ -73,8 +90,8 @@ class TestComputeGaps:
         extended_mapping["CST-VM-001"] = ["CO-06"]
 
         import json as _json
-        from pathlib import Path as _Path
         import tempfile
+        from pathlib import Path as _Path
 
         with tempfile.TemporaryDirectory() as td:
             cp = _Path(td) / "waf_controls.json"

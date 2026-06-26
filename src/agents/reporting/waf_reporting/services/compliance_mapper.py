@@ -19,16 +19,16 @@ Never raises. All outputs are informational only — they never affect scoring.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Output dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class AzurePolicyRef:
     """An Azure Policy definition that aligns to a WAF finding."""
+
     display_name: str
     definition_id: str
     compliance_category: str
@@ -37,6 +37,7 @@ class AzurePolicyRef:
 @dataclass(frozen=True)
 class AdvisorRef:
     """An Azure Advisor recommendation category that aligns to a WAF finding."""
+
     category: str
     recommendation_title: str
     description: str
@@ -45,6 +46,7 @@ class AdvisorRef:
 @dataclass(frozen=True)
 class ComplianceFrameworkRef:
     """Cross-framework compliance references for a single finding/rule."""
+
     cis_azure: list[str]
     iso_27001: list[str]
     nist_csf: list[str]
@@ -226,61 +228,94 @@ _AZURE_POLICY_EXACT: dict[str, AzurePolicyRef] = {
 
 # Prefix-based fallback for Azure Policy
 _AZURE_POLICY_PREFIX: list[tuple[str, AzurePolicyRef]] = [
-    ("SEC-STG-", AzurePolicyRef(
-        display_name="Storage account security configuration policy",
-        definition_id="Various — see Azure Policy: Storage",
-        compliance_category="Storage Security",
-    )),
-    ("SEC-KV-", AzurePolicyRef(
-        display_name="Key Vault security configuration policy",
-        definition_id="Various — see Azure Policy: Key Vault",
-        compliance_category="Key Management",
-    )),
-    ("SEC-NET-", AzurePolicyRef(
-        display_name="Network security configuration policy",
-        definition_id="Various — see Azure Policy: Network",
-        compliance_category="Network Security",
-    )),
-    ("SEC-APP-", AzurePolicyRef(
-        display_name="App Service security configuration policy",
-        definition_id="Various — see Azure Policy: App Service",
-        compliance_category="Application Security",
-    )),
-    ("SEC-DEF-", AzurePolicyRef(
-        display_name="Microsoft Defender plan enablement policy",
-        definition_id="Various — see Azure Policy: Security Center",
-        compliance_category="Threat Protection",
-    )),
-    ("SEC-SQL-", AzurePolicyRef(
-        display_name="SQL / database security configuration policy",
-        definition_id="Various — see Azure Policy: SQL",
-        compliance_category="Database Security",
-    )),
-    ("SEC-IAM-", AzurePolicyRef(
-        display_name="Identity and access management policy",
-        definition_id="Various — see Azure Policy: IAM",
-        compliance_category="Identity & Access",
-    )),
-    ("OPS-DIAG-", AzurePolicyRef(
-        display_name="Diagnostic settings enablement policy",
-        definition_id="Various — see Azure Policy: Monitoring",
-        compliance_category="Monitoring & Logging",
-    )),
-    ("OPS-MON-", AzurePolicyRef(
-        display_name="Azure Monitor alert configuration policy",
-        definition_id="Various — see Azure Policy: Monitor",
-        compliance_category="Monitoring & Logging",
-    )),
-    ("REL-AGW-", AzurePolicyRef(
-        display_name="Application Gateway / WAF configuration policy",
-        definition_id="Various — see Azure Policy: Application Gateway",
-        compliance_category="Network Security",
-    )),
-    ("CST-", AzurePolicyRef(
-        display_name="Cost management and tagging policy",
-        definition_id="Various — see Azure Policy: Cost",
-        compliance_category="Cost Management",
-    )),
+    (
+        "SEC-STG-",
+        AzurePolicyRef(
+            display_name="Storage account security configuration policy",
+            definition_id="Various — see Azure Policy: Storage",
+            compliance_category="Storage Security",
+        ),
+    ),
+    (
+        "SEC-KV-",
+        AzurePolicyRef(
+            display_name="Key Vault security configuration policy",
+            definition_id="Various — see Azure Policy: Key Vault",
+            compliance_category="Key Management",
+        ),
+    ),
+    (
+        "SEC-NET-",
+        AzurePolicyRef(
+            display_name="Network security configuration policy",
+            definition_id="Various — see Azure Policy: Network",
+            compliance_category="Network Security",
+        ),
+    ),
+    (
+        "SEC-APP-",
+        AzurePolicyRef(
+            display_name="App Service security configuration policy",
+            definition_id="Various — see Azure Policy: App Service",
+            compliance_category="Application Security",
+        ),
+    ),
+    (
+        "SEC-DEF-",
+        AzurePolicyRef(
+            display_name="Microsoft Defender plan enablement policy",
+            definition_id="Various — see Azure Policy: Security Center",
+            compliance_category="Threat Protection",
+        ),
+    ),
+    (
+        "SEC-SQL-",
+        AzurePolicyRef(
+            display_name="SQL / database security configuration policy",
+            definition_id="Various — see Azure Policy: SQL",
+            compliance_category="Database Security",
+        ),
+    ),
+    (
+        "SEC-IAM-",
+        AzurePolicyRef(
+            display_name="Identity and access management policy",
+            definition_id="Various — see Azure Policy: IAM",
+            compliance_category="Identity & Access",
+        ),
+    ),
+    (
+        "OPS-DIAG-",
+        AzurePolicyRef(
+            display_name="Diagnostic settings enablement policy",
+            definition_id="Various — see Azure Policy: Monitoring",
+            compliance_category="Monitoring & Logging",
+        ),
+    ),
+    (
+        "OPS-MON-",
+        AzurePolicyRef(
+            display_name="Azure Monitor alert configuration policy",
+            definition_id="Various — see Azure Policy: Monitor",
+            compliance_category="Monitoring & Logging",
+        ),
+    ),
+    (
+        "REL-AGW-",
+        AzurePolicyRef(
+            display_name="Application Gateway / WAF configuration policy",
+            definition_id="Various — see Azure Policy: Application Gateway",
+            compliance_category="Network Security",
+        ),
+    ),
+    (
+        "CST-",
+        AzurePolicyRef(
+            display_name="Cost management and tagging policy",
+            definition_id="Various — see Azure Policy: Cost",
+            compliance_category="Cost Management",
+        ),
+    ),
 ]
 
 
@@ -464,7 +499,8 @@ _FRAMEWORK_MAP: dict[str, ComplianceFrameworkRef] = {
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_azure_policy(rule_id: str) -> Optional[AzurePolicyRef]:
+
+def get_azure_policy(rule_id: str) -> AzurePolicyRef | None:
     """Return the Azure Policy reference for a rule ID, or None if no mapping exists."""
     try:
         if rule_id in _AZURE_POLICY_EXACT:
@@ -478,7 +514,7 @@ def get_azure_policy(rule_id: str) -> Optional[AzurePolicyRef]:
     return None
 
 
-def get_advisor_ref(rule_id: str, pillar: str) -> Optional[AdvisorRef]:
+def get_advisor_ref(rule_id: str, pillar: str) -> AdvisorRef | None:
     """Return the Azure Advisor reference for a rule ID / pillar, or None."""
     try:
         if rule_id in _ADVISOR_RULE_OVERRIDES:
@@ -489,7 +525,7 @@ def get_advisor_ref(rule_id: str, pillar: str) -> Optional[AdvisorRef]:
     return None
 
 
-def get_compliance_frameworks(rule_id: str) -> Optional[ComplianceFrameworkRef]:
+def get_compliance_frameworks(rule_id: str) -> ComplianceFrameworkRef | None:
     """Return CIS/ISO/NIST CSF/MCSB references for a rule ID, or None."""
     try:
         rid = rule_id.upper()
@@ -508,8 +544,8 @@ def get_all_mappings(rule_id: str, pillar: str) -> dict:
     """
     try:
         return {
-            "azure_policy":          get_azure_policy(rule_id),
-            "azure_advisor":         get_advisor_ref(rule_id, pillar),
+            "azure_policy": get_azure_policy(rule_id),
+            "azure_advisor": get_advisor_ref(rule_id, pillar),
             "compliance_frameworks": get_compliance_frameworks(rule_id),
         }
     except Exception:
@@ -521,86 +557,138 @@ def get_all_mappings(rule_id: str, pillar: str) -> dict:
 # ---------------------------------------------------------------------------
 
 GLOSSARY: list[tuple[str, str]] = [
-    ("Application Gateway",
-     "Azure service that provides application-level load balancing, SSL termination, "
-     "and Web Application Firewall (WAF) capabilities for web workloads."),
-    ("ARM (Azure Resource Manager)",
-     "The management layer that enables creation, update, and deletion of Azure resources "
-     "through a unified API surface supporting RBAC, tags, and resource locks."),
-    ("Availability Zone",
-     "Physically separate datacentre locations within an Azure region with independent "
-     "power, cooling, and networking, enabling zone-redundant architectures."),
-    ("Azure Advisor",
-     "A personalised cloud consultant that analyses resource configuration and usage "
-     "telemetry to provide actionable recommendations across cost, security, "
-     "reliability, performance, and operational excellence."),
-    ("Azure Monitor",
-     "A comprehensive monitoring service that collects, analyses, and acts on telemetry "
-     "from Azure resources, providing metrics, logs, traces, and alerting capabilities."),
-    ("Azure Policy",
-     "A governance service that enforces organisational standards and assesses compliance "
-     "at scale by evaluating Azure resource configurations against defined policy definitions."),
-    ("Azure Resource Graph",
-     "An Azure service that enables efficient exploration of Azure resources at scale "
-     "using Kusto Query Language (KQL) to query resource properties across subscriptions."),
-    ("CIS Azure Benchmark",
-     "The Center for Internet Security's prescriptive configuration guidance for securing "
-     "Azure environments, organised into numbered controls across service categories."),
-    ("Compliance Score",
-     "A percentage metric representing the proportion of WAF controls that pass assessment "
-     "criteria, weighted by pillar criticality and finding severity."),
-    ("Confidence Score",
-     "A value (0–1) representing the reliability of a finding, based on the completeness "
-     "of available evidence and the evaluation method (deterministic or LLM-assisted)."),
-    ("Diagnostic Settings",
-     "Azure resource configuration that routes platform logs and metrics to one or more "
-     "destinations: Log Analytics workspace, storage account, or Event Hub."),
-    ("ISO 27001:2022",
-     "An international standard for information security management systems (ISMS), "
-     "specifying requirements and Annex A controls for managing information security risks."),
-    ("Key Vault",
-     "Azure service for securely storing and controlling access to cryptographic keys, "
-     "certificates, secrets, and managed HSM operations."),
-    ("Log Analytics",
-     "The Azure Monitor component that collects and indexes log data from Azure services, "
-     "on-premises systems, and agents, enabling KQL-based queries and alerting."),
-    ("Managed Identity",
-     "An Azure Active Directory identity automatically managed by Azure, enabling services "
-     "to authenticate to other Azure services without embedding credentials in code."),
-    ("MCSB (Microsoft Cloud Security Benchmark)",
-     "A set of security controls and best practices specifically designed for Azure workloads, "
-     "aligned to industry frameworks including CIS and NIST SP 800-53."),
-    ("NIST CSF",
-     "The National Institute of Standards and Technology Cybersecurity Framework — a "
-     "voluntary framework of standards and best practices organised into five functions: "
-     "Identify, Protect, Detect, Respond, and Recover."),
-    ("Policy Assignment",
-     "The mechanism by which an Azure Policy definition is applied to a specific scope "
-     "(management group, subscription, or resource group)."),
-    ("Private Endpoint",
-     "A network interface that connects a virtual network privately and securely to an "
-     "Azure service using a private IP address from the virtual network's address space."),
-    ("RBAC (Role-Based Access Control)",
-     "Azure's authorisation system for managing access to Azure resources by assigning "
-     "roles — collections of permissions — to users, groups, and service principals."),
-    ("Risk Score",
-     "A numeric metric (0–100) derived from the compliance score and severity distribution "
-     "of open findings, representing the estimated aggregate risk level of the workload."),
-    ("Storage Account",
-     "An Azure resource providing durable, highly available, and massively scalable cloud "
-     "storage for blobs, files, queues, and tables."),
-    ("TLS (Transport Layer Security)",
-     "A cryptographic protocol that provides end-to-end security for data transmitted "
-     "over a network. TLS 1.2 is the minimum accepted version in most compliance frameworks."),
-    ("Virtual Machine",
-     "An on-demand, scalable computing resource available in Azure that provides the "
-     "flexibility of virtualisation without the need to manage physical hardware."),
-    ("WAF (Web Application Firewall)",
-     "An application-layer firewall that monitors, filters, and blocks HTTP/S traffic "
-     "to and from web applications based on rule sets designed to detect known attack patterns."),
-    ("WAF Pillar",
-     "One of the five pillars of the Azure Well-Architected Framework: Security, "
-     "Reliability, Operational Excellence, Performance Efficiency, and Cost Optimization."),
+    (
+        "Application Gateway",
+        "Azure service that provides application-level load balancing, SSL termination, "
+        "and Web Application Firewall (WAF) capabilities for web workloads.",
+    ),
+    (
+        "ARM (Azure Resource Manager)",
+        "The management layer that enables creation, update, and deletion of Azure resources "
+        "through a unified API surface supporting RBAC, tags, and resource locks.",
+    ),
+    (
+        "Availability Zone",
+        "Physically separate datacentre locations within an Azure region with independent "
+        "power, cooling, and networking, enabling zone-redundant architectures.",
+    ),
+    (
+        "Azure Advisor",
+        "A personalised cloud consultant that analyses resource configuration and usage "
+        "telemetry to provide actionable recommendations across cost, security, "
+        "reliability, performance, and operational excellence.",
+    ),
+    (
+        "Azure Monitor",
+        "A comprehensive monitoring service that collects, analyses, and acts on telemetry "
+        "from Azure resources, providing metrics, logs, traces, and alerting capabilities.",
+    ),
+    (
+        "Azure Policy",
+        "A governance service that enforces organisational standards and assesses compliance "
+        "at scale by evaluating Azure resource configurations against defined policy definitions.",
+    ),
+    (
+        "Azure Resource Graph",
+        "An Azure service that enables efficient exploration of Azure resources at scale "
+        "using Kusto Query Language (KQL) to query resource properties across subscriptions.",
+    ),
+    (
+        "CIS Azure Benchmark",
+        "The Center for Internet Security's prescriptive configuration guidance for securing "
+        "Azure environments, organised into numbered controls across service categories.",
+    ),
+    (
+        "Compliance Score",
+        "A percentage metric representing the proportion of WAF controls that pass assessment "
+        "criteria, weighted by pillar criticality and finding severity.",
+    ),
+    (
+        "Confidence Score",
+        "A value (0–1) representing the reliability of a finding, based on the completeness "
+        "of available evidence and the evaluation method (deterministic or LLM-assisted).",
+    ),
+    (
+        "Diagnostic Settings",
+        "Azure resource configuration that routes platform logs and metrics to one or more "
+        "destinations: Log Analytics workspace, storage account, or Event Hub.",
+    ),
+    (
+        "ISO 27001:2022",
+        "An international standard for information security management systems (ISMS), "
+        "specifying requirements and Annex A controls for managing information security risks.",
+    ),
+    (
+        "Key Vault",
+        "Azure service for securely storing and controlling access to cryptographic keys, "
+        "certificates, secrets, and managed HSM operations.",
+    ),
+    (
+        "Log Analytics",
+        "The Azure Monitor component that collects and indexes log data from Azure services, "
+        "on-premises systems, and agents, enabling KQL-based queries and alerting.",
+    ),
+    (
+        "Managed Identity",
+        "An Azure Active Directory identity automatically managed by Azure, enabling services "
+        "to authenticate to other Azure services without embedding credentials in code.",
+    ),
+    (
+        "MCSB (Microsoft Cloud Security Benchmark)",
+        "A set of security controls and best practices specifically designed for Azure workloads, "
+        "aligned to industry frameworks including CIS and NIST SP 800-53.",
+    ),
+    (
+        "NIST CSF",
+        "The National Institute of Standards and Technology Cybersecurity Framework — a "
+        "voluntary framework of standards and best practices organised into five functions: "
+        "Identify, Protect, Detect, Respond, and Recover.",
+    ),
+    (
+        "Policy Assignment",
+        "The mechanism by which an Azure Policy definition is applied to a specific scope "
+        "(management group, subscription, or resource group).",
+    ),
+    (
+        "Private Endpoint",
+        "A network interface that connects a virtual network privately and securely to an "
+        "Azure service using a private IP address from the virtual network's address space.",
+    ),
+    (
+        "RBAC (Role-Based Access Control)",
+        "Azure's authorisation system for managing access to Azure resources by assigning "
+        "roles — collections of permissions — to users, groups, and service principals.",
+    ),
+    (
+        "Risk Score",
+        "A numeric metric (0–100) derived from the compliance score and severity distribution "
+        "of open findings, representing the estimated aggregate risk level of the workload.",
+    ),
+    (
+        "Storage Account",
+        "An Azure resource providing durable, highly available, and massively scalable cloud "
+        "storage for blobs, files, queues, and tables.",
+    ),
+    (
+        "TLS (Transport Layer Security)",
+        "A cryptographic protocol that provides end-to-end security for data transmitted "
+        "over a network. TLS 1.2 is the minimum accepted version in most compliance frameworks.",
+    ),
+    (
+        "Virtual Machine",
+        "An on-demand, scalable computing resource available in Azure that provides the "
+        "flexibility of virtualisation without the need to manage physical hardware.",
+    ),
+    (
+        "WAF (Web Application Firewall)",
+        "An application-layer firewall that monitors, filters, and blocks HTTP/S traffic "
+        "to and from web applications based on rule sets designed to detect known attack patterns.",
+    ),
+    (
+        "WAF Pillar",
+        "One of the five pillars of the Azure Well-Architected Framework: Security, "
+        "Reliability, Operational Excellence, Performance Efficiency, and Cost Optimization.",
+    ),
 ]
 
 
@@ -609,73 +697,97 @@ GLOSSARY: list[tuple[str, str]] = [
 # ---------------------------------------------------------------------------
 
 METHODOLOGY_SECTIONS: list[tuple[str, str]] = [
-    ("Discovery",
-     "The assessment begins with automated discovery of Azure resources within the "
-     "assessed subscription(s) using the Azure Resource Manager API and Azure Resource "
-     "Graph. Resource types, configuration properties, tags, and metadata are collected "
-     "without modifying any resource state."),
-    ("Rule Evaluation",
-     "Each discovered resource is evaluated against a library of deterministic WAF rules. "
-     "Rules are expressed as structured assertions against resource configuration properties "
-     "returned by the Azure API. Evaluation is fully deterministic — the same resource "
-     "configuration always produces the same finding outcome."),
-    ("LLM-Assisted Validation",
-     "For a subset of controls where deterministic evaluation is insufficient, "
-     "a large language model (LLM) reviews the collected evidence and provides a "
-     "structured compliance assessment. LLM findings are clearly labelled and assigned "
-     "a lower confidence score. The LLM does not have access to production systems "
-     "and evaluates only the evidence payload collected by the extraction engine."),
-    ("Evidence Collection",
-     "For every finding, the engine records the specific property values, API responses, "
-     "and configuration snapshots that informed the evaluation decision. This evidence "
-     "is embedded in the report and provides an auditable trace from finding to raw data."),
-    ("Scoring",
-     "Compliance and risk scores are computed deterministically using a weighted "
-     "pass-rate model. Each rule-resource pair contributes a weight equal to "
-     "severity_weight × resource_criticality_multiplier. Pillar score = "
-     "weighted_passed / weighted_applicable × 100. Severity weights: Critical=10, "
-     "High=7, Medium=5, Low=2, Informational=1. Resource criticality multipliers range "
-     "from 1.5× (Key Vault, SQL Server) to 0.6× (managed disks, snapshots). "
-     "NOT_APPLICABLE rules are excluded from all calculations. "
-     "The overall compliance score is a fixed-pillar-weight average: Security 30%, "
-     "Reliability 20%, Performance Efficiency 20%, Operational Excellence 15%, "
-     "Cost Optimization 15%. See Appendix E for the complete scoring formulae."),
-    ("Human Review Controls",
-     "Four WAF controls (SE-10: Governance, OE-03: Change Management, OE-04: Deployment "
-     "Process, CO-09: Financial Governance) require human assessment and are recorded "
-     "separately from automated findings. These controls are included in reporting but "
-     "excluded from automated compliance scoring."),
-    ("Reporting",
-     "Findings, scores, and evidence are aggregated and rendered into this report. "
-     "All data is sourced exclusively from the assessment database record. "
-     "No data is synthesised or interpolated. If information is unavailable, "
-     "the report displays 'Not Available' rather than a placeholder value."),
+    (
+        "Discovery",
+        "The assessment begins with automated discovery of Azure resources within the "
+        "assessed subscription(s) using the Azure Resource Manager API and Azure Resource "
+        "Graph. Resource types, configuration properties, tags, and metadata are collected "
+        "without modifying any resource state.",
+    ),
+    (
+        "Rule Evaluation",
+        "Each discovered resource is evaluated against a library of deterministic WAF rules. "
+        "Rules are expressed as structured assertions against resource configuration properties "
+        "returned by the Azure API. Evaluation is fully deterministic — the same resource "
+        "configuration always produces the same finding outcome.",
+    ),
+    (
+        "LLM-Assisted Validation",
+        "For a subset of controls where deterministic evaluation is insufficient, "
+        "a large language model (LLM) reviews the collected evidence and provides a "
+        "structured compliance assessment. LLM findings are clearly labelled and assigned "
+        "a lower confidence score. The LLM does not have access to production systems "
+        "and evaluates only the evidence payload collected by the extraction engine.",
+    ),
+    (
+        "Evidence Collection",
+        "For every finding, the engine records the specific property values, API responses, "
+        "and configuration snapshots that informed the evaluation decision. This evidence "
+        "is embedded in the report and provides an auditable trace from finding to raw data.",
+    ),
+    (
+        "Scoring",
+        "Compliance and risk scores are computed deterministically using a weighted "
+        "pass-rate model. Each rule-resource pair contributes a weight equal to "
+        "severity_weight × resource_criticality_multiplier. Pillar score = "
+        "weighted_passed / weighted_applicable × 100. Severity weights: Critical=10, "
+        "High=7, Medium=5, Low=2, Informational=1. Resource criticality multipliers range "
+        "from 1.5× (Key Vault, SQL Server) to 0.6× (managed disks, snapshots). "
+        "NOT_APPLICABLE rules are excluded from all calculations. "
+        "The overall compliance score is a fixed-pillar-weight average: Security 30%, "
+        "Reliability 20%, Performance Efficiency 20%, Operational Excellence 15%, "
+        "Cost Optimization 15%. See Appendix E for the complete scoring formulae.",
+    ),
+    (
+        "Human Review Controls",
+        "Four WAF controls (SE-10: Governance, OE-03: Change Management, OE-04: Deployment "
+        "Process, CO-09: Financial Governance) require human assessment and are recorded "
+        "separately from automated findings. These controls are included in reporting but "
+        "excluded from automated compliance scoring.",
+    ),
+    (
+        "Reporting",
+        "Findings, scores, and evidence are aggregated and rendered into this report. "
+        "All data is sourced exclusively from the assessment database record. "
+        "No data is synthesised or interpolated. If information is unavailable, "
+        "the report displays 'Not Available' rather than a placeholder value.",
+    ),
 ]
 
 CONFIDENCE_SECTIONS: list[tuple[str, str]] = [
-    ("Confidence Score",
-     "Every finding carries a confidence score between 0 and 1 (displayed as 0–100%). "
-     "This score reflects the reliability of the finding based on the quality and "
-     "completeness of the collected evidence and the evaluation method used."),
-    ("Deterministic Findings (Confidence ≥ 0.90)",
-     "Findings evaluated using deterministic rule logic against structured API data "
-     "receive a confidence score of 0.90 or higher. The evaluation is rule-based, "
-     "repeatable, and independent of model behaviour. These findings represent the "
-     "most reliable output of the assessment."),
-    ("LLM-Assisted Findings (Confidence 0.60–0.89)",
-     "Some controls require contextual reasoning that cannot be expressed as a simple "
-     "property assertion. For these controls, the assessment engine submits the collected "
-     "evidence to a language model, which returns a structured compliance verdict. "
-     "These findings are assigned a confidence score of 0.60–0.89 to indicate that "
-     "the outcome depends on model reasoning rather than a deterministic rule."),
-    ("Low-Evidence Findings (Confidence < 0.60)",
-     "Findings where the API returned incomplete or ambiguous data receive a confidence "
-     "score below 0.60. These findings should be independently verified before "
-     "remediation effort is prioritised."),
-    ("Evidence Quality",
-     "The evidence block attached to each finding contains the raw values that informed "
-     "the evaluation. Reviewers should inspect this evidence to verify that the finding "
-     "accurately reflects the current resource configuration before acting on it."),
+    (
+        "Confidence Score",
+        "Every finding carries a confidence score between 0 and 1 (displayed as 0–100%). "
+        "This score reflects the reliability of the finding based on the quality and "
+        "completeness of the collected evidence and the evaluation method used.",
+    ),
+    (
+        "Deterministic Findings (Confidence ≥ 0.90)",
+        "Findings evaluated using deterministic rule logic against structured API data "
+        "receive a confidence score of 0.90 or higher. The evaluation is rule-based, "
+        "repeatable, and independent of model behaviour. These findings represent the "
+        "most reliable output of the assessment.",
+    ),
+    (
+        "LLM-Assisted Findings (Confidence 0.60–0.89)",
+        "Some controls require contextual reasoning that cannot be expressed as a simple "
+        "property assertion. For these controls, the assessment engine submits the collected "
+        "evidence to a language model, which returns a structured compliance verdict. "
+        "These findings are assigned a confidence score of 0.60–0.89 to indicate that "
+        "the outcome depends on model reasoning rather than a deterministic rule.",
+    ),
+    (
+        "Low-Evidence Findings (Confidence < 0.60)",
+        "Findings where the API returned incomplete or ambiguous data receive a confidence "
+        "score below 0.60. These findings should be independently verified before "
+        "remediation effort is prioritised.",
+    ),
+    (
+        "Evidence Quality",
+        "The evidence block attached to each finding contains the raw values that informed "
+        "the evaluation. Reviewers should inspect this evidence to verify that the finding "
+        "accurately reflects the current resource configuration before acting on it.",
+    ),
 ]
 
 LIMITATIONS_TEXT: list[str] = [

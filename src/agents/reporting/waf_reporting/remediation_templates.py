@@ -87,9 +87,9 @@ _register(
     ),
     terraform=(
         'resource "azurerm_container_registry" "acr" {\n'
-        '  name                = var.registry_name\n'
-        '  resource_group_name = var.resource_group_name\n'
-        '  location            = var.location\n'
+        "  name                = var.registry_name\n"
+        "  resource_group_name = var.resource_group_name\n"
+        "  location            = var.location\n"
         '  sku                 = "Premium"\n'
         "  trust_policy {\n"
         "    enabled = true\n"
@@ -763,13 +763,13 @@ _register(
         "az tag update \\\n"
         "  --resource-id <resource-id> \\\n"
         "  --operation Merge \\\n"
-        '  --tags CostCenter=<code> Team=<team-name>\n\n'
+        "  --tags CostCenter=<code> Team=<team-name>\n\n"
         "# Enforce tagging at scale via Azure Policy (built-in 'Require a tag')\n"
         "az policy assignment create \\\n"
         "  --name RequireCostCenterTag \\\n"
         "  --policy 1e30110a-5ceb-460c-a204-c1c3969c6d62 \\\n"
         "  --scope /subscriptions/<subscription-id> \\\n"
-        "  --params '{\"tagName\": {\"value\": \"CostCenter\"}}'"
+        '  --params \'{"tagName": {"value": "CostCenter"}}\''
     ),
     bicep=(
         "resource anyResource 'Microsoft.Web/sites@2023-01-01' = {\n"
@@ -884,18 +884,18 @@ _SEVERITY_TECHNICAL_RISK: dict[str, str] = {
 }
 
 _SEVERITY_EFFORT: dict[str, str] = {
-    "critical":      "Medium (~2-4 hours — urgent, prioritise immediately)",
-    "high":          "Medium (~1-3 hours)",
-    "medium":        "Low-Medium (~30 min to 2 hours)",
-    "low":           "Low (~15-30 min)",
+    "critical": "Medium (~2-4 hours — urgent, prioritise immediately)",
+    "high": "Medium (~1-3 hours)",
+    "medium": "Low-Medium (~30 min to 2 hours)",
+    "low": "Low (~15-30 min)",
     "informational": "Minimal (~15 min)",
 }
 
 _SEVERITY_RISK_REDUCTION: dict[str, str] = {
-    "critical":      "High (60-90% risk reduction upon remediation)",
-    "high":          "High (40-70% risk reduction upon remediation)",
-    "medium":        "Medium (20-40% risk reduction upon remediation)",
-    "low":           "Low-Medium (10-25% risk reduction upon remediation)",
+    "critical": "High (60-90% risk reduction upon remediation)",
+    "high": "High (40-70% risk reduction upon remediation)",
+    "medium": "Medium (20-40% risk reduction upon remediation)",
+    "low": "Low-Medium (10-25% risk reduction upon remediation)",
     "informational": "Low (5-10% compliance score improvement)",
 }
 
@@ -903,6 +903,7 @@ _SEVERITY_RISK_REDUCTION: dict[str, str] = {
 # ===========================================================================
 # Public API
 # ===========================================================================
+
 
 def get_remediation_detail(
     rule_id: str,

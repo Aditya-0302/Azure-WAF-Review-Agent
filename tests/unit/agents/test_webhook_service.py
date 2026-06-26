@@ -5,26 +5,21 @@ All HTTP calls are mocked via aiohttp patching so no network I/O occurs.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
-import json
 import uuid
-from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from waf_reporting.webhook_service import (
     WebhookDeliveryError,
     WebhookService,
     _compute_signature,
     _validate_webhook_url,
 )
+
 from waf_shared.db.repositories.webhook_repository import WebhookRepository
 from waf_shared.telemetry.logging import StructuredLogger
-
 
 # ---------------------------------------------------------------------------
 # _validate_webhook_url — SSRF prevention
@@ -277,7 +272,10 @@ class TestWebhookServiceDeliver:
         session_iter = iter(sessions)
 
         with (
-            patch("waf_reporting.webhook_service.aiohttp.ClientSession", side_effect=lambda: next(session_iter)),
+            patch(
+                "waf_reporting.webhook_service.aiohttp.ClientSession",
+                side_effect=lambda: next(session_iter),
+            ),
             patch("waf_reporting.webhook_service.asyncio.sleep", new=AsyncMock()),
         ):
             with pytest.raises(WebhookDeliveryError):
@@ -305,7 +303,9 @@ class TestWebhookServiceDeliver:
             session_count["n"] += 1
             return session
 
-        with patch("waf_reporting.webhook_service.aiohttp.ClientSession", side_effect=_count_sessions):
+        with patch(
+            "waf_reporting.webhook_service.aiohttp.ClientSession", side_effect=_count_sessions
+        ):
             await service.deliver(
                 tenant_id=uuid.uuid4(),
                 assessment_id=uuid.uuid4(),

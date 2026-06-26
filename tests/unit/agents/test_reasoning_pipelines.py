@@ -30,8 +30,8 @@ from waf_shared.domain.models.finding import FindingStatus
 from waf_shared.domain.models.rule import EvaluationType, Pillar, WafRule
 from waf_shared.llm.provider import LLMResponse
 
-
 # ── Shared helpers ─────────────────────────────────────────────────────────────
+
 
 def _make_rule(
     *,
@@ -77,6 +77,7 @@ def _make_resource(raw_properties: dict[str, Any]) -> AssessmentResource:
 
 # ── DSL Evaluator tests ────────────────────────────────────────────────────────
 
+
 class TestDSLEvaluator:
     def test_length_gte_pass(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
@@ -101,26 +102,60 @@ class TestDSLEvaluator:
     def test_eq_operator(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        assert evaluate_condition("R", {"op": "eq", "path": "status", "value": "OK"}, {"status": "OK"}) is True
-        assert evaluate_condition("R", {"op": "eq", "path": "status", "value": "OK"}, {"status": "FAIL"}) is False
+        assert (
+            evaluate_condition("R", {"op": "eq", "path": "status", "value": "OK"}, {"status": "OK"})
+            is True
+        )
+        assert (
+            evaluate_condition(
+                "R", {"op": "eq", "path": "status", "value": "OK"}, {"status": "FAIL"}
+            )
+            is False
+        )
 
     def test_ne_operator(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        assert evaluate_condition("R", {"op": "ne", "path": "x", "value": "bad"}, {"x": "good"}) is True
-        assert evaluate_condition("R", {"op": "ne", "path": "x", "value": "bad"}, {"x": "bad"}) is False
+        assert (
+            evaluate_condition("R", {"op": "ne", "path": "x", "value": "bad"}, {"x": "good"})
+            is True
+        )
+        assert (
+            evaluate_condition("R", {"op": "ne", "path": "x", "value": "bad"}, {"x": "bad"})
+            is False
+        )
 
     def test_in_operator(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        assert evaluate_condition("R", {"op": "in", "path": "tier", "values": ["Standard", "Premium"]}, {"tier": "Standard"}) is True
-        assert evaluate_condition("R", {"op": "in", "path": "tier", "values": ["Standard", "Premium"]}, {"tier": "Basic"}) is False
+        assert (
+            evaluate_condition(
+                "R",
+                {"op": "in", "path": "tier", "values": ["Standard", "Premium"]},
+                {"tier": "Standard"},
+            )
+            is True
+        )
+        assert (
+            evaluate_condition(
+                "R",
+                {"op": "in", "path": "tier", "values": ["Standard", "Premium"]},
+                {"tier": "Basic"},
+            )
+            is False
+        )
 
     def test_not_in_operator(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        assert evaluate_condition("R", {"op": "not_in", "path": "t", "values": ["A", "B"]}, {"t": "C"}) is True
-        assert evaluate_condition("R", {"op": "not_in", "path": "t", "values": ["A", "B"]}, {"t": "A"}) is False
+        assert (
+            evaluate_condition("R", {"op": "not_in", "path": "t", "values": ["A", "B"]}, {"t": "C"})
+            is True
+        )
+        assert (
+            evaluate_condition("R", {"op": "not_in", "path": "t", "values": ["A", "B"]}, {"t": "A"})
+            is False
+        )
 
     def test_exists_operator(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
@@ -235,11 +270,18 @@ class TestDSLEvaluator:
     def test_gte_numeric_operator(self):
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        assert evaluate_condition("R", {"op": "gte", "path": "count", "value": 2}, {"count": 3}) is True
-        assert evaluate_condition("R", {"op": "gte", "path": "count", "value": 2}, {"count": 1}) is False
+        assert (
+            evaluate_condition("R", {"op": "gte", "path": "count", "value": 2}, {"count": 3})
+            is True
+        )
+        assert (
+            evaluate_condition("R", {"op": "gte", "path": "count", "value": 2}, {"count": 1})
+            is False
+        )
 
 
 # ── PropertyCompressor tests ───────────────────────────────────────────────────
+
 
 class TestPropertyCompressor:
     def test_compress_for_dsl_extracts_referenced_paths(self):
@@ -288,9 +330,17 @@ class TestPropertyCompressor:
         from waf_reasoning.property_compressor import PropertyCompressor
 
         c = PropertyCompressor()
-        small_props = {"id": "x", "name": "vm1", "type": "t", "location": "l",
-                       "resourceGroup": "rg", "subscriptionId": "s", "tenantId": "t2",
-                       "properties": {"a": "b"}, "tags": {"env": "prod"}}
+        small_props = {
+            "id": "x",
+            "name": "vm1",
+            "type": "t",
+            "location": "l",
+            "resourceGroup": "rg",
+            "subscriptionId": "s",
+            "tenantId": "t2",
+            "properties": {"a": "b"},
+            "tags": {"env": "prod"},
+        }
         result = c.compress_for_llm(small_props)
         assert "properties" in result
         assert "tags" in result
@@ -299,17 +349,25 @@ class TestPropertyCompressor:
         from waf_reasoning.property_compressor import PropertyCompressor
 
         c = PropertyCompressor()
-        props = {"id": "x", "name": "vm1", "type": "t", "location": "l",
-                 "resourceGroup": "rg", "subscriptionId": "s", "tenantId": "t2",
-                 "properties": {"thing": "val"},
-                 "tags": {"env": "prod"},
-                 "secret": "should-be-excluded"}
+        props = {
+            "id": "x",
+            "name": "vm1",
+            "type": "t",
+            "location": "l",
+            "resourceGroup": "rg",
+            "subscriptionId": "s",
+            "tenantId": "t2",
+            "properties": {"thing": "val"},
+            "tags": {"env": "prod"},
+            "secret": "should-be-excluded",
+        }
         result = c.compress_for_llm(props, relevant_paths=["properties", "tags"])
         assert "properties" in result
         assert "secret" not in result
 
 
 # ── DeterministicPipeline tests ────────────────────────────────────────────────
+
 
 class TestDeterministicPipeline:
     def _make_logger(self) -> MagicMock:
@@ -395,8 +453,12 @@ class TestDeterministicPipeline:
 
         pipeline = DeterministicPipeline(logger=self._make_logger())
         resource = _make_resource({"zones": [], "enabled": False})
-        rule1 = _make_rule(rule_id="REL-VM-001", condition_dsl={"op": "length_gte", "path": "zones", "value": 1})
-        rule2 = _make_rule(rule_id="REL-VM-002", condition_dsl={"op": "bool_eq", "path": "enabled", "value": True})
+        rule1 = _make_rule(
+            rule_id="REL-VM-001", condition_dsl={"op": "length_gte", "path": "zones", "value": 1}
+        )
+        rule2 = _make_rule(
+            rule_id="REL-VM-002", condition_dsl={"op": "bool_eq", "path": "enabled", "value": True}
+        )
 
         findings = pipeline.evaluate(
             resource=resource,
@@ -410,6 +472,7 @@ class TestDeterministicPipeline:
 
 # ── LLMPipeline tests ──────────────────────────────────────────────────────────
 
+
 class TestLLMPipeline:
     def _make_logger(self) -> MagicMock:
         log = MagicMock()
@@ -420,12 +483,14 @@ class TestLLMPipeline:
         return log
 
     def _make_llm_response(self, result: str, confidence: float = 0.9) -> LLMResponse:
-        content = json.dumps({
-            "result": result,
-            "confidence": confidence,
-            "evidence": "observed property X",
-            "recommendation": "fix it" if result != "PASS" else "",
-        })
+        content = json.dumps(
+            {
+                "result": result,
+                "confidence": confidence,
+                "evidence": "observed property X",
+                "recommendation": "fix it" if result != "PASS" else "",
+            }
+        )
         return LLMResponse(
             content=content,
             prompt_tokens=100,
@@ -677,10 +742,13 @@ class TestCrossPillarDSLConditions:
         """Azure returns null for non-zone VMs; eq(zones,[]) used to miss this."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "or", "conditions": [
-            {"op": "is_null", "path": "zones"},
-            {"op": "length_eq", "path": "zones", "value": 0},
-        ]}
+        dsl = {
+            "op": "or",
+            "conditions": [
+                {"op": "is_null", "path": "zones"},
+                {"op": "length_eq", "path": "zones", "value": 0},
+            ],
+        }
         assert evaluate_condition("REL-VM-001", dsl, {"zones": None}) is True
         assert evaluate_condition("REL-VM-001", dsl, {"zones": []}) is True
         assert evaluate_condition("REL-VM-001", dsl, {"zones": ["1"]}) is False
@@ -690,28 +758,44 @@ class TestCrossPillarDSLConditions:
         """VM with no zone AND no availability set should trigger."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "and", "conditions": [
-            {"op": "or", "conditions": [
-                {"op": "is_null", "path": "zones"},
-                {"op": "length_eq", "path": "zones", "value": 0},
-            ]},
-            {"op": "is_null", "path": "properties.availabilitySet"},
-        ]}
+        dsl = {
+            "op": "and",
+            "conditions": [
+                {
+                    "op": "or",
+                    "conditions": [
+                        {"op": "is_null", "path": "zones"},
+                        {"op": "length_eq", "path": "zones", "value": 0},
+                    ],
+                },
+                {"op": "is_null", "path": "properties.availabilitySet"},
+            ],
+        }
         assert evaluate_condition("REL-VM-002", dsl, {"zones": None, "properties": {}}) is True
-        assert evaluate_condition("REL-VM-002", dsl, {
-            "zones": None,
-            "properties": {"availabilitySet": {"id": "/sub/rg/avset1"}},
-        }) is False
+        assert (
+            evaluate_condition(
+                "REL-VM-002",
+                dsl,
+                {
+                    "zones": None,
+                    "properties": {"availabilitySet": {"id": "/sub/rg/avset1"}},
+                },
+            )
+            is False
+        )
         assert evaluate_condition("REL-VM-002", dsl, {"zones": ["1"], "properties": {}}) is False
 
     def test_rel_vmss_001_no_zones_fails(self):
         """VMSS without zones is not zone-redundant."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "or", "conditions": [
-            {"op": "is_null", "path": "zones"},
-            {"op": "length_eq", "path": "zones", "value": 0},
-        ]}
+        dsl = {
+            "op": "or",
+            "conditions": [
+                {"op": "is_null", "path": "zones"},
+                {"op": "length_eq", "path": "zones", "value": 0},
+            ],
+        }
         assert evaluate_condition("REL-VMSS-001", dsl, {"zones": None}) is True
         assert evaluate_condition("REL-VMSS-001", dsl, {"zones": ["1", "2", "3"]}) is False
 
@@ -745,24 +829,19 @@ class TestCrossPillarDSLConditions:
         """Deallocated VM detected via properties.extended.instanceView.powerState.code."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "eq", "path": "properties.extended.instanceView.powerState.code",
-               "value": "PowerState/deallocated"}
+        dsl = {
+            "op": "eq",
+            "path": "properties.extended.instanceView.powerState.code",
+            "value": "PowerState/deallocated",
+        }
         props_deallocated = {
             "properties": {
-                "extended": {
-                    "instanceView": {
-                        "powerState": {"code": "PowerState/deallocated"}
-                    }
-                }
+                "extended": {"instanceView": {"powerState": {"code": "PowerState/deallocated"}}}
             }
         }
         props_running = {
             "properties": {
-                "extended": {
-                    "instanceView": {
-                        "powerState": {"code": "PowerState/running"}
-                    }
-                }
+                "extended": {"instanceView": {"powerState": {"code": "PowerState/running"}}}
             }
         }
         assert evaluate_condition("CST-VM-001", dsl, props_deallocated) is True
@@ -776,9 +855,16 @@ class TestCrossPillarDSLConditions:
         dsl = {"op": "is_null", "path": "managedBy"}
         assert evaluate_condition("CST-DISK-001", dsl, {"managedBy": None}) is True
         assert evaluate_condition("CST-DISK-001", dsl, {}) is True
-        assert evaluate_condition("CST-DISK-001", dsl, {
-            "managedBy": "/subscriptions/abc/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm1"
-        }) is False
+        assert (
+            evaluate_condition(
+                "CST-DISK-001",
+                dsl,
+                {
+                    "managedBy": "/subscriptions/abc/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm1"
+                },
+            )
+            is False
+        )
 
     def test_cst_ip_001_unassociated_fails(self):
         """Public IP with no ipConfiguration is unassociated."""
@@ -786,17 +872,24 @@ class TestCrossPillarDSLConditions:
 
         dsl = {"op": "is_null", "path": "properties.ipConfiguration"}
         assert evaluate_condition("CST-IP-001", dsl, {"properties": {}}) is True
-        assert evaluate_condition("CST-IP-001", dsl, {
-            "properties": {"ipConfiguration": {"id": "/sub/rg/ip/config1"}}
-        }) is False
+        assert (
+            evaluate_condition(
+                "CST-IP-001", dsl, {"properties": {"ipConfiguration": {"id": "/sub/rg/ip/config1"}}}
+            )
+            is False
+        )
 
     def test_cst_stor_001_hot_tier_fails(self):
         """Storage account on Hot tier flagged for cost review."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
         dsl = {"op": "eq", "path": "properties.accessTier", "value": "Hot"}
-        assert evaluate_condition("CST-STOR-001", dsl, {"properties": {"accessTier": "Hot"}}) is True
-        assert evaluate_condition("CST-STOR-001", dsl, {"properties": {"accessTier": "Cool"}}) is False
+        assert (
+            evaluate_condition("CST-STOR-001", dsl, {"properties": {"accessTier": "Hot"}}) is True
+        )
+        assert (
+            evaluate_condition("CST-STOR-001", dsl, {"properties": {"accessTier": "Cool"}}) is False
+        )
 
     # ── Operational Excellence ─────────────────────────────────────────────────
 
@@ -804,39 +897,66 @@ class TestCrossPillarDSLConditions:
         """Resource without Environment tag triggers OE finding."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "or", "conditions": [
-            {"op": "is_null", "path": "tags.Environment"},
-            {"op": "is_null", "path": "tags.Owner"},
-        ]}
+        dsl = {
+            "op": "or",
+            "conditions": [
+                {"op": "is_null", "path": "tags.Environment"},
+                {"op": "is_null", "path": "tags.Owner"},
+            ],
+        }
         assert evaluate_condition("OPS-TAG-001", dsl, {"tags": {}}) is True
         assert evaluate_condition("OPS-TAG-001", dsl, {"tags": {"Environment": "prod"}}) is True
-        assert evaluate_condition("OPS-TAG-001", dsl, {
-            "tags": {"Environment": "prod", "Owner": "team@corp.com"}
-        }) is False
+        assert (
+            evaluate_condition(
+                "OPS-TAG-001", dsl, {"tags": {"Environment": "prod", "Owner": "team@corp.com"}}
+            )
+            is False
+        )
 
     def test_ops_kv_001_short_retention_fails(self):
         """KV with short soft-delete retention triggers OE finding."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "or", "conditions": [
-            {"op": "is_null", "path": "properties.softDeleteRetentionInDays"},
-            {"op": "lt", "path": "properties.softDeleteRetentionInDays", "value": 14},
-        ]}
-        assert evaluate_condition("OPS-KV-001", dsl, {"properties": {"softDeleteRetentionInDays": 7}}) is True
+        dsl = {
+            "op": "or",
+            "conditions": [
+                {"op": "is_null", "path": "properties.softDeleteRetentionInDays"},
+                {"op": "lt", "path": "properties.softDeleteRetentionInDays", "value": 14},
+            ],
+        }
+        assert (
+            evaluate_condition("OPS-KV-001", dsl, {"properties": {"softDeleteRetentionInDays": 7}})
+            is True
+        )
         assert evaluate_condition("OPS-KV-001", dsl, {"properties": {}}) is True
-        assert evaluate_condition("OPS-KV-001", dsl, {"properties": {"softDeleteRetentionInDays": 90}}) is False
+        assert (
+            evaluate_condition("OPS-KV-001", dsl, {"properties": {"softDeleteRetentionInDays": 90}})
+            is False
+        )
 
     def test_ops_app_002_remote_debugging_fails(self):
         """Remote debugging enabled in production is an OE violation."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "bool_eq", "path": "properties.siteConfig.remoteDebuggingEnabled", "value": True}
-        assert evaluate_condition("OPS-APP-002", dsl, {
-            "properties": {"siteConfig": {"remoteDebuggingEnabled": True}}
-        }) is True
-        assert evaluate_condition("OPS-APP-002", dsl, {
-            "properties": {"siteConfig": {"remoteDebuggingEnabled": False}}
-        }) is False
+        dsl = {
+            "op": "bool_eq",
+            "path": "properties.siteConfig.remoteDebuggingEnabled",
+            "value": True,
+        }
+        assert (
+            evaluate_condition(
+                "OPS-APP-002", dsl, {"properties": {"siteConfig": {"remoteDebuggingEnabled": True}}}
+            )
+            is True
+        )
+        assert (
+            evaluate_condition(
+                "OPS-APP-002",
+                dsl,
+                {"properties": {"siteConfig": {"remoteDebuggingEnabled": False}}},
+            )
+            is False
+        )
 
     # ── Performance Efficiency ─────────────────────────────────────────────────
 
@@ -846,41 +966,62 @@ class TestCrossPillarDSLConditions:
 
         dsl = {"op": "is_null", "path": "properties.proximityPlacementGroup"}
         assert evaluate_condition("PER-VM-003", dsl, {"properties": {}}) is True
-        assert evaluate_condition("PER-VM-003", dsl, {
-            "properties": {"proximityPlacementGroup": {"id": "/sub/rg/ppg1"}}
-        }) is False
+        assert (
+            evaluate_condition(
+                "PER-VM-003",
+                dsl,
+                {"properties": {"proximityPlacementGroup": {"id": "/sub/rg/ppg1"}}},
+            )
+            is False
+        )
 
     def test_per_app_002_no_http2_fails(self):
         """App Service without HTTP/2 has suboptimal performance."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
-        dsl = {"op": "not", "condition": {"op": "bool_eq", "path": "properties.siteConfig.http20Enabled", "value": True}}
-        assert evaluate_condition("PER-APP-002", dsl, {
-            "properties": {"siteConfig": {"http20Enabled": False}}
-        }) is True
-        assert evaluate_condition("PER-APP-002", dsl, {
-            "properties": {"siteConfig": {"http20Enabled": True}}
-        }) is False
+        dsl = {
+            "op": "not",
+            "condition": {
+                "op": "bool_eq",
+                "path": "properties.siteConfig.http20Enabled",
+                "value": True,
+            },
+        }
+        assert (
+            evaluate_condition(
+                "PER-APP-002", dsl, {"properties": {"siteConfig": {"http20Enabled": False}}}
+            )
+            is True
+        )
+        assert (
+            evaluate_condition(
+                "PER-APP-002", dsl, {"properties": {"siteConfig": {"http20Enabled": True}}}
+            )
+            is False
+        )
 
     def test_per_app_003_arr_affinity_fails(self):
         """ARR affinity prevents true horizontal scaling."""
         from waf_reasoning.dsl_evaluator import evaluate_condition
 
         dsl = {"op": "bool_eq", "path": "properties.clientAffinityEnabled", "value": True}
-        assert evaluate_condition("PER-APP-003", dsl, {
-            "properties": {"clientAffinityEnabled": True}
-        }) is True
-        assert evaluate_condition("PER-APP-003", dsl, {
-            "properties": {"clientAffinityEnabled": False}
-        }) is False
+        assert (
+            evaluate_condition("PER-APP-003", dsl, {"properties": {"clientAffinityEnabled": True}})
+            is True
+        )
+        assert (
+            evaluate_condition("PER-APP-003", dsl, {"properties": {"clientAffinityEnabled": False}})
+            is False
+        )
 
     # ── Multi-pillar finding simulation ────────────────────────────────────────
 
     def test_deterministic_pipeline_all_five_pillars(self):
         """DeterministicPipeline produces findings across all 5 WAF pillars
         when given one rule per pillar and resource properties that fail each check."""
-        from waf_reasoning.deterministic_pipeline import DeterministicPipeline
         from unittest.mock import MagicMock
+
+        from waf_reasoning.deterministic_pipeline import DeterministicPipeline
 
         log = MagicMock()
         log.bind = MagicMock(return_value=log)
@@ -907,20 +1048,44 @@ class TestCrossPillarDSLConditions:
             )
 
         rules = [
-            _rule("SEC-VM-001", "security", {"op": "is_null", "path": "properties.storageProfile.osDisk.encryptionSettings"}),
-            _rule("REL-VM-001", "reliability", {"op": "or", "conditions": [{"op": "is_null", "path": "zones"}, {"op": "length_eq", "path": "zones", "value": 0}]}),
+            _rule(
+                "SEC-VM-001",
+                "security",
+                {"op": "is_null", "path": "properties.storageProfile.osDisk.encryptionSettings"},
+            ),
+            _rule(
+                "REL-VM-001",
+                "reliability",
+                {
+                    "op": "or",
+                    "conditions": [
+                        {"op": "is_null", "path": "zones"},
+                        {"op": "length_eq", "path": "zones", "value": 0},
+                    ],
+                },
+            ),
             _rule("CST-DISK-001", "cost_optimization", {"op": "is_null", "path": "managedBy"}),
-            _rule("OPS-TAG-001", "operational_excellence", {"op": "is_null", "path": "tags.Environment"}),
-            _rule("PER-VM-003", "performance_efficiency", {"op": "is_null", "path": "properties.proximityPlacementGroup"}),
+            _rule(
+                "OPS-TAG-001",
+                "operational_excellence",
+                {"op": "is_null", "path": "tags.Environment"},
+            ),
+            _rule(
+                "PER-VM-003",
+                "performance_efficiency",
+                {"op": "is_null", "path": "properties.proximityPlacementGroup"},
+            ),
         ]
 
-        resource = _make_resource({
-            "zones": None,
-            "managedBy": None,
-            "tags": {},
-            "properties": {},
-            "identity": None,
-        })
+        resource = _make_resource(
+            {
+                "zones": None,
+                "managedBy": None,
+                "tags": {},
+                "properties": {},
+                "identity": None,
+            }
+        )
 
         findings = pipeline.evaluate(
             resource=resource,

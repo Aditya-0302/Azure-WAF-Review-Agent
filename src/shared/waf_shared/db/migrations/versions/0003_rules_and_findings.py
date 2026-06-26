@@ -64,9 +64,7 @@ def upgrade() -> None:
         )
     """)
     # Partial index: only index active rules to keep the index small and fast.
-    op.execute(
-        "CREATE INDEX idx_rules_pillar ON waf_rules(pillar) WHERE is_active"
-    )
+    op.execute("CREATE INDEX idx_rules_pillar ON waf_rules(pillar) WHERE is_active")
     # Partial GIN index on the TEXT[] array column for containment queries.
     op.execute(
         "CREATE INDEX idx_rules_resource_types ON waf_rules USING GIN(resource_types) WHERE is_active"
@@ -96,18 +94,10 @@ def upgrade() -> None:
             created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
     """)
-    op.execute(
-        "CREATE INDEX idx_findings_assessment_id ON assessment_findings(assessment_id)"
-    )
-    op.execute(
-        "CREATE INDEX idx_findings_tenant_pillar ON assessment_findings(tenant_id, pillar)"
-    )
-    op.execute(
-        "CREATE INDEX idx_findings_severity ON assessment_findings(severity)"
-    )
-    op.execute(
-        "CREATE INDEX idx_findings_resource_id ON assessment_findings(resource_id)"
-    )
+    op.execute("CREATE INDEX idx_findings_assessment_id ON assessment_findings(assessment_id)")
+    op.execute("CREATE INDEX idx_findings_tenant_pillar ON assessment_findings(tenant_id, pillar)")
+    op.execute("CREATE INDEX idx_findings_severity ON assessment_findings(severity)")
+    op.execute("CREATE INDEX idx_findings_resource_id ON assessment_findings(resource_id)")
 
     # ── Row-Level Security ────────────────────────────────────────────────────
     op.execute("ALTER TABLE assessment_findings ENABLE ROW LEVEL SECURITY")

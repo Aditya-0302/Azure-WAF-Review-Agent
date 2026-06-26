@@ -54,7 +54,7 @@ class RuleCoverageReport:
         return self.missing_count == 0
 
 
-def validate_catalog_startup(catalog: "WafCatalog") -> None:
+def validate_catalog_startup(catalog: WafCatalog) -> None:
     """Validate that the catalog is structurally sound and integrity-clean.
 
     Reuses the existing ``validate_catalog()`` from validator.py — which checks
@@ -86,7 +86,7 @@ def validate_catalog_startup(catalog: "WafCatalog") -> None:
 
 
 def build_coverage_report(
-    catalog: "WafCatalog",
+    catalog: WafCatalog,
     rule_ids: list[str],
 ) -> RuleCoverageReport:
     """Build a per-rule coverage report against the catalog mapping.
@@ -104,11 +104,13 @@ def build_coverage_report(
 
     for rule_id in sorted(rule_ids):
         codes = catalog.get_codes_for_rule(rule_id)
-        entries.append(RuleCoverageEntry(
-            rule_id=rule_id,
-            is_mapped=rule_id in mapped_ids,
-            waf_codes=codes,
-        ))
+        entries.append(
+            RuleCoverageEntry(
+                rule_id=rule_id,
+                is_mapped=rule_id in mapped_ids,
+                waf_codes=codes,
+            )
+        )
 
     total = len(rule_ids)
     missing = [e.rule_id for e in entries if not e.is_mapped]

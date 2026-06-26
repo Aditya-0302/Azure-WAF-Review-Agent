@@ -69,6 +69,7 @@ def evaluate_condition(
 
 # ── Internal evaluator ─────────────────────────────────────────────────────────
 
+
 def _eval(node: dict[str, Any], props: dict[str, Any]) -> bool:
     if not isinstance(node, dict):
         raise DSLValidationError("unknown", "DSL condition must be a JSON object")
@@ -134,19 +135,19 @@ def _eval(node: dict[str, Any], props: dict[str, Any]) -> bool:
 
     if op == "gt":
         target = node.get("value")
-        return isinstance(val, (int, float)) and val > target  # type: ignore[operator]
+        return isinstance(val, int | float) and val > target  # type: ignore[operator]
 
     if op == "gte":
         target = node.get("value")
-        return isinstance(val, (int, float)) and val >= target  # type: ignore[operator]
+        return isinstance(val, int | float) and val >= target  # type: ignore[operator]
 
     if op == "lt":
         target = node.get("value")
-        return isinstance(val, (int, float)) and val < target  # type: ignore[operator]
+        return isinstance(val, int | float) and val < target  # type: ignore[operator]
 
     if op == "lte":
         target = node.get("value")
-        return isinstance(val, (int, float)) and val <= target  # type: ignore[operator]
+        return isinstance(val, int | float) and val <= target  # type: ignore[operator]
 
     if op == "contains":
         target = node.get("value", "")
@@ -168,20 +169,21 @@ def _eval(node: dict[str, Any], props: dict[str, Any]) -> bool:
 
     if op == "length_eq":
         n = node.get("value")
-        return isinstance(val, (list, str, dict)) and len(val) == n  # type: ignore[arg-type]
+        return isinstance(val, list | str | dict) and len(val) == n  # type: ignore[arg-type]
 
     if op == "length_gte":
         n = node.get("value")
-        return isinstance(val, (list, str, dict)) and len(val) >= n  # type: ignore[operator]
+        return isinstance(val, list | str | dict) and len(val) >= n  # type: ignore[operator]
 
     if op == "length_lte":
         n = node.get("value")
-        return isinstance(val, (list, str, dict)) and len(val) <= n  # type: ignore[operator]
+        return isinstance(val, list | str | dict) and len(val) <= n  # type: ignore[operator]
 
     raise DSLValidationError("unknown", f"unknown DSL operator '{op}'")
 
 
 # ── Path resolution ────────────────────────────────────────────────────────────
+
 
 def _resolve_path(path: str, obj: Any) -> Any:
     """Traverse a dot-separated path into a nested dict.
@@ -207,6 +209,7 @@ def _resolve_path(path: str, obj: Any) -> Any:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _require_str(node: dict[str, Any], key: str) -> str:
     val = node.get(key)

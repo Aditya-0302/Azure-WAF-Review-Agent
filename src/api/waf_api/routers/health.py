@@ -19,11 +19,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from waf_shared.db.pool import DatabasePool
-from waf_shared.telemetry.logging import StructuredLogger
-
 from waf_api.config import Settings
 from waf_api.dependencies.db import get_db_pool
+from waf_shared.db.pool import DatabasePool
+from waf_shared.telemetry.logging import StructuredLogger
 
 router = APIRouter(tags=["health"])
 
@@ -41,6 +40,7 @@ class ReadinessResponse(BaseModel):
 
 def _get_settings() -> Settings:
     from waf_api.main import _settings  # module-level singleton
+
     return _settings
 
 

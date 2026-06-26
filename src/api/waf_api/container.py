@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dependency_injector import containers, providers
 
+from waf_api.config import Settings
 from waf_shared.auth.auth_service import AuthenticationService
 from waf_shared.auth.config import (
     AuthMode,
@@ -25,8 +26,6 @@ from waf_shared.discovery.config import DiscoveryConfig
 from waf_shared.discovery.metrics import DiscoveryMetrics
 from waf_shared.telemetry.logging import StructuredLogger
 from waf_shared.telemetry.metrics import WafMetrics
-
-from waf_api.config import Settings
 
 
 def _create_discovery_service(
@@ -55,9 +54,7 @@ def _build_platform_auth_config(settings: Settings) -> PlatformAuthConfig:
 
     return PlatformAuthConfig(
         mode=mode,
-        managed_identity=ManagedIdentityConfig(
-            client_id=settings.azure_client_id or None
-        ),
+        managed_identity=ManagedIdentityConfig(client_id=settings.azure_client_id or None),
         service_principal=sp_config,
     )
 

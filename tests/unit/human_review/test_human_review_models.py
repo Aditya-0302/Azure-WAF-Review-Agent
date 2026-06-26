@@ -29,6 +29,7 @@ _REVIEW_ID = uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 
 # ── HumanReviewQuestion ───────────────────────────────────────────────────────
 
+
 class TestHumanReviewQuestion:
     def test_boolean_question(self):
         q = HumanReviewQuestion(
@@ -81,6 +82,7 @@ class TestHumanReviewQuestion:
 
 # ── HumanReviewControl ────────────────────────────────────────────────────────
 
+
 class TestHumanReviewControl:
     def _make(self) -> HumanReviewControl:
         return HumanReviewControl(
@@ -116,6 +118,7 @@ class TestHumanReviewControl:
 
 # ── ReviewAnswer ───────────────────────────────────────────────────────────────
 
+
 class TestReviewAnswer:
     def test_boolean_answer(self):
         a = ReviewAnswer(question_id="se10-q1", answer=True)
@@ -135,6 +138,7 @@ class TestReviewAnswer:
 
 
 # ── EvidenceReference ─────────────────────────────────────────────────────────
+
 
 class TestEvidenceReference:
     def test_creates_pdf_evidence(self):
@@ -158,6 +162,7 @@ class TestEvidenceReference:
 
 
 # ── HumanReviewAssessment ─────────────────────────────────────────────────────
+
 
 class TestHumanReviewAssessment:
     def _make(self, **overrides) -> HumanReviewAssessment:
@@ -243,6 +248,7 @@ class TestHumanReviewAssessment:
 
 # ── HumanReviewSummary ────────────────────────────────────────────────────────
 
+
 class TestHumanReviewSummary:
     def test_zero_reviews_gives_93_percent_total(self):
         summary = HumanReviewSummary(
@@ -319,6 +325,7 @@ class TestHumanReviewSummary:
 
 # ── ReviewStatus enum ─────────────────────────────────────────────────────────
 
+
 class TestReviewStatus:
     def test_all_values_exist(self):
         assert ReviewStatus.PENDING == "pending"
@@ -332,6 +339,7 @@ class TestReviewStatus:
 
 
 # ── ComplianceStatus enum ─────────────────────────────────────────────────────
+
 
 class TestComplianceStatus:
     def test_all_values_exist(self):

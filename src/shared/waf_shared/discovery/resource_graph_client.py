@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import re
 import time
-import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -77,11 +76,11 @@ class AzureResourceGraphClient:
             # Bind current loop state into default arguments so each iteration's
             # closure is independent even when with_azure_retry retries.
             async def _do_query(
-                _cred=credential,
-                _subs=subscription_ids,
-                _q=kql,
-                _ps=page_size,
-                _st=skip_token,
+                _cred: AsyncTokenCredential = credential,
+                _subs: list[str] = subscription_ids,
+                _q: str = kql,
+                _ps: int = page_size,
+                _st: str | None = skip_token,
             ) -> Any:
                 _logger.info(
                     "discovery.resource_graph.credential_type",
@@ -114,12 +113,8 @@ class AzureResourceGraphClient:
             except ResourceDiscoveryError:
                 raise
             except Exception as exc:
-                self._metrics.api_errors.add(
-                    1, {"service": "resource_graph", "operation": "query"}
-                )
-                raise ResourceDiscoveryError(
-                    service="ResourceGraph", reason=str(exc)
-                ) from exc
+                self._metrics.api_errors.add(1, {"service": "resource_graph", "operation": "query"})
+                raise ResourceDiscoveryError(service="ResourceGraph", reason=str(exc)) from exc
             finally:
                 self._metrics.api_call_duration.record(
                     time.perf_counter() - t0, {"service": "resource_graph"}
@@ -153,9 +148,7 @@ class AzureResourceGraphClient:
     ) -> list[dict[str, Any]]:
         """Collect all pages and return a single flat list."""
         results: list[dict[str, Any]] = []
-        async for page in self.query_pages(
-            credential, subscription_ids, kql, page_size=page_size
-        ):
+        async for page in self.query_pages(credential, subscription_ids, kql, page_size=page_size):
             results.extend(page)
         return results
 
@@ -195,11 +188,13 @@ class AzureResourceGraphClient:
             raise ResourceDiscoveryError(
                 service="ResourceGraph",
                 reason=f"Refusing to query {len(invalid)} resource IDs that do not match "
-                       f"the ARM resource ID format: {invalid[:3]}",
+                f"the ARM resource ID format: {invalid[:3]}",
             )
 
         # Single-quote each ID; ARM IDs should not contain quotes, but escape anyway.
-        id_literals = ", ".join(f"'{rid.replace(chr(39), chr(39) + chr(39))}'" for rid in resource_ids)
+        id_literals = ", ".join(
+            f"'{rid.replace(chr(39), chr(39) + chr(39))}'" for rid in resource_ids
+        )
         kql = (
             f"Resources\n"
             f"| where id in~ ({id_literals})\n"

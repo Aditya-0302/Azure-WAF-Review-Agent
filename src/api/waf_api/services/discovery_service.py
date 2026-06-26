@@ -77,11 +77,9 @@ class DiscoveryService:
         discovers subscription metadata, resource groups, resources, and
         (optionally) Advisor recommendations.
         """
-        credential: AsyncTokenCredential = (
-            await self._auth.get_subscription_credential(
-                subscription_id=subscription_id,
-                keyvault_secret_name=keyvault_secret_name,
-            )
+        credential: AsyncTokenCredential = await self._auth.get_subscription_credential(
+            subscription_id=subscription_id,
+            keyvault_secret_name=keyvault_secret_name,
         )
 
         _logger.info(
@@ -99,9 +97,7 @@ class DiscoveryService:
         ]
 
         if include_advisor:
-            base_tasks.append(
-                self._advisor_svc.list_recommendations(credential, subscription_id)
-            )
+            base_tasks.append(self._advisor_svc.list_recommendations(credential, subscription_id))
 
         results = await asyncio.gather(*base_tasks, return_exceptions=False)
 

@@ -30,6 +30,18 @@ from typing import Any
 
 from azure.servicebus.aio import ServiceBusClient
 from azure.servicebus.exceptions import ServiceBusError
+from waf_catalog.catalog import WafCatalog
+from waf_catalog.startup import (
+    CatalogStartupError,
+    build_coverage_report,
+    format_coverage_failure,
+    validate_catalog_startup,
+)
+from waf_reasoning.config import ReasoningConfig
+from waf_reasoning.deterministic_pipeline import DeterministicPipeline
+from waf_reasoning.handler import ReasoningHandler
+from waf_reasoning.llm_pipeline import LLMPipeline
+from waf_reasoning.property_compressor import PropertyCompressor
 
 from waf_shared.auth.config import AuthMode, PlatformAuthConfig
 from waf_shared.auth.credential_provider import (
@@ -47,21 +59,9 @@ from waf_shared.messaging.queue_names import REASONING_REQUESTED
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.runtime.signals import install_signal_handlers
 from waf_shared.telemetry.logging import StructuredLogger, configure_structlog
-from waf_catalog.catalog import WafCatalog
-from waf_catalog.startup import (
-    CatalogStartupError,
-    build_coverage_report,
-    format_coverage_failure,
-    validate_catalog_startup,
-)
-from waf_reasoning.config import ReasoningConfig
-from waf_reasoning.deterministic_pipeline import DeterministicPipeline
-from waf_reasoning.handler import ReasoningHandler
-from waf_reasoning.llm_pipeline import LLMPipeline
-from waf_reasoning.property_compressor import PropertyCompressor
 
-_LOCK_RENEWAL_INTERVAL = 30    # seconds; must be < Service Bus lock duration (default 60 s)
-_RECEIVE_TIMEOUT = 5.0         # max seconds to wait for next message before re-checking stop
+_LOCK_RENEWAL_INTERVAL = 30  # seconds; must be < Service Bus lock duration (default 60 s)
+_RECEIVE_TIMEOUT = 5.0  # max seconds to wait for next message before re-checking stop
 
 
 async def main() -> None:
@@ -105,11 +105,7 @@ async def main() -> None:
     llm_provider = create_llm_provider(
         provider=config.llm_provider,
         # Gemini
-        gemini_api_key=(
-            config.gemini_api_key.get_secret_value()
-            if config.gemini_api_key
-            else ""
-        ),
+        gemini_api_key=(config.gemini_api_key.get_secret_value() if config.gemini_api_key else ""),
         gemini_chat_model=config.gemini_chat_model,
         # Azure OpenAI
         azure_openai_endpoint=config.azure_openai_endpoint,
@@ -257,9 +253,7 @@ async def _process_one(
     msg: Any,
     logger: StructuredLogger,
 ) -> None:
-    renewal_task = asyncio.create_task(
-        _renew_lock_periodically(receiver, msg, logger)
-    )
+    renewal_task = asyncio.create_task(_renew_lock_periodically(receiver, msg, logger))
     try:
         body = b"".join(msg.body)
         await handler.process(body)

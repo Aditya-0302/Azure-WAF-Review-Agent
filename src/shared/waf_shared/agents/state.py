@@ -124,9 +124,7 @@ class WorkflowCheckpoint(BaseModel):
 
 
 def _raise_frozen_attr_error(self: object, name: str, value: object) -> None:
-    raise AttributeError(
-        f"'{type(self).__name__}' object attribute '{name}' is read-only"
-    )
+    raise AttributeError(f"'{type(self).__name__}' object attribute '{name}' is read-only")
 
 
 StageState.__setattr__ = _raise_frozen_attr_error  # type: ignore[method-assign]

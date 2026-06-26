@@ -6,20 +6,31 @@ import json
 from pathlib import Path
 
 import pytest
-
 from waf_catalog.catalog import WafCatalog
-from waf_catalog.traceability import TraceabilityEntry, build_traceability_matrix, matrix_to_dict
+from waf_catalog.traceability import build_traceability_matrix, matrix_to_dict
 
 _CONTROLS = [
     {
-        "code": "SE-07", "pillar": "Security", "title": "Protect secrets",
-        "description": ".", "microsoft_url": "https://example.com/SE-07",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "SE-07",
+        "pillar": "Security",
+        "title": "Protect secrets",
+        "description": ".",
+        "microsoft_url": "https://example.com/SE-07",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
     {
-        "code": "RE-02", "pillar": "Reliability", "title": "Design for redundancy",
-        "description": ".", "microsoft_url": "https://example.com/RE-02",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "RE-02",
+        "pillar": "Reliability",
+        "title": "Design for redundancy",
+        "description": ".",
+        "microsoft_url": "https://example.com/RE-02",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
 ]
 
@@ -97,7 +108,16 @@ class TestBuildTraceabilityMatrix:
         assert "aaaaaaaa-0000-0000-0000-000000000001" in ids
 
     def test_finding_id_from_alternate_key(self, catalog: WafCatalog) -> None:
-        findings = [{"finding_id": "test-123", "rule_id": "SEC-KV-001", "resource_id": "r", "resource_type": "t", "pillar": "security", "severity": "low"}]
+        findings = [
+            {
+                "finding_id": "test-123",
+                "rule_id": "SEC-KV-001",
+                "resource_id": "r",
+                "resource_type": "t",
+                "pillar": "security",
+                "severity": "low",
+            }
+        ]
         matrix = build_traceability_matrix(catalog, findings)
         assert matrix[0].finding_id == "test-123"
 

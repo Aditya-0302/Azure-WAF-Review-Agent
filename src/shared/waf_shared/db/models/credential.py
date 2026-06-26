@@ -12,7 +12,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from waf_shared.db.models.base import Base, TimestampMixin
 
 _credential_health = sa.Enum(
-    "healthy", "expiring_soon", "expired", "invalid", "unchecked",
+    "healthy",
+    "expiring_soon",
+    "expired",
+    "invalid",
+    "unchecked",
     name="credential_health",
     create_type=False,
 )

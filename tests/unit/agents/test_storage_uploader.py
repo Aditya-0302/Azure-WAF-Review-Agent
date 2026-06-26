@@ -7,11 +7,10 @@ value, and error wrapping.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from waf_reporting.storage_uploader import StorageUploadError, StorageUploader
+from waf_reporting.storage_uploader import StorageUploader, StorageUploadError
 
 
 def _make_uploader() -> tuple[StorageUploader, MagicMock]:
@@ -109,9 +108,9 @@ class TestStorageUploaderErrorHandling:
     async def test_storage_error_wrapped_in_storage_upload_error(self) -> None:
         _, container = _make_uploader()
         container.upload_blob = AsyncMock(side_effect=Exception("network timeout"))
-        uploader = StorageUploader(blob_service_client=MagicMock(
-            get_container_client=MagicMock(return_value=container)
-        ))
+        uploader = StorageUploader(
+            blob_service_client=MagicMock(get_container_client=MagicMock(return_value=container))
+        )
 
         with pytest.raises(StorageUploadError) as exc_info:
             await uploader.upload_report(
@@ -127,9 +126,9 @@ class TestStorageUploaderErrorHandling:
         """Error messages must not inadvertently expose SAS tokens."""
         _, container = _make_uploader()
         container.upload_blob = AsyncMock(side_effect=Exception("sig=abc123&se=2024-01-01"))
-        uploader = StorageUploader(blob_service_client=MagicMock(
-            get_container_client=MagicMock(return_value=container)
-        ))
+        uploader = StorageUploader(
+            blob_service_client=MagicMock(get_container_client=MagicMock(return_value=container))
+        )
 
         with pytest.raises(StorageUploadError) as exc_info:
             await uploader.upload_report(

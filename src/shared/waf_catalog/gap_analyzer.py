@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from waf_catalog.catalog import WafCatalog, WafControl
+    from waf_catalog.catalog import WafCatalog
 
 
 @dataclass
@@ -78,11 +78,12 @@ class GapReport:
     def write_json(self, path: str) -> None:
         import json
         from pathlib import Path
+
         Path(path).write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
 
 
 def compute_gaps(
-    catalog: "WafCatalog",
+    catalog: WafCatalog,
     active_rule_ids: set[str],
 ) -> GapReport:
     """Identify WAF controls with no rule implementation and rules with no catalog mapping.
@@ -103,12 +104,14 @@ def compute_gaps(
         ctrl = catalog.get_control(code)
         if ctrl is None:
             continue
-        unmapped_controls.append(ControlGap(
-            code=ctrl.code,
-            pillar=ctrl.pillar,
-            title=ctrl.title,
-            microsoft_url=ctrl.microsoft_url,
-        ))
+        unmapped_controls.append(
+            ControlGap(
+                code=ctrl.code,
+                pillar=ctrl.pillar,
+                title=ctrl.title,
+                microsoft_url=ctrl.microsoft_url,
+            )
+        )
 
     catalog_mapped_rule_ids = catalog.get_mapped_rule_ids()
     unmapped_rule_ids = active_rule_ids - catalog_mapped_rule_ids

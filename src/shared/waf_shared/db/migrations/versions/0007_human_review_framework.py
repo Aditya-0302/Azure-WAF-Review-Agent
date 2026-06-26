@@ -22,10 +22,10 @@ All JSONB columns (answers, evidence_refs) default to empty arrays so that
 existing assessment rows are unaffected by this migration.
 """
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
+from alembic import op
 from sqlalchemy.dialects.postgresql import ENUM as PgEnum
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0007"
 down_revision = "0006"

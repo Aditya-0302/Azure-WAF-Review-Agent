@@ -41,7 +41,7 @@ def create_llm_provider(
     azure_openai_deployment_chat: str = "",
     azure_openai_api_key: str | None = None,
     azure_openai_credential: Any | None = None,
-) -> "LLMProvider":
+) -> LLMProvider:
     """Instantiate and return the configured LLM provider.
 
     Args:
@@ -77,13 +77,9 @@ def create_llm_provider(
 
     if p == "azure":
         if not azure_openai_endpoint:
-            raise ValueError(
-                "AZURE_OPENAI_ENDPOINT is required when LLM_PROVIDER=azure"
-            )
+            raise ValueError("AZURE_OPENAI_ENDPOINT is required when LLM_PROVIDER=azure")
         if not azure_openai_deployment_chat:
-            raise ValueError(
-                "AZURE_OPENAI_DEPLOYMENT_CHAT is required when LLM_PROVIDER=azure"
-            )
+            raise ValueError("AZURE_OPENAI_DEPLOYMENT_CHAT is required when LLM_PROVIDER=azure")
         if azure_openai_api_key is None and azure_openai_credential is None:
             raise ValueError(
                 "Either AZURE_OPENAI_API_KEY or a credential must be provided "

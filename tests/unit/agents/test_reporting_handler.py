@@ -7,20 +7,19 @@ fully mocked so these tests run without any Azure or database services.
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from waf_reporting.aggregator import AggregatedReport, FindingAggregator, PillarSummary
 from waf_reporting.excel_generator import ExcelGenerator
 from waf_reporting.handler import ReportingHandler
 from waf_reporting.pdf_generator import PdfGenerator
 from waf_reporting.storage_uploader import StorageUploader
 from waf_reporting.webhook_service import WebhookDeliveryError, WebhookService
+
 from waf_shared.db.repositories.human_review_repository import HumanReviewRepository
 from waf_shared.domain.events.assessment_events import ReportingRequestedEvent
 from waf_shared.domain.events.base import CloudEventEnvelope
@@ -237,6 +236,7 @@ def _build_handler(
 
 # ── Happy path ────────────────────────────────────────────────────────────────
 
+
 class TestReportingHandlerHappyPath:
     @pytest.mark.asyncio
     async def test_full_pipeline_no_webhook(self) -> None:
@@ -314,6 +314,7 @@ class TestReportingHandlerHappyPath:
 
 # ── Status guard ──────────────────────────────────────────────────────────────
 
+
 class TestReportingHandlerStatusGuard:
     @pytest.mark.asyncio
     async def test_skips_if_assessment_not_found(self) -> None:
@@ -343,15 +344,14 @@ class TestReportingHandlerStatusGuard:
     @pytest.mark.asyncio
     async def test_skips_if_not_reporting_status(self) -> None:
         """Handler must skip if assessment is in REASONING (wrong status)."""
-        handler, mocks = _build_handler(
-            assessment=_make_assessment(AssessmentStatus.REASONING)
-        )
+        handler, mocks = _build_handler(assessment=_make_assessment(AssessmentStatus.REASONING))
         await handler.process(_make_raw_event())
 
         mocks["aggregator"].aggregate.assert_not_called()
 
 
 # ── Webhook failure isolation ─────────────────────────────────────────────────
+
 
 class TestReportingHandlerWebhookIsolation:
     @pytest.mark.asyncio
@@ -412,6 +412,7 @@ class TestReportingHandlerWebhookIsolation:
 
 # ── Finding pagination ────────────────────────────────────────────────────────
 
+
 class TestReportingHandlerPagination:
     @pytest.mark.asyncio
     async def test_paginated_findings_merged(self) -> None:
@@ -420,9 +421,7 @@ class TestReportingHandlerPagination:
         page2 = [_make_finding() for _ in range(3)]
 
         handler, mocks = _build_handler(webhook_endpoint=None)
-        mocks["finding_repo"].list_by_assessment = AsyncMock(
-            side_effect=[page1, page2, []]
-        )
+        mocks["finding_repo"].list_by_assessment = AsyncMock(side_effect=[page1, page2, []])
 
         await handler.process(_make_raw_event())
 
@@ -446,6 +445,7 @@ class TestReportingHandlerPagination:
 
 
 # ── Webhook payload structure ─────────────────────────────────────────────────
+
 
 class TestWebhookPayloadStructure:
     @pytest.mark.asyncio

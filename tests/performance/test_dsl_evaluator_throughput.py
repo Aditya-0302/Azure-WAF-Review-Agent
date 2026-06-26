@@ -13,13 +13,9 @@ Marked @pytest.mark.slow so they are excluded from the default fast suite.
 from __future__ import annotations
 
 import time
-import uuid
 
 import pytest
-
-from waf_shared.domain.errors.domain_errors import DSLValidationError
 from waf_reasoning.dsl_evaluator import evaluate_condition
-
 
 pytestmark = pytest.mark.slow
 

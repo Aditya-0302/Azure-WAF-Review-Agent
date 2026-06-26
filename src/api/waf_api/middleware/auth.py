@@ -26,12 +26,11 @@ from fastapi.responses import JSONResponse
 from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from waf_api.config import Settings
 from waf_shared.auth.models import AuthContext  # noqa: F401 — re-exported for importers
 from waf_shared.db.repositories.tenant_repository import TenantRepository
 from waf_shared.domain.models.tenant import UserRole
 from waf_shared.telemetry.logging import StructuredLogger
-
-from waf_api.config import Settings
 
 _logger = StructuredLogger(service="waf-api", version="0.1.0")
 
@@ -90,9 +89,7 @@ async def _fetch_jwks(tenant_id: str) -> dict[str, Any]:
         oldest_key = min(_JWKS_CACHE, key=lambda k: _JWKS_CACHE[k][1])
         del _JWKS_CACHE[oldest_key]
 
-    oidc_url = (
-        f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
-    )
+    oidc_url = f"https://login.microsoftonline.com/{tenant_id}/discovery/v2.0/keys"
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(oidc_url)
         response.raise_for_status()
@@ -139,20 +136,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self._dev_mode: bool = settings.api_auth_mode == "development"
         # In dev mode, doc paths are included as public so FastAPI can serve them.
         # In entra mode, dispatch() returns 404 for these paths explicitly (see below).
-        self._public_paths = _PUBLIC_PATHS | (
-            _DEV_PUBLIC_PATHS if self._dev_mode else frozenset()
-        )
+        self._public_paths = _PUBLIC_PATHS | (_DEV_PUBLIC_PATHS if self._dev_mode else frozenset())
         if self._dev_mode:
             _logger.warning(
                 "auth.development_mode.enabled",
                 warning="Development authentication enabled. "
-                        "All requests receive PLATFORM_ADMIN access. "
-                        "Never use in production.",
+                "All requests receive PLATFORM_ADMIN access. "
+                "Never use in production.",
             )
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path in self._public_paths:
             return await call_next(request)
 
@@ -215,11 +208,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 path=request.url.path,
             )
             return _make_401("Invalid or expired token")
-        except httpx.HTTPError as exc:
+        except httpx.HTTPError:
             _logger.error("auth.jwks.fetch.failed", exc_info=True)
             return JSONResponse(
                 status_code=503,
-                content={"error": {"code": "AUTH_SERVICE_UNAVAILABLE", "message": "Unable to validate token at this time"}},
+                content={
+                    "error": {
+                        "code": "AUTH_SERVICE_UNAVAILABLE",
+                        "message": "Unable to validate token at this time",
+                    }
+                },
             )
 
         entra_oid_raw = claims.get("oid") or claims.get("sub")

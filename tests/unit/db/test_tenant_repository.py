@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from waf_shared.domain.errors.domain_errors import TenantNotFoundError
-from waf_shared.domain.models.tenant import PlanTier, Tenant, TenantQuota, TenantUser, UserRole
+from waf_shared.domain.models.tenant import PlanTier, Tenant
 
 
 def _make_tenant(

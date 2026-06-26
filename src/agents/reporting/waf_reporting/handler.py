@@ -28,9 +28,13 @@ Webhook payload is HMAC-SHA256 signed with a per-tenant secret from Key Vault.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Sequence
+
+from waf_reporting.aggregator import AggregatedReport, FindingAggregator
+from waf_reporting.excel_generator import ExcelGenerator
+from waf_reporting.pdf_generator import PdfGenerator
+from waf_reporting.storage_uploader import StorageUploader
+from waf_reporting.webhook_service import WebhookDeliveryError, WebhookService
 
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
 from waf_shared.db.repositories.finding_repository import FindingRepository
@@ -39,17 +43,12 @@ from waf_shared.db.repositories.report_repository import ReportRepository
 from waf_shared.db.repositories.webhook_repository import WebhookRepository
 from waf_shared.domain.events.assessment_events import ReportingRequestedEvent
 from waf_shared.domain.events.base import CloudEventEnvelope
-from waf_shared.domain.models.assessment import AssessmentStatus, TERMINAL_STATUSES
+from waf_shared.domain.models.assessment import TERMINAL_STATUSES, AssessmentStatus
 from waf_shared.domain.models.finding import Finding
 from waf_shared.domain.models.human_review import HumanReviewAssessment
 from waf_shared.domain.models.report import AssessmentReport, AssessmentSummary
 from waf_shared.infra.keyvault import KeyVaultClient
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_reporting.aggregator import AggregatedReport, FindingAggregator
-from waf_reporting.excel_generator import ExcelGenerator
-from waf_reporting.pdf_generator import PdfGenerator
-from waf_reporting.storage_uploader import StorageUploader
-from waf_reporting.webhook_service import WebhookDeliveryError, WebhookService
 
 # Findings are loaded paginated; this caps total findings per assessment in
 # memory to protect against pathological assessments.
@@ -61,9 +60,7 @@ _FINDINGS_PAGE_SIZE = 500
 # the API tier can surface a "locally cached" download path instead of a SAS URL.
 _LOCAL_REPORTS_DIR = Path("/tmp/reports")
 
-_XLSX_CONTENT_TYPE = (
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+_XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _PDF_CONTENT_TYPE = "application/pdf"
 
 
@@ -86,18 +83,18 @@ class ReportingHandler:
         kv_client: KeyVaultClient,
         logger: StructuredLogger,
     ) -> None:
-        self._assessment_repo    = assessment_repo
-        self._finding_repo       = finding_repo
-        self._report_repo        = report_repo
-        self._webhook_repo       = webhook_repo
-        self._human_review_repo  = human_review_repo
-        self._aggregator         = aggregator
-        self._excel_gen          = excel_gen
-        self._pdf_gen            = pdf_gen
-        self._uploader           = uploader
-        self._webhook_service    = webhook_service
-        self._kv_client          = kv_client
-        self._logger             = logger
+        self._assessment_repo = assessment_repo
+        self._finding_repo = finding_repo
+        self._report_repo = report_repo
+        self._webhook_repo = webhook_repo
+        self._human_review_repo = human_review_repo
+        self._aggregator = aggregator
+        self._excel_gen = excel_gen
+        self._pdf_gen = pdf_gen
+        self._uploader = uploader
+        self._webhook_service = webhook_service
+        self._kv_client = kv_client
+        self._logger = logger
 
     # ── Public entry point ────────────────────────────────────────────────────
 
@@ -125,9 +122,7 @@ class ReportingHandler:
         log: StructuredLogger,
     ) -> None:
         # Step 1 — guard: load assessment and check it is in REPORTING status.
-        assessment = await self._assessment_repo.get_by_id(
-            event.tenant_id, event.assessment_id
-        )
+        assessment = await self._assessment_repo.get_by_id(event.tenant_id, event.assessment_id)
         if assessment is None:
             log.error("reporting.handler.assessment_not_found")
             return
@@ -178,9 +173,7 @@ class ReportingHandler:
         log.info("reporting.handler.pdf_generated", size_bytes=len(pdf_bytes))
 
         # Step 7 — upload both to Blob Storage (best-effort; falls back to /tmp).
-        xlsx_path, pdf_path = await self._upload_or_fallback(
-            event, xlsx_bytes, pdf_bytes, log
-        )
+        xlsx_path, pdf_path = await self._upload_or_fallback(event, xlsx_bytes, pdf_bytes, log)
 
         # Step 8 — build AssessmentSummary and persist AssessmentReport.
         summary = AssessmentSummary(
@@ -190,8 +183,7 @@ class ReportingHandler:
             total_findings=aggregated.total_findings,
             findings_by_severity=aggregated.findings_by_severity,
             findings_by_pillar={
-                p: s.total_findings
-                for p, s in aggregated.findings_by_pillar.items()
+                p: s.total_findings for p, s in aggregated.findings_by_pillar.items()
             },
             coverage_percentage=aggregated.coverage_percentage,
         )
@@ -314,7 +306,7 @@ class ReportingHandler:
         report_dir = _LOCAL_REPORTS_DIR / str(assessment_id)
         report_dir.mkdir(parents=True, exist_ok=True)
         xlsx_local = report_dir / "report.xlsx"
-        pdf_local  = report_dir / "report.pdf"
+        pdf_local = report_dir / "report.pdf"
         xlsx_local.write_bytes(xlsx_bytes)
         pdf_local.write_bytes(pdf_bytes)
         log.warning(
@@ -323,7 +315,7 @@ class ReportingHandler:
             pdf_path=str(pdf_local),
             degraded=True,
             action_required="Blob upload failed — local paths do not survive pod restart; "
-                            "investigate storage connectivity and re-trigger reporting if needed.",
+            "investigate storage connectivity and re-trigger reporting if needed.",
         )
         return str(xlsx_local), str(pdf_local)
 
@@ -351,15 +343,15 @@ class ReportingHandler:
             return
 
         payload = {
-            "assessment_id":     str(event.assessment_id),
-            "tenant_id":         str(event.tenant_id),
-            "status":            "completed",
-            "total_findings":    aggregated.total_findings,
-            "compliance_score":  aggregated.overall_compliance_score,
-            "risk_score":        aggregated.overall_risk_score,
-            "report_xlsx_path":  report.xlsx_blob_path,
-            "report_pdf_path":   report.pdf_blob_path,
-            "generated_at":      aggregated.generated_at.isoformat(),
+            "assessment_id": str(event.assessment_id),
+            "tenant_id": str(event.tenant_id),
+            "status": "completed",
+            "total_findings": aggregated.total_findings,
+            "compliance_score": aggregated.overall_compliance_score,
+            "risk_score": aggregated.overall_risk_score,
+            "report_xlsx_path": report.xlsx_blob_path,
+            "report_pdf_path": report.pdf_blob_path,
+            "generated_at": aggregated.generated_at.isoformat(),
         }
 
         try:

@@ -8,9 +8,10 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from waf_preparation.handler import BATCH_SIZE, PreparationHandler
 
 from waf_shared.auth.credential_provider import CrossTenantCredentialProvider
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
@@ -18,11 +19,9 @@ from waf_shared.db.repositories.credential_repository import CredentialRepositor
 from waf_shared.discovery.resource_inventory import ResourceInventoryService
 from waf_shared.discovery.subscription_discovery import SubscriptionDiscoveryService
 from waf_shared.domain.errors.domain_errors import (
-    InvalidAssessmentScopeError,
     SubscriptionNotFoundError,
 )
 from waf_shared.domain.errors.infrastructure_errors import (
-    CrossTenantAuthError,
     KeyVaultAccessError,
     ResourceDiscoveryError,
 )
@@ -37,8 +36,6 @@ from waf_shared.domain.models.assessment import (
 from waf_shared.domain.models.credential import CredentialHealth, SubscriptionCredential
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_preparation.handler import BATCH_SIZE, PreparationHandler
-
 
 # ── Factories ──────────────────────────────────────────────────────────────────
 
@@ -90,7 +87,8 @@ def _make_batch(
         batch_index=batch_index,
         subscription_id=subscription_id,
         status=BatchStatus.PENDING,
-        resource_ids=resource_ids or [f"/subscriptions/{subscription_id}/rg/res-{i}" for i in range(5)],
+        resource_ids=resource_ids
+        or [f"/subscriptions/{subscription_id}/rg/res-{i}" for i in range(5)],
         error_detail=None,
         started_at=None,
         completed_at=None,
@@ -227,9 +225,7 @@ def _configure_happy_path(
         pass
 
     def _get_by_sub_se(tenant_id, subscription_id):
-        return _make_credential_record(
-            tenant_id=tenant_id, subscription_id=subscription_id
-        )
+        return _make_credential_record(tenant_id=tenant_id, subscription_id=subscription_id)
 
     m.credential_repo.get_by_subscription.side_effect = _get_by_sub_se
     m.cross_tenant.get_credential_for_subscription.return_value = MagicMock()
@@ -265,11 +261,13 @@ class TestPreparationHandlerHappyPath:
         _configure_happy_path(m, assessment, {sub_id: resources})
 
         handler = m.make_handler()
-        await handler.process(_raw_event(
-            assessment_id=assessment_id,
-            tenant_id=tenant_id,
-            subscription_ids=[sub_id],
-        ))
+        await handler.process(
+            _raw_event(
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                subscription_ids=[sub_id],
+            )
+        )
 
         # Status transitions
         m.assessment_repo.update_status.assert_any_call(
@@ -295,9 +293,9 @@ class TestPreparationHandlerHappyPath:
         )
         _configure_happy_path(m, assessment, {sub_id: resources})
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         assert m.assessment_repo.create_batch.call_count == 2
         assert m.publisher.publish.call_count == 2
@@ -327,11 +325,13 @@ class TestPreparationHandlerHappyPath:
         )
         _configure_happy_path(m, assessment, {sub1: res1, sub2: res2})
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id,
-            tenant_id=tenant_id,
-            subscription_ids=[sub1, sub2],
-        ))
+        await m.make_handler().process(
+            _raw_event(
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                subscription_ids=[sub1, sub2],
+            )
+        )
 
         assert m.assessment_repo.create_batch.call_count == 2
         assert m.publisher.publish.call_count == 2
@@ -347,8 +347,12 @@ class TestPreparationHandlerHappyPath:
         self, m: _Mocks, tenant_id: uuid.UUID, sub_id: uuid.UUID, assessment_id: uuid.UUID
     ) -> None:
         """Resources not matching tag_filter are excluded; only matching ones are batched."""
-        matching = [_make_resource(f"/subs/{sub_id}/res-match-{i}", tags={"env": "prod"}) for i in range(5)]
-        excluded = [_make_resource(f"/subs/{sub_id}/res-skip-{i}", tags={"env": "dev"}) for i in range(20)]
+        matching = [
+            _make_resource(f"/subs/{sub_id}/res-match-{i}", tags={"env": "prod"}) for i in range(5)
+        ]
+        excluded = [
+            _make_resource(f"/subs/{sub_id}/res-skip-{i}", tags={"env": "dev"}) for i in range(20)
+        ]
         all_resources = matching + excluded
 
         assessment = _make_assessment(
@@ -359,12 +363,14 @@ class TestPreparationHandlerHappyPath:
         )
         _configure_happy_path(m, assessment, {sub_id: all_resources})
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id,
-            tenant_id=tenant_id,
-            subscription_ids=[sub_id],
-            tag_filter={"env": "prod"},
-        ))
+        await m.make_handler().process(
+            _raw_event(
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                subscription_ids=[sub_id],
+                tag_filter={"env": "prod"},
+            )
+        )
 
         created: AssessmentBatch = m.assessment_repo.create_batch.call_args.args[0]
         assert len(created.resource_ids) == 5
@@ -383,12 +389,14 @@ class TestPreparationHandlerHappyPath:
             m, assessment, {sub_id: [_make_resource(f"/subs/{sub_id}/r-{i}") for i in range(3)]}
         )
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id,
-            tenant_id=tenant_id,
-            subscription_ids=[sub_id],
-            pillar_filter=["Security", "Reliability"],
-        ))
+        await m.make_handler().process(
+            _raw_event(
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                subscription_ids=[sub_id],
+                pillar_filter=["Security", "Reliability"],
+            )
+        )
 
         # Reached EXTRACTING without failure
         m.assessment_repo.update_status.assert_any_call(
@@ -407,9 +415,9 @@ class TestPreparationHandlerIdempotency:
             subscription_ids=[sub_id],
             status=AssessmentStatus.COMPLETED,
         )
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
         m.assessment_repo.update_status.assert_not_called()
         m.publisher.publish.assert_not_called()
 
@@ -422,9 +430,9 @@ class TestPreparationHandlerIdempotency:
             subscription_ids=[sub_id],
             status=AssessmentStatus.FAILED,
         )
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
         m.assessment_repo.update_status.assert_not_called()
 
     async def test_skips_extracting_assessment(
@@ -436,18 +444,18 @@ class TestPreparationHandlerIdempotency:
             subscription_ids=[sub_id],
             status=AssessmentStatus.EXTRACTING,
         )
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
         m.assessment_repo.update_status.assert_not_called()
 
     async def test_assessment_not_found_returns_normally(
         self, m: _Mocks, tenant_id: uuid.UUID, sub_id: uuid.UUID, assessment_id: uuid.UUID
     ) -> None:
         m.assessment_repo.get_by_id.return_value = None
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
         m.assessment_repo.update_status.assert_not_called()
         m.publisher.publish.assert_not_called()
 
@@ -476,9 +484,9 @@ class TestPreparationHandlerIdempotency:
         )
         m.assessment_repo.set_total_batches.return_value = None
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         # No new discovery or batch creation
         m.credential_repo.get_by_subscription.assert_not_called()
@@ -524,9 +532,9 @@ class TestPreparationHandlerIdempotency:
         m.sub_discovery.get_subscription.return_value = MagicMock()
         m.resource_inv.list_resources.return_value = resources
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.delete_all_batches.assert_called_once_with(tenant_id, assessment_id)
         assert m.assessment_repo.create_batch.call_count == 1
@@ -550,12 +558,14 @@ class TestPreparationHandlerValidationErrors:
             lambda tid, aid, status: assessment.model_copy(update={"status": status})
         )
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id,
-            tenant_id=tenant_id,
-            subscription_ids=[sub_id],
-            pillar_filter=["Security", "Not A Real Pillar"],
-        ))
+        await m.make_handler().process(
+            _raw_event(
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                subscription_ids=[sub_id],
+                pillar_filter=["Security", "Not A Real Pillar"],
+            )
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -575,9 +585,9 @@ class TestPreparationHandlerValidationErrors:
         )
         m.credential_repo.get_by_subscription.return_value = None  # no credential
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -600,9 +610,9 @@ class TestPreparationHandlerValidationErrors:
             health=CredentialHealth.EXPIRED,
         )
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -625,9 +635,9 @@ class TestPreparationHandlerValidationErrors:
             health=CredentialHealth.INVALID,
         )
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -650,9 +660,9 @@ class TestPreparationHandlerValidationErrors:
         m.cross_tenant.get_credential_for_subscription.return_value = MagicMock()
         m.sub_discovery.get_subscription.side_effect = SubscriptionNotFoundError(sub_id)
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -677,9 +687,9 @@ class TestPreparationHandlerValidationErrors:
             secret_name="sp-secret", reason="permission denied"
         )
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -710,12 +720,14 @@ class TestPreparationHandlerValidationErrors:
         m.sub_discovery.get_subscription.return_value = MagicMock()
         m.resource_inv.list_resources.return_value = all_non_matching
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id,
-            tenant_id=tenant_id,
-            subscription_ids=[sub_id],
-            tag_filter={"env": "prod"},
-        ))
+        await m.make_handler().process(
+            _raw_event(
+                assessment_id=assessment_id,
+                tenant_id=tenant_id,
+                subscription_ids=[sub_id],
+                tag_filter={"env": "prod"},
+            )
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -741,9 +753,9 @@ class TestPreparationHandlerValidationErrors:
         m.sub_discovery.get_subscription.return_value = MagicMock()
         m.resource_inv.list_resources.return_value = []
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -769,9 +781,9 @@ class TestPreparationHandlerValidationErrors:
             service="ResourceGraph", reason="throttled after retries"
         )
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.FAILED
@@ -804,9 +816,9 @@ class TestPreparationHandlerCancellation:
             pending_cancel_assessment.model_copy(update={"status": AssessmentStatus.CANCELLED}),
         ]
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.CANCELLED
@@ -845,9 +857,9 @@ class TestPreparationHandlerCancellation:
             _make_resource(f"/subs/{sub_id}/r-{i}") for i in range(5)
         ]
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         m.assessment_repo.update_status.assert_any_call(
             tenant_id, assessment_id, AssessmentStatus.CANCELLED
@@ -862,7 +874,6 @@ class TestPreparationHandlerExtractionEventShape:
     ) -> None:
         """Published CloudEventEnvelope wraps ExtractionRequestedEvent with right fields."""
         from waf_shared.domain.events.assessment_events import ExtractionRequestedEvent
-        from waf_shared.domain.events.base import CloudEventEnvelope
 
         resources = [_make_resource(f"/subs/{sub_id}/r-{i}") for i in range(3)]
         assessment = _make_assessment(
@@ -870,13 +881,14 @@ class TestPreparationHandlerExtractionEventShape:
         )
         _configure_happy_path(m, assessment, {sub_id: resources})
 
-        await m.make_handler().process(_raw_event(
-            assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id]
-        ))
+        await m.make_handler().process(
+            _raw_event(assessment_id=assessment_id, tenant_id=tenant_id, subscription_ids=[sub_id])
+        )
 
         assert m.publisher.publish.call_count == 1
         queue_name, envelope = m.publisher.publish.call_args.args
         from waf_shared.messaging.queue_names import EXTRACTION_REQUESTED
+
         assert queue_name == EXTRACTION_REQUESTED
 
         extraction: ExtractionRequestedEvent = envelope.data

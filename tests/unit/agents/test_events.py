@@ -57,9 +57,7 @@ class TestAgentEventDefaults:
 
     def test_metadata_defaults_empty(self) -> None:
         wid, cid, tid = _ids()
-        ev = StageStartedEvent(
-            workflow_id=wid, correlation_id=cid, tenant_id=tid, stage_name="s"
-        )
+        ev = StageStartedEvent(workflow_id=wid, correlation_id=cid, tenant_id=tid, stage_name="s")
         assert ev.metadata == {}
 
 
@@ -124,48 +122,65 @@ class TestAgentEventTypes:
     def test_pipeline_events_have_correct_types(self) -> None:
         wid, cid, tid = _ids()
         common = dict(workflow_id=wid, correlation_id=cid, tenant_id=tid)
-        assert PipelineStartedEvent(
-            **common, pipeline_name="p", pipeline_version="1", stage_count=3
-        ).event_type == AgentEventType.PIPELINE_STARTED
-        assert PipelineCompletedEvent(
-            **common, pipeline_name="p", pipeline_version="1", duration_ms=1.0, stage_count=3
-        ).event_type == AgentEventType.PIPELINE_COMPLETED
-        assert PipelineFailedEvent(
-            **common,
-            pipeline_name="p",
-            failed_stage="s",
-            error_code="E",
-            error_message="m",
-        ).event_type == AgentEventType.PIPELINE_FAILED
+        assert (
+            PipelineStartedEvent(
+                **common, pipeline_name="p", pipeline_version="1", stage_count=3
+            ).event_type
+            == AgentEventType.PIPELINE_STARTED
+        )
+        assert (
+            PipelineCompletedEvent(
+                **common, pipeline_name="p", pipeline_version="1", duration_ms=1.0, stage_count=3
+            ).event_type
+            == AgentEventType.PIPELINE_COMPLETED
+        )
+        assert (
+            PipelineFailedEvent(
+                **common,
+                pipeline_name="p",
+                failed_stage="s",
+                error_code="E",
+                error_message="m",
+            ).event_type
+            == AgentEventType.PIPELINE_FAILED
+        )
 
     def test_workflow_events_have_correct_types(self) -> None:
         wid, cid, tid = _ids()
         common = dict(workflow_id=wid, correlation_id=cid, tenant_id=tid)
-        assert WorkflowStartedEvent(
-            **common, pipeline_name="p"
-        ).event_type == AgentEventType.WORKFLOW_STARTED
-        assert WorkflowCompletedEvent(
-            **common, pipeline_name="p", duration_ms=1.0
-        ).event_type == AgentEventType.WORKFLOW_COMPLETED
-        assert WorkflowFailedEvent(
-            **common, pipeline_name="p", error_code="E", error_message="m"
-        ).event_type == AgentEventType.WORKFLOW_FAILED
-        assert WorkflowCancelledEvent(
-            **common, pipeline_name="p"
-        ).event_type == AgentEventType.WORKFLOW_CANCELLED
+        assert (
+            WorkflowStartedEvent(**common, pipeline_name="p").event_type
+            == AgentEventType.WORKFLOW_STARTED
+        )
+        assert (
+            WorkflowCompletedEvent(**common, pipeline_name="p", duration_ms=1.0).event_type
+            == AgentEventType.WORKFLOW_COMPLETED
+        )
+        assert (
+            WorkflowFailedEvent(
+                **common, pipeline_name="p", error_code="E", error_message="m"
+            ).event_type
+            == AgentEventType.WORKFLOW_FAILED
+        )
+        assert (
+            WorkflowCancelledEvent(**common, pipeline_name="p").event_type
+            == AgentEventType.WORKFLOW_CANCELLED
+        )
 
     def test_stage_events_have_correct_types(self) -> None:
         wid, cid, tid = _ids()
         common = dict(workflow_id=wid, correlation_id=cid, tenant_id=tid)
-        assert StageStartedEvent(
-            **common, stage_name="s"
-        ).event_type == AgentEventType.STAGE_STARTED
-        assert StageCompletedEvent(
-            **common, stage_name="s", duration_ms=5.0
-        ).event_type == AgentEventType.STAGE_COMPLETED
-        assert StageFailedEvent(
-            **common, stage_name="s", error_code="E", error_message="m"
-        ).event_type == AgentEventType.STAGE_FAILED
+        assert (
+            StageStartedEvent(**common, stage_name="s").event_type == AgentEventType.STAGE_STARTED
+        )
+        assert (
+            StageCompletedEvent(**common, stage_name="s", duration_ms=5.0).event_type
+            == AgentEventType.STAGE_COMPLETED
+        )
+        assert (
+            StageFailedEvent(**common, stage_name="s", error_code="E", error_message="m").event_type
+            == AgentEventType.STAGE_FAILED
+        )
 
     def test_event_is_frozen(self) -> None:
         wid, cid, tid = _ids()

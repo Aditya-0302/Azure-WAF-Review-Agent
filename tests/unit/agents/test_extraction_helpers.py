@@ -6,9 +6,7 @@ Covers _parse_arm_id and _build_raw_properties — pure functions, no I/O.
 from __future__ import annotations
 
 import pytest
-
 from waf_extraction.handler import _build_raw_properties, _parse_arm_id
-
 
 # ---------------------------------------------------------------------------
 # _parse_arm_id

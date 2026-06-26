@@ -41,7 +41,7 @@ class ValidationResult:
         return not self.errors
 
 
-def validate_catalog(catalog: "WafCatalog | None" = None) -> ValidationResult:
+def validate_catalog(catalog: WafCatalog | None = None) -> ValidationResult:
     """Validate catalog integrity. Raises CatalogValidationError if errors are found.
 
     When catalog is None the singleton is loaded; pass an explicit instance in tests.
@@ -65,9 +65,7 @@ def validate_catalog(catalog: "WafCatalog | None" = None) -> ValidationResult:
     for rule_id in catalog.get_mapped_rule_ids():
         codes = catalog.get_codes_for_rule(rule_id)
         if not codes:
-            result.errors.append(
-                f"Rule '{rule_id}' exists in mapping but has an empty code list."
-            )
+            result.errors.append(f"Rule '{rule_id}' exists in mapping but has an empty code list.")
         for code in codes:
             if code not in all_control_codes:
                 result.errors.append(
@@ -77,9 +75,7 @@ def validate_catalog(catalog: "WafCatalog | None" = None) -> ValidationResult:
     # Rule 3b: every control has a non-empty microsoft_url.
     for ctrl in catalog.get_all_controls():
         if not ctrl.microsoft_url:
-            result.errors.append(
-                f"Control '{ctrl.code}' has an empty microsoft_url."
-            )
+            result.errors.append(f"Control '{ctrl.code}' has an empty microsoft_url.")
 
     # Rule 4: all codes follow the expected format.
     for code in all_control_codes:
@@ -91,8 +87,8 @@ def validate_catalog(catalog: "WafCatalog | None" = None) -> ValidationResult:
     # Rule 5: warn when control counts diverge from declared totals.
     # This is a completeness check (warning, not error) because catalogs are
     # legitimately incomplete during development and in tests.
-    from pathlib import Path
     import json
+    from pathlib import Path
 
     inventory_path = Path(__file__).parent / "framework_inventory.json"
     if inventory_path.exists():

@@ -80,8 +80,6 @@ class TokenProvider:
         )
         return token.token
 
-    async def invalidate_subscription_credential(
-        self, subscription_id: uuid.UUID
-    ) -> None:
+    async def invalidate_subscription_credential(self, subscription_id: uuid.UUID) -> None:
         """Evict cached cross-tenant credential; next call re-reads Key Vault."""
         await self._cross_tenant.invalidate_cache(subscription_id)

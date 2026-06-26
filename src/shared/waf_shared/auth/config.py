@@ -29,9 +29,7 @@ class WorkloadIdentityConfig(BaseModel):
 
     client_id: str
     tenant_id: str
-    token_file_path: Path = Path(
-        "/var/run/secrets/azure/tokens/azure-identity-token"
-    )
+    token_file_path: Path = Path("/var/run/secrets/azure/tokens/azure-identity-token")
 
 
 class ServicePrincipalConfig(BaseModel):

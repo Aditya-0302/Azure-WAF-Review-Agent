@@ -136,9 +136,7 @@ class AssessmentService:
         )
         return saved
 
-    async def get_assessment(
-        self, assessment_id: uuid.UUID, tenant_id: uuid.UUID
-    ) -> Assessment:
+    async def get_assessment(self, assessment_id: uuid.UUID, tenant_id: uuid.UUID) -> Assessment:
         assessment = await self._repo.get_by_id(tenant_id, assessment_id)
         if assessment is None:
             raise AssessmentNotFoundError(assessment_id=assessment_id, tenant_id=tenant_id)
@@ -152,9 +150,7 @@ class AssessmentService:
     ) -> list[Assessment]:
         return await self._repo.list_by_tenant(tenant_id, limit=limit, cursor=cursor)
 
-    async def cancel_assessment(
-        self, assessment_id: uuid.UUID, tenant_id: uuid.UUID
-    ) -> Assessment:
+    async def cancel_assessment(self, assessment_id: uuid.UUID, tenant_id: uuid.UUID) -> Assessment:
         _logger.info(
             "assessment.cancellation.requested",
             assessment_id=str(assessment_id),

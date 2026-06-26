@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
@@ -12,18 +11,27 @@ from sqlalchemy.orm import Mapped, mapped_column
 from waf_shared.db.models.base import Base, TimestampMixin
 
 _pillar = sa.Enum(
-    "reliability", "security", "cost_optimization",
-    "operational_excellence", "performance_efficiency",
+    "reliability",
+    "security",
+    "cost_optimization",
+    "operational_excellence",
+    "performance_efficiency",
     name="pillar",
     create_type=False,
 )
 _evaluation_type = sa.Enum(
-    "deterministic", "llm", "hybrid",
+    "deterministic",
+    "llm",
+    "hybrid",
     name="evaluation_type",
     create_type=False,
 )
 _severity = sa.Enum(
-    "critical", "high", "medium", "low", "informational",
+    "critical",
+    "high",
+    "medium",
+    "low",
+    "informational",
     name="severity",
     create_type=False,
 )
@@ -60,7 +68,5 @@ class WafRuleORM(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(sa.Text, nullable=False)
     description: Mapped[str] = mapped_column(sa.Text, nullable=False)
     recommendation: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    is_active: Mapped[bool] = mapped_column(
-        sa.Boolean, nullable=False, server_default=sa.true()
-    )
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.true())
     version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="1")

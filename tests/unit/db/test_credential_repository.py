@@ -93,9 +93,7 @@ class TestCredentialRepositoryGetBySubscription:
         sub_id = uuid.uuid4()
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(
-            return_value=[
-                _make_cred_row(tenant_id=tenant_id, subscription_id=sub_id)
-            ]
+            return_value=[_make_cred_row(tenant_id=tenant_id, subscription_id=sub_id)]
         )
 
         repo = CredentialRepository(conn=mock_conn, uow_tenant_id=tenant_id)
@@ -129,9 +127,7 @@ class TestCredentialRepositoryCreate:
         cred_id = uuid.uuid4()
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(
-            return_value=[
-                _make_cred_row(tenant_id=tenant_id, credential_id=cred_id)
-            ]
+            return_value=[_make_cred_row(tenant_id=tenant_id, credential_id=cred_id)]
         )
 
         repo = CredentialRepository(conn=mock_conn, uow_tenant_id=tenant_id)

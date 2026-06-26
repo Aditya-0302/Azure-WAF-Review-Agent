@@ -58,16 +58,10 @@ def upgrade() -> None:
     # tenant_id is always equal to id; the generated column lets the isolation
     # test query "SELECT id FROM tenants WHERE tenant_id = $1" using the same
     # WHERE pattern as all other tenant-scoped tables.
-    op.execute(
-        "ALTER TABLE tenants "
-        "ADD COLUMN tenant_id UUID GENERATED ALWAYS AS (id) STORED"
-    )
+    op.execute("ALTER TABLE tenants " "ADD COLUMN tenant_id UUID GENERATED ALWAYS AS (id) STORED")
 
     # ── Fix 3: Add failed_batches column to assessments ───────────────────────
-    op.execute(
-        "ALTER TABLE assessments "
-        "ADD COLUMN failed_batches INTEGER NOT NULL DEFAULT 0"
-    )
+    op.execute("ALTER TABLE assessments " "ADD COLUMN failed_batches INTEGER NOT NULL DEFAULT 0")
 
     # ── Fix 4: Add defaults for previously-undefaulted NOT NULL columns ───────
     # idempotency_key: each auto-generated key is a unique UUID string.
@@ -86,8 +80,7 @@ def upgrade() -> None:
     )
     # requested_by_oid: default to a new random UUID.
     op.execute(
-        "ALTER TABLE assessments "
-        "ALTER COLUMN requested_by_oid SET DEFAULT gen_random_uuid()"
+        "ALTER TABLE assessments " "ALTER COLUMN requested_by_oid SET DEFAULT gen_random_uuid()"
     )
 
     # ── Fix 5: Create findings table (no FK constraints) ─────────────────────
@@ -123,25 +116,12 @@ def downgrade() -> None:
     # Reverse in reverse order.
     op.execute("DROP TABLE IF EXISTS findings")
 
-    op.execute(
-        "ALTER TABLE assessments "
-        "ALTER COLUMN requested_by_oid DROP DEFAULT"
-    )
-    op.execute(
-        "ALTER TABLE assessments "
-        "ALTER COLUMN subscription_ids DROP DEFAULT"
-    )
-    op.execute(
-        "ALTER TABLE assessments "
-        "ALTER COLUMN idempotency_key DROP DEFAULT"
-    )
-    op.execute(
-        "ALTER TABLE assessments DROP COLUMN IF EXISTS failed_batches"
-    )
+    op.execute("ALTER TABLE assessments " "ALTER COLUMN requested_by_oid DROP DEFAULT")
+    op.execute("ALTER TABLE assessments " "ALTER COLUMN subscription_ids DROP DEFAULT")
+    op.execute("ALTER TABLE assessments " "ALTER COLUMN idempotency_key DROP DEFAULT")
+    op.execute("ALTER TABLE assessments DROP COLUMN IF EXISTS failed_batches")
 
-    op.execute(
-        "ALTER TABLE tenants DROP COLUMN IF EXISTS tenant_id"
-    )
+    op.execute("ALTER TABLE tenants DROP COLUMN IF EXISTS tenant_id")
 
     op.execute("""
         ALTER TABLE subscription_credentials

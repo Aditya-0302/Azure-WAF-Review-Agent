@@ -128,13 +128,9 @@ class CredentialService:
         limit: int = 50,
         cursor: uuid.UUID | None = None,
     ) -> list[SubscriptionCredential]:
-        return await self._repo().list_by_tenant(
-            tenant_id, limit=limit, cursor=cursor
-        )
+        return await self._repo().list_by_tenant(tenant_id, limit=limit, cursor=cursor)
 
-    async def count_by_health(
-        self, tenant_id: uuid.UUID
-    ) -> dict[str, int]:
+    async def count_by_health(self, tenant_id: uuid.UUID) -> dict[str, int]:
         return await self._repo().count_by_health(tenant_id)
 
     # ── Deletion ──────────────────────────────────────────────────────────────

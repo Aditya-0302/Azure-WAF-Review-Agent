@@ -49,14 +49,14 @@ class TestAsyncSdkClientsImported:
         )
 
     def test_advisor_client_uses_async_client(self) -> None:
-        assert _adv_mod.AdvisorManagementClient is AsyncAdvisorClient, (
-            "advisor_client must import azure.mgmt.advisor.aio.AdvisorManagementClient"
-        )
+        assert (
+            _adv_mod.AdvisorManagementClient is AsyncAdvisorClient
+        ), "advisor_client must import azure.mgmt.advisor.aio.AdvisorManagementClient"
 
     def test_resource_graph_client_uses_async_client(self) -> None:
-        assert _rg_mod.ResourceGraphClient is AsyncResourceGraphClient, (
-            "resource_graph_client must import azure.mgmt.resourcegraph.aio.ResourceGraphClient"
-        )
+        assert (
+            _rg_mod.ResourceGraphClient is AsyncResourceGraphClient
+        ), "resource_graph_client must import azure.mgmt.resourcegraph.aio.ResourceGraphClient"
 
 
 @pytest.mark.unit
@@ -76,9 +76,7 @@ class TestSyncCredentialForExtraction:
     @pytest.mark.asyncio
     async def test_get_sync_credential_returns_non_async_get_token(self) -> None:
         """get_sync_credential_for_subscription must return a credential whose get_token is sync."""
-        sp_json = json.dumps(
-            {"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"}
-        )
+        sp_json = json.dumps({"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"})
         mock_secret = MagicMock()
         mock_secret.value = sp_json
         mock_kv = AsyncMock()
@@ -93,9 +91,7 @@ class TestSyncCredentialForExtraction:
         )
         provider._kv_client = mock_kv
 
-        cred = await provider.get_sync_credential_for_subscription(
-            uuid.uuid4(), "my-secret"
-        )
+        cred = await provider.get_sync_credential_for_subscription(uuid.uuid4(), "my-secret")
 
         assert not asyncio.iscoroutinefunction(cred.get_token), (
             "get_sync_credential_for_subscription must return azure.identity.ClientSecretCredential "
@@ -116,9 +112,7 @@ class TestSyncCredentialForExtraction:
     @pytest.mark.asyncio
     async def test_sync_credential_is_cached_after_first_fetch(self) -> None:
         """get_sync_credential_for_subscription caches credentials — KV is only called once."""
-        sp_json = json.dumps(
-            {"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"}
-        )
+        sp_json = json.dumps({"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"})
         mock_secret = MagicMock()
         mock_secret.value = sp_json
         mock_kv = AsyncMock()
@@ -138,14 +132,14 @@ class TestSyncCredentialForExtraction:
         cred2 = await provider.get_sync_credential_for_subscription(sub_id, "s")
 
         assert cred1 is cred2, "Second call must return the cached credential"
-        assert mock_kv.get_secret.call_count == 1, "Key Vault must only be called once per subscription"
+        assert (
+            mock_kv.get_secret.call_count == 1
+        ), "Key Vault must only be called once per subscription"
 
     @pytest.mark.asyncio
     async def test_invalidate_cache_evicts_sync_credential(self) -> None:
         """invalidate_cache must also evict the sync credential for the subscription."""
-        sp_json = json.dumps(
-            {"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"}
-        )
+        sp_json = json.dumps({"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"})
         mock_secret = MagicMock()
         mock_secret.value = sp_json
         mock_kv = AsyncMock()
@@ -183,9 +177,7 @@ class TestCrossTenantCredentialIsAsync:
         (sync) which would cause the same coroutine-has-no-attribute-token error in
         any async Azure SDK client that calls credential.get_token().
         """
-        sp_json = json.dumps(
-            {"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"}
-        )
+        sp_json = json.dumps({"tenant_id": "ext-t", "client_id": "ext-c", "client_secret": "ext-s"})
         mock_secret = MagicMock()
         mock_secret.value = sp_json
         mock_kv = AsyncMock()
@@ -200,9 +192,7 @@ class TestCrossTenantCredentialIsAsync:
         )
         provider._kv_client = mock_kv
 
-        cred = await provider.get_credential_for_subscription(
-            uuid.uuid4(), "my-secret"
-        )
+        cred = await provider.get_credential_for_subscription(uuid.uuid4(), "my-secret")
 
         assert asyncio.iscoroutinefunction(cred.get_token), (
             "CrossTenantCredentialProvider must return a credential whose get_token "

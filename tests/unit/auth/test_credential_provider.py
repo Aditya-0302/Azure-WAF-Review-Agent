@@ -11,7 +11,6 @@ import pytest
 
 from waf_shared.auth.config import (
     AuthMode,
-    ManagedIdentityConfig,
     PlatformAuthConfig,
     ServicePrincipalConfig,
     WorkloadIdentityConfig,
@@ -30,7 +29,6 @@ from waf_shared.domain.errors.infrastructure_errors import (
     KeyVaultAccessError,
 )
 
-
 # ── ManagedIdentityCredentialProvider ────────────────────────────────────────
 
 
@@ -41,9 +39,7 @@ class TestManagedIdentityCredentialProvider:
         fake_token = MagicMock()
         fake_token.token = "mi-bearer-token"
 
-        with patch(
-            "waf_shared.auth.credential_provider.ManagedIdentityCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ManagedIdentityCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cred.get_token = AsyncMock(return_value=fake_token)
             mock_cls.return_value = mock_cred
@@ -55,9 +51,7 @@ class TestManagedIdentityCredentialProvider:
 
     @pytest.mark.asyncio
     async def test_get_token_raises_credential_unavailable_on_failure(self) -> None:
-        with patch(
-            "waf_shared.auth.credential_provider.ManagedIdentityCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ManagedIdentityCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cred.get_token = AsyncMock(side_effect=Exception("IMDS not available"))
             mock_cls.return_value = mock_cred
@@ -72,9 +66,7 @@ class TestManagedIdentityCredentialProvider:
     async def test_credential_is_created_without_client_id_when_not_provided(
         self,
     ) -> None:
-        with patch(
-            "waf_shared.auth.credential_provider.ManagedIdentityCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ManagedIdentityCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cred.get_token = AsyncMock(return_value=MagicMock(token="tok"))
             mock_cls.return_value = mock_cred
@@ -86,9 +78,7 @@ class TestManagedIdentityCredentialProvider:
 
     @pytest.mark.asyncio
     async def test_close_releases_credential(self) -> None:
-        with patch(
-            "waf_shared.auth.credential_provider.ManagedIdentityCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ManagedIdentityCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cls.return_value = mock_cred
 
@@ -110,9 +100,7 @@ class TestWorkloadIdentityCredentialProvider:
         fake_token = MagicMock()
         fake_token.token = "wi-bearer-token"
 
-        with patch(
-            "waf_shared.auth.credential_provider.WorkloadIdentityCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.WorkloadIdentityCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cred.get_token = AsyncMock(return_value=fake_token)
             mock_cls.return_value = mock_cred
@@ -126,18 +114,12 @@ class TestWorkloadIdentityCredentialProvider:
 
     @pytest.mark.asyncio
     async def test_get_token_raises_on_failure(self) -> None:
-        with patch(
-            "waf_shared.auth.credential_provider.WorkloadIdentityCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.WorkloadIdentityCredential") as mock_cls:
             mock_cred = AsyncMock()
-            mock_cred.get_token = AsyncMock(
-                side_effect=Exception("Token file not found")
-            )
+            mock_cred.get_token = AsyncMock(side_effect=Exception("Token file not found"))
             mock_cls.return_value = mock_cred
 
-            provider = WorkloadIdentityCredentialProvider(
-                tenant_id="t", client_id="c"
-            )
+            provider = WorkloadIdentityCredentialProvider(tenant_id="t", client_id="c")
             with pytest.raises(CredentialUnavailableError):
                 await provider.get_token("https://management.azure.com/.default")
 
@@ -149,18 +131,14 @@ class TestWorkloadIdentityCredentialProvider:
 class TestServicePrincipalCredentialProvider:
     def test_raises_if_no_secret_source(self) -> None:
         with pytest.raises(ValueError, match="One of client_secret"):
-            ServicePrincipalCredentialProvider(
-                tenant_id="t", client_id="c"
-            )
+            ServicePrincipalCredentialProvider(tenant_id="t", client_id="c")
 
     @pytest.mark.asyncio
     async def test_get_token_using_inline_secret(self) -> None:
         fake_token = MagicMock()
         fake_token.token = "sp-bearer-token"
 
-        with patch(
-            "waf_shared.auth.credential_provider.ClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ClientSecretCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cred.get_token = AsyncMock(return_value=fake_token)
             mock_cls.return_value = mock_cred
@@ -187,9 +165,7 @@ class TestServicePrincipalCredentialProvider:
         fake_token = MagicMock()
         fake_token.token = "sp-file-token"
 
-        with patch(
-            "waf_shared.auth.credential_provider.ClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ClientSecretCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cred.get_token = AsyncMock(return_value=fake_token)
             mock_cls.return_value = mock_cred
@@ -202,9 +178,7 @@ class TestServicePrincipalCredentialProvider:
             result = await provider.get_token("https://management.azure.com/.default")
 
         assert result.token == "sp-file-token"
-        mock_cls.assert_called_once_with(
-            tenant_id="t", client_id="c", client_secret="file-secret"
-        )
+        mock_cls.assert_called_once_with(tenant_id="t", client_id="c", client_secret="file-secret")
 
 
 # ── CrossTenantCredentialProvider ────────────────────────────────────────────
@@ -251,9 +225,7 @@ class TestCrossTenantCredentialProvider:
         provider, _ = self._make_provider(kv_secret_value=sp_json)
         subscription_id = uuid.uuid4()
 
-        with patch(
-            "waf_shared.auth.credential_provider.ClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ClientSecretCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cls.return_value = mock_cred
 
@@ -271,69 +243,47 @@ class TestCrossTenantCredentialProvider:
 
     @pytest.mark.asyncio
     async def test_caches_credential_on_second_call(self) -> None:
-        sp_json = json.dumps(
-            {"tenant_id": "t", "client_id": "c", "client_secret": "s"}
-        )
+        sp_json = json.dumps({"tenant_id": "t", "client_id": "c", "client_secret": "s"})
         provider, mock_kv = self._make_provider(kv_secret_value=sp_json)
         subscription_id = uuid.uuid4()
 
         with patch("waf_shared.auth.credential_provider.ClientSecretCredential"):
-            await provider.get_credential_for_subscription(
-                subscription_id, "secret-name"
-            )
-            await provider.get_credential_for_subscription(
-                subscription_id, "secret-name"
-            )
+            await provider.get_credential_for_subscription(subscription_id, "secret-name")
+            await provider.get_credential_for_subscription(subscription_id, "secret-name")
 
         assert mock_kv.get_secret.await_count == 1  # only fetched once
 
     @pytest.mark.asyncio
     async def test_raises_keyvault_access_error_on_kv_failure(self) -> None:
-        provider, _ = self._make_provider(
-            kv_side_effect=Exception("HTTP 403")
-        )
+        provider, _ = self._make_provider(kv_side_effect=Exception("HTTP 403"))
         with pytest.raises(KeyVaultAccessError) as exc_info:
-            await provider.get_credential_for_subscription(
-                uuid.uuid4(), "secret-name"
-            )
+            await provider.get_credential_for_subscription(uuid.uuid4(), "secret-name")
         assert "HTTP 403" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_raises_cross_tenant_error_on_invalid_json(self) -> None:
         provider, _ = self._make_provider(kv_secret_value="not-json")
         with pytest.raises(CrossTenantAuthError):
-            await provider.get_credential_for_subscription(
-                uuid.uuid4(), "secret-name"
-            )
+            await provider.get_credential_for_subscription(uuid.uuid4(), "secret-name")
 
     @pytest.mark.asyncio
     async def test_raises_cross_tenant_error_on_missing_fields(self) -> None:
-        provider, _ = self._make_provider(
-            kv_secret_value=json.dumps({"tenant_id": "t"})
-        )
+        provider, _ = self._make_provider(kv_secret_value=json.dumps({"tenant_id": "t"}))
         with pytest.raises(CrossTenantAuthError) as exc_info:
-            await provider.get_credential_for_subscription(
-                uuid.uuid4(), "secret-name"
-            )
+            await provider.get_credential_for_subscription(uuid.uuid4(), "secret-name")
         assert "missing required fields" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_invalidate_cache_removes_and_closes_credential(self) -> None:
-        sp_json = json.dumps(
-            {"tenant_id": "t", "client_id": "c", "client_secret": "s"}
-        )
+        sp_json = json.dumps({"tenant_id": "t", "client_id": "c", "client_secret": "s"})
         provider, _ = self._make_provider(kv_secret_value=sp_json)
         subscription_id = uuid.uuid4()
 
-        with patch(
-            "waf_shared.auth.credential_provider.ClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider.ClientSecretCredential") as mock_cls:
             mock_cred = AsyncMock()
             mock_cls.return_value = mock_cred
 
-            await provider.get_credential_for_subscription(
-                subscription_id, "secret-name"
-            )
+            await provider.get_credential_for_subscription(subscription_id, "secret-name")
             assert str(subscription_id) in provider._cache
 
             await provider.invalidate_cache(subscription_id)
@@ -441,9 +391,7 @@ class TestCrossTenantLegacyFormats:
     async def test_accepts_format_a_key_equals_value(self) -> None:
         secret = "tenant_id=ext-tenant\nclient_id=ext-client\nclient_secret=ext-secret"
         provider = self._make_provider(secret)
-        with patch(
-            "waf_shared.auth.credential_provider._SyncClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider._SyncClientSecretCredential") as mock_cls:
             mock_cls.return_value = MagicMock()
             await provider.get_credential_for_subscription(uuid.uuid4(), "my-secret")
         mock_cls.assert_called_once_with(
@@ -454,9 +402,7 @@ class TestCrossTenantLegacyFormats:
     async def test_accepts_format_b_key_colon_value(self) -> None:
         secret = "tenant_id:ext-tenant\nclient_id:ext-client\nclient_secret:ext-secret"
         provider = self._make_provider(secret)
-        with patch(
-            "waf_shared.auth.credential_provider._SyncClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider._SyncClientSecretCredential") as mock_cls:
             mock_cls.return_value = MagicMock()
             await provider.get_credential_for_subscription(uuid.uuid4(), "my-secret")
         mock_cls.assert_called_once_with(
@@ -467,9 +413,7 @@ class TestCrossTenantLegacyFormats:
     async def test_accepts_format_c_brace_wrapped(self) -> None:
         secret = "{tenant_id:ext-tenant,client_id:ext-client,client_secret:ext-secret}"
         provider = self._make_provider(secret)
-        with patch(
-            "waf_shared.auth.credential_provider._SyncClientSecretCredential"
-        ) as mock_cls:
+        with patch("waf_shared.auth.credential_provider._SyncClientSecretCredential") as mock_cls:
             mock_cls.return_value = MagicMock()
             await provider.get_credential_for_subscription(uuid.uuid4(), "my-secret")
         mock_cls.assert_called_once_with(
@@ -504,9 +448,7 @@ class TestCreatePlatformProvider:
     def test_returns_workload_identity_provider(self) -> None:
         config = PlatformAuthConfig(
             mode=AuthMode.WORKLOAD_IDENTITY,
-            workload_identity=WorkloadIdentityConfig(
-                tenant_id="t", client_id="c"
-            ),
+            workload_identity=WorkloadIdentityConfig(tenant_id="t", client_id="c"),
         )
         provider = create_platform_provider(config)
         assert isinstance(provider, WorkloadIdentityCredentialProvider)

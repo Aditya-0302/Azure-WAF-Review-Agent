@@ -13,7 +13,7 @@ class CreateAssessmentSchema(BaseModel):
     idempotency_key: str = Field(
         min_length=1,
         max_length=128,
-        description="Client-supplied idempotency key. Same key + same params returns the existing assessment.",
+        description="Client-supplied idempotency key. Same key + same params returns the existing assessment.",  # noqa: E501
     )
     subscription_ids: list[uuid.UUID] = Field(
         min_length=1,
@@ -22,7 +22,7 @@ class CreateAssessmentSchema(BaseModel):
     )
     pillar_filter: list[str] | None = Field(
         default=None,
-        description="Optional WAF pillar names to restrict evaluation (e.g. ['Reliability', 'Security']).",
+        description="Optional WAF pillar names to restrict evaluation (e.g. ['Reliability', 'Security']).",  # noqa: E501
     )
     tag_filter: dict[str, str] | None = Field(
         default=None,

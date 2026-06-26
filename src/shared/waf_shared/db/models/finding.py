@@ -12,23 +12,35 @@ from sqlalchemy.orm import Mapped, mapped_column
 from waf_shared.db.models.base import Base
 
 _finding_status = sa.Enum(
-    "open", "acknowledged", "resolved", "suppressed",
+    "open",
+    "acknowledged",
+    "resolved",
+    "suppressed",
     name="finding_status",
     create_type=False,
 )
 _severity = sa.Enum(
-    "critical", "high", "medium", "low", "informational",
+    "critical",
+    "high",
+    "medium",
+    "low",
+    "informational",
     name="severity",
     create_type=False,
 )
 _pillar = sa.Enum(
-    "reliability", "security", "cost_optimization",
-    "operational_excellence", "performance_efficiency",
+    "reliability",
+    "security",
+    "cost_optimization",
+    "operational_excellence",
+    "performance_efficiency",
     name="pillar",
     create_type=False,
 )
 _evaluation_type = sa.Enum(
-    "deterministic", "llm", "hybrid",
+    "deterministic",
+    "llm",
+    "hybrid",
     name="evaluation_type",
     create_type=False,
 )

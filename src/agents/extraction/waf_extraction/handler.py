@@ -60,11 +60,10 @@ from waf_shared.domain.events.assessment_events import (
 )
 from waf_shared.domain.events.base import CloudEventEnvelope
 from waf_shared.domain.models.assessment import (
+    TERMINAL_STATUSES,
     Assessment,
     AssessmentResource,
-    AssessmentStatus,
     BatchStatus,
-    TERMINAL_STATUSES,
 )
 from waf_shared.domain.models.credential import CredentialHealth
 from waf_shared.messaging.queue_names import REASONING_REQUESTED
@@ -150,9 +149,7 @@ class ExtractionHandler:
     # ── Orchestration ──────────────────────────────────────────────────────────
 
     async def _handle(self, event: ExtractionRequestedEvent, log: StructuredLogger) -> None:
-        assessment = await self._assessment_repo.get_by_id(
-            event.tenant_id, event.assessment_id
-        )
+        assessment = await self._assessment_repo.get_by_id(event.tenant_id, event.assessment_id)
         if assessment is None:
             log.error("extraction.handler.assessment_not_found")
             return
@@ -214,13 +211,13 @@ class ExtractionHandler:
                 raise CrossTenantAuthError(
                     subscription_id=event.subscription_id,
                     reason="no credential registered for subscription; "
-                           "re-register via the credentials API",
+                    "re-register via the credentials API",
                 )
             if credential_record.health in (CredentialHealth.EXPIRED, CredentialHealth.INVALID):
                 raise CrossTenantAuthError(
                     subscription_id=event.subscription_id,
                     reason=f"credential health is '{credential_record.health.value}'; "
-                           "rotate or re-register the credential",
+                    "rotate or re-register the credential",
                 )
             azure_credential = await self._cross_tenant_provider.get_credential_for_subscription(
                 event.subscription_id, credential_record.keyvault_secret_name
@@ -256,9 +253,7 @@ class ExtractionHandler:
             )
             raise
 
-        found_by_id: dict[str, dict[str, Any]] = {
-            row["id"].lower(): row for row in raw_rows
-        }
+        found_by_id: dict[str, dict[str, Any]] = {row["id"].lower(): row for row in raw_rows}
         log.info(
             "extraction.handler.rg_fetched",
             requested=len(event.resource_ids),
@@ -327,9 +322,7 @@ class ExtractionHandler:
         )
 
         # ── Stage: publish_reasoning ──────────────────────────────────────────
-        refreshed = await self._assessment_repo.get_by_id(
-            event.tenant_id, event.assessment_id
-        )
+        refreshed = await self._assessment_repo.get_by_id(event.tenant_id, event.assessment_id)
         if refreshed is not None and refreshed.is_cancellation_pending:
             log.info("extraction.handler.cancelled_before_publish")
             return

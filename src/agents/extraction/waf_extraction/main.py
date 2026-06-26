@@ -25,6 +25,8 @@ from typing import Any
 
 from azure.servicebus.aio import ServiceBusClient
 from azure.servicebus.exceptions import ServiceBusError
+from waf_extraction.config import ExtractionConfig
+from waf_extraction.handler import ExtractionHandler
 
 from waf_shared.auth.config import AuthMode, PlatformAuthConfig
 from waf_shared.auth.credential_provider import (
@@ -39,12 +41,10 @@ from waf_shared.messaging.queue_names import EXTRACTION_REQUESTED
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.runtime.signals import install_signal_handlers
 from waf_shared.telemetry.logging import StructuredLogger, configure_structlog
-from waf_extraction.config import ExtractionConfig
-from waf_extraction.handler import ExtractionHandler
 
-_LOCK_RENEWAL_INTERVAL = 30   # seconds; must be < Service Bus lock duration (default 60 s)
-_RECEIVE_TIMEOUT = 5.0        # max seconds to wait for the next message before re-checking stop flag
-_MAX_DELIVERY_COUNT = 3       # dead-letter after this many failed deliveries (0-indexed)
+_LOCK_RENEWAL_INTERVAL = 30  # seconds; must be < Service Bus lock duration (default 60 s)
+_RECEIVE_TIMEOUT = 5.0  # max seconds to wait for the next message before re-checking stop flag
+_MAX_DELIVERY_COUNT = 3  # dead-letter after this many failed deliveries (0-indexed)
 
 
 async def main() -> None:
@@ -153,9 +153,7 @@ async def _process_one(
 ) -> None:
     # Materialise the body once — msg.body is a one-shot iterator.
     body = b"".join(msg.body)
-    renewal_task = asyncio.create_task(
-        _renew_lock_periodically(receiver, msg, logger)
-    )
+    renewal_task = asyncio.create_task(_renew_lock_periodically(receiver, msg, logger))
     try:
         await handler.process(body)
         await receiver.complete_message(msg)

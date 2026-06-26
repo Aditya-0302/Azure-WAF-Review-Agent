@@ -25,12 +25,12 @@ Never raises — returns a plan with empty/default sections on any error.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from waf_reporting.aggregator import AggregatedReport
-from waf_shared.domain.models.finding import Finding
 
+from waf_shared.domain.models.finding import Finding
 
 # ---------------------------------------------------------------------------
 # Lookup tables
@@ -39,84 +39,102 @@ from waf_shared.domain.models.finding import Finding
 _SEVERITY_ORDER = ["critical", "high", "medium", "low", "informational"]
 
 _PRIORITY_LABEL: dict[str, str] = {
-    "critical":      "Immediate",
-    "high":          "Near-Term",
-    "medium":        "Medium-Term",
-    "low":           "Long-Term",
+    "critical": "Immediate",
+    "high": "Near-Term",
+    "medium": "Medium-Term",
+    "low": "Long-Term",
     "informational": "Long-Term",
 }
 
 _TIMEFRAME: dict[str, str] = {
-    "Immediate":   "0–7 Days",
-    "Near-Term":   "7–30 Days",
+    "Immediate": "0–7 Days",
+    "Near-Term": "7–30 Days",
     "Medium-Term": "30–90 Days",
-    "Long-Term":   "90+ Days",
+    "Long-Term": "90+ Days",
 }
 
 _EFFORT_MAP: dict[str, str] = {
-    "critical":      "2–5 days",
-    "high":          "1–3 days",
-    "medium":        "2–8 hours",
-    "low":           "Less than 2 hours",
+    "critical": "2–5 days",
+    "high": "1–3 days",
+    "medium": "2–8 hours",
+    "low": "Less than 2 hours",
     "informational": "Less than 1 hour",
 }
 
 _RISK_REDUCTION_MAP: dict[str, str] = {
-    "critical":      "Very High",
-    "high":          "High",
-    "medium":        "Moderate",
-    "low":           "Low",
+    "critical": "Very High",
+    "high": "High",
+    "medium": "Moderate",
+    "low": "Low",
     "informational": "Minimal",
 }
 
 # Owner assignment: first pattern that appears in lowercase resource_type wins
 _OWNER_PATTERNS: list[tuple[str, str]] = [
-    ("storageaccount",     "Storage Team"),
-    ("storage",            "Storage Team"),
-    ("virtualmachine",     "Infrastructure Team"),
-    ("managedcluster",     "Infrastructure Team"),
-    ("disk",               "Infrastructure Team"),
+    ("storageaccount", "Storage Team"),
+    ("storage", "Storage Team"),
+    ("virtualmachine", "Infrastructure Team"),
+    ("managedcluster", "Infrastructure Team"),
+    ("disk", "Infrastructure Team"),
     ("applicationgateway", "Network Team"),
-    ("networksecurity",    "Network Team"),
-    ("networkinterface",   "Network Team"),
-    ("loadbalancer",       "Network Team"),
-    ("virtualnetwork",     "Network Team"),
-    ("publicip",           "Network Team"),
-    ("keyvault",           "Security Team"),
-    ("containerregistry",  "Security Team"),
-    ("vault",              "Security Team"),
-    ("sql",                "Database Team"),
-    ("mysql",              "Database Team"),
-    ("postgresql",         "Database Team"),
-    ("database",           "Database Team"),
-    ("cosmosdb",           "Database Team"),
-    ("site",               "Application Team"),
-    ("functionapp",        "Application Team"),
-    ("appservice",         "Application Team"),
-    ("serverfarm",         "Application Team"),
-    ("namespace",          "Application Team"),
-    ("monitor",            "Operations Team"),
-    ("insight",            "Operations Team"),
-    ("workspace",          "Operations Team"),
-    ("automationaccount",  "Operations Team"),
-    ("recoveryservices",   "Operations Team"),
+    ("networksecurity", "Network Team"),
+    ("networkinterface", "Network Team"),
+    ("loadbalancer", "Network Team"),
+    ("virtualnetwork", "Network Team"),
+    ("publicip", "Network Team"),
+    ("keyvault", "Security Team"),
+    ("containerregistry", "Security Team"),
+    ("vault", "Security Team"),
+    ("sql", "Database Team"),
+    ("mysql", "Database Team"),
+    ("postgresql", "Database Team"),
+    ("database", "Database Team"),
+    ("cosmosdb", "Database Team"),
+    ("site", "Application Team"),
+    ("functionapp", "Application Team"),
+    ("appservice", "Application Team"),
+    ("serverfarm", "Application Team"),
+    ("namespace", "Application Team"),
+    ("monitor", "Operations Team"),
+    ("insight", "Operations Team"),
+    ("workspace", "Operations Team"),
+    ("automationaccount", "Operations Team"),
+    ("recoveryservices", "Operations Team"),
 ]
 _OWNER_DEFAULT = "Platform Team"
 
 # Quick-win keyword detection (title + recommendation, case-insensitive)
-_QUICK_WIN_KEYWORDS: frozenset[str] = frozenset({
-    "secure transfer", "https only", "https-only",
-    "tls 1.2", "minimum tls", "tls version",
-    "diagnostic", "diagnostic setting", "diagnostic log",
-    "resource tag", "enforce tag", "tagging",
-    "resource lock", "delete lock", "readonly lock",
-    "budget", "budget alert",
-    "encryption at rest", "blob encryption",
-    "https", "http to https",
-    "backup retention", "soft delete",
-    "firewall rule", "ip restriction",
-    "audit log", "activity log",
-})
+_QUICK_WIN_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "secure transfer",
+        "https only",
+        "https-only",
+        "tls 1.2",
+        "minimum tls",
+        "tls version",
+        "diagnostic",
+        "diagnostic setting",
+        "diagnostic log",
+        "resource tag",
+        "enforce tag",
+        "tagging",
+        "resource lock",
+        "delete lock",
+        "readonly lock",
+        "budget",
+        "budget alert",
+        "encryption at rest",
+        "blob encryption",
+        "https",
+        "http to https",
+        "backup retention",
+        "soft delete",
+        "firewall rule",
+        "ip restriction",
+        "audit log",
+        "activity log",
+    }
+)
 
 _QUICK_WIN_HIGH_IMPACT_PILLARS: frozenset[str] = frozenset({"security", "reliability"})
 
@@ -176,8 +194,14 @@ _INITIATIVE_MATCHERS: list[dict] = [
         "timeline": "Month 1–2",
         "matcher": lambda f: any(
             kw in (f.resource_type or "").lower()
-            for kw in ("networksecurity", "virtualnetwork", "applicationgateway",
-                       "firewall", "publicip", "networkinterface")
+            for kw in (
+                "networksecurity",
+                "virtualnetwork",
+                "applicationgateway",
+                "firewall",
+                "publicip",
+                "networkinterface",
+            )
         ),
     },
     {
@@ -249,18 +273,18 @@ _DEPENDENCY_CHECKS: list[tuple] = [
 # Checklist verb selection by rule_id prefix
 _CHECKLIST_PREFIXES: list[tuple[str, str]] = [
     ("SEC-STG-", "Enable secure configuration on"),
-    ("SEC-KV-",  "Harden Key Vault settings for"),
+    ("SEC-KV-", "Harden Key Vault settings for"),
     ("SEC-NET-", "Apply network security controls to"),
     ("SEC-DEF-", "Enable Defender plan for"),
-    ("SEC-",     "Apply security recommendation to"),
+    ("SEC-", "Apply security recommendation to"),
     ("REL-AGW-", "Reconfigure Application Gateway health probe on"),
-    ("REL-",     "Implement reliability improvement on"),
-    ("OPS-DIAG-","Enable diagnostic settings on"),
+    ("REL-", "Implement reliability improvement on"),
+    ("OPS-DIAG-", "Enable diagnostic settings on"),
     ("OPS-MON-", "Configure monitoring alerts for"),
-    ("OPS-",     "Apply operational improvement to"),
-    ("PER-",     "Apply performance tuning to"),
+    ("OPS-", "Apply operational improvement to"),
+    ("PER-", "Apply performance tuning to"),
     ("CST-BUDGET-", "Create budget alert for"),
-    ("CST-",     "Apply cost governance to"),
+    ("CST-", "Apply cost governance to"),
 ]
 _CHECKLIST_DEFAULT_VERB = "Apply recommendation to"
 
@@ -269,21 +293,23 @@ _CHECKLIST_DEFAULT_VERB = "Apply recommendation to"
 # Output dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class RemediationItem:
     """One finding entry in the remediation roadmap or full table."""
+
     rank: int
     title: str
     severity: str
-    pillar: str                    # display form e.g. "Security"
-    waf_controls: str              # "SE-03, RE-02"
+    pillar: str  # display form e.g. "Security"
+    waf_controls: str  # "SE-03, RE-02"
     recommendation: str
-    affected_resource: str         # first short resource name
+    affected_resource: str  # first short resource name
     affected_resource_count: int
     owner: str
     estimated_effort: str
     estimated_risk_reduction: str
-    priority_label: str            # "Immediate" | "Near-Term" | "Medium-Term" | "Long-Term"
+    priority_label: str  # "Immediate" | "Near-Term" | "Medium-Term" | "Long-Term"
     verification_step: str
     rule_id: str
 
@@ -291,15 +317,17 @@ class RemediationItem:
 @dataclass(frozen=True)
 class RemediationPhase:
     """One priority phase grouping related severity findings."""
-    label: str                     # "Immediate" | "Near-Term" | "Medium-Term" | "Long-Term"
-    timeframe: str                 # "0–7 Days" etc.
-    severity_bucket: str           # "Critical" | "High" | "Medium" | "Low / Informational"
-    items: tuple                   # tuple[RemediationItem, ...]
+
+    label: str  # "Immediate" | "Near-Term" | "Medium-Term" | "Long-Term"
+    timeframe: str  # "0–7 Days" etc.
+    severity_bucket: str  # "Critical" | "High" | "Medium" | "Low / Informational"
+    items: tuple  # tuple[RemediationItem, ...]
 
 
 @dataclass(frozen=True)
 class QuickWin:
     """A low-effort / high-impact finding identified automatically."""
+
     rank: int
     title: str
     severity: str
@@ -314,6 +342,7 @@ class QuickWin:
 @dataclass(frozen=True)
 class StrategicInitiative:
     """A named strategic improvement initiative grouping related findings."""
+
     name: str
     description: str
     finding_count: int
@@ -325,15 +354,17 @@ class StrategicInitiative:
 @dataclass(frozen=True)
 class TimelinePeriod:
     """One time period in the implementation timeline."""
-    period: str               # "Week 1" | "Week 2" | "Month 1" | "Quarter"
+
+    period: str  # "Week 1" | "Week 2" | "Month 1" | "Quarter"
     focus: str
-    activities: tuple         # tuple[str, ...]
+    activities: tuple  # tuple[str, ...]
     finding_count: int
 
 
 @dataclass(frozen=True)
 class ExpectedImprovement:
     """Qualitative improvement projections using non-guaranteeing language."""
+
     potential_security_increase: str
     potential_compliance_increase: str
     potential_risk_reduction: str
@@ -343,6 +374,7 @@ class ExpectedImprovement:
 @dataclass(frozen=True)
 class Dependency:
     """One implementation dependency relationship."""
+
     prerequisite: str
     dependent: str
     rationale: str
@@ -351,13 +383,15 @@ class Dependency:
 @dataclass(frozen=True)
 class ChecklistItem:
     """One item in the verification checklist."""
-    category: str    # "Immediate" | "Near-Term" | "Medium-Term" | "Long-Term" | "Close-Out"
-    text: str        # "☐ Enable Secure Transfer on mystorageaccount"
+
+    category: str  # "Immediate" | "Near-Term" | "Medium-Term" | "Long-Term" | "Close-Out"
+    text: str  # "☐ Enable Secure Transfer on mystorageaccount"
 
 
 @dataclass(frozen=True)
 class ManagementSummary:
     """Executive one-page implementation summary."""
+
     total_findings: int
     immediate_count: int
     near_term_count: int
@@ -365,28 +399,30 @@ class ManagementSummary:
     long_term_count: int
     estimated_total_effort: str
     estimated_duration: str
-    top_priorities: tuple      # tuple[str, ...]  — up to 3
+    top_priorities: tuple  # tuple[str, ...]  — up to 3
     expected_outcome: str
-    top_risks: tuple           # tuple[str, ...]  — up to 3
+    top_risks: tuple  # tuple[str, ...]  — up to 3
 
 
 @dataclass(frozen=True)
 class RemediationPlan:
     """Master container for all 9 enterprise remediation plan sections."""
-    phases: tuple                              # tuple[RemediationPhase, ...]
-    remediation_table: tuple                   # tuple[RemediationItem, ...]
-    quick_wins: tuple                          # tuple[QuickWin, ...]
-    strategic_initiatives: tuple               # tuple[StrategicInitiative, ...]
-    timeline: tuple                            # tuple[TimelinePeriod, ...]
+
+    phases: tuple  # tuple[RemediationPhase, ...]
+    remediation_table: tuple  # tuple[RemediationItem, ...]
+    quick_wins: tuple  # tuple[QuickWin, ...]
+    strategic_initiatives: tuple  # tuple[StrategicInitiative, ...]
+    timeline: tuple  # tuple[TimelinePeriod, ...]
     expected_improvements: ExpectedImprovement
-    dependencies: tuple                        # tuple[Dependency, ...]
-    checklist: tuple                           # tuple[ChecklistItem, ...]
+    dependencies: tuple  # tuple[Dependency, ...]
+    checklist: tuple  # tuple[ChecklistItem, ...]
     management_summary: ManagementSummary
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _sev_sort_key(sev: str) -> int:
     try:
@@ -412,19 +448,55 @@ def _get_owner(resource_type: str) -> str:
 def _get_verification_step(rule_id: str) -> str:
     """Deterministic verification guidance derived from rule ID prefix."""
     _PREFIXES: list[tuple[str, str]] = [
-        ("SEC-STG-", "Re-run storage assessment; confirm secure transfer and TLS setting match expected values."),
-        ("SEC-KV-",  "Re-run Key Vault assessment; verify soft-delete, purge protection, and access policy."),
-        ("SEC-NET-", "Re-run network assessment; confirm NSG rules and private endpoint configuration."),
-        ("SEC-DEF-", "Re-run Defender assessment; verify Defender plan is enabled and alerts are routed."),
-        ("SEC-",     "Re-run security assessment; confirm the observed value matches the expected value in evidence."),
-        ("REL-AGW-", "Re-run Application Gateway assessment; verify health probe and WAF policy settings."),
-        ("REL-",     "Re-run reliability assessment; verify redundancy, health probes, and replication settings."),
-        ("OPS-DIAG-","Re-run diagnostics assessment; confirm diagnostic settings are active and logs are flowing."),
-        ("OPS-MON-", "Re-run monitoring assessment; verify alerts are active and routed to action groups."),
-        ("OPS-",     "Re-run operational assessment; confirm monitoring, alerting, and governance settings."),
-        ("PER-",     "Re-run performance assessment; verify autoscale, cache, and load-balancing configuration."),
-        ("CST-BUDGET-", "Re-run cost assessment; confirm budget alert is active and thresholds are correct."),
-        ("CST-",     "Re-run cost assessment; verify tagging, reserved capacity, and resource sizing."),
+        (
+            "SEC-STG-",
+            "Re-run storage assessment; confirm secure transfer and TLS setting match expected values.",
+        ),
+        (
+            "SEC-KV-",
+            "Re-run Key Vault assessment; verify soft-delete, purge protection, and access policy.",
+        ),
+        (
+            "SEC-NET-",
+            "Re-run network assessment; confirm NSG rules and private endpoint configuration.",
+        ),
+        (
+            "SEC-DEF-",
+            "Re-run Defender assessment; verify Defender plan is enabled and alerts are routed.",
+        ),
+        (
+            "SEC-",
+            "Re-run security assessment; confirm the observed value matches the expected value in evidence.",
+        ),
+        (
+            "REL-AGW-",
+            "Re-run Application Gateway assessment; verify health probe and WAF policy settings.",
+        ),
+        (
+            "REL-",
+            "Re-run reliability assessment; verify redundancy, health probes, and replication settings.",
+        ),
+        (
+            "OPS-DIAG-",
+            "Re-run diagnostics assessment; confirm diagnostic settings are active and logs are flowing.",
+        ),
+        (
+            "OPS-MON-",
+            "Re-run monitoring assessment; verify alerts are active and routed to action groups.",
+        ),
+        (
+            "OPS-",
+            "Re-run operational assessment; confirm monitoring, alerting, and governance settings.",
+        ),
+        (
+            "PER-",
+            "Re-run performance assessment; verify autoscale, cache, and load-balancing configuration.",
+        ),
+        (
+            "CST-BUDGET-",
+            "Re-run cost assessment; confirm budget alert is active and thresholds are correct.",
+        ),
+        ("CST-", "Re-run cost assessment; verify tagging, reserved capacity, and resource sizing."),
     ]
     rid = (rule_id or "").upper()
     for prefix, text in _PREFIXES:
@@ -465,14 +537,14 @@ def _deduplicate_by_rule(findings: list[Finding]) -> list[dict]:
         key = (f.rule_id, f.severity.value)
         if key not in groups:
             groups[key] = {
-                "title":          f.title,
-                "severity":       f.severity.value,
-                "pillar":         f.pillar,
-                "rule_id":        f.rule_id,
+                "title": f.title,
+                "severity": f.severity.value,
+                "pillar": f.pillar,
+                "rule_id": f.rule_id,
                 "recommendation": f.recommendation,
-                "resource_type":  f.resource_type,
-                "waf_codes":      list(f.waf_codes or []),
-                "resources":      [],
+                "resource_type": f.resource_type,
+                "waf_codes": list(f.waf_codes or []),
+                "resources": [],
             }
         short = _short_name(f.resource_id)
         if short not in groups[key]["resources"]:
@@ -506,31 +578,30 @@ def _make_item(rank: int, item: dict) -> RemediationItem:
 # Section builders
 # ---------------------------------------------------------------------------
 
+
 def _build_phases(deduped: list[dict]) -> tuple:
     """Section 1: Group items into Immediate / Near-Term / Medium-Term / Long-Term."""
     buckets: dict[str, list[dict]] = {
-        "Immediate":   [],
-        "Near-Term":   [],
+        "Immediate": [],
+        "Near-Term": [],
         "Medium-Term": [],
-        "Long-Term":   [],
+        "Long-Term": [],
     }
     _sev_bucket = {
-        "critical":      "Immediate",
-        "high":          "Near-Term",
-        "medium":        "Medium-Term",
-        "low":           "Long-Term",
+        "critical": "Immediate",
+        "high": "Near-Term",
+        "medium": "Medium-Term",
+        "low": "Long-Term",
         "informational": "Long-Term",
     }
     _bucket_sev_label = {
-        "Immediate":   "Critical",
-        "Near-Term":   "High",
+        "Immediate": "Critical",
+        "Near-Term": "High",
         "Medium-Term": "Medium",
-        "Long-Term":   "Low / Informational",
+        "Long-Term": "Low / Informational",
     }
     for rank, item in enumerate(deduped, 1):
-        buckets[_sev_bucket.get(item["severity"], "Long-Term")].append(
-            {**item, "_rank": rank}
-        )
+        buckets[_sev_bucket.get(item["severity"], "Long-Term")].append({**item, "_rank": rank})
 
     return tuple(
         RemediationPhase(
@@ -564,6 +635,7 @@ def _build_quick_wins(findings: list[Finding]) -> tuple:
             {"security": 0, "reliability": 1}.get(f.pillar, 2),
             _sev_sort_key(f.severity.value),
         )
+
     qw.sort(key=_sort_key)
 
     rule_counts: dict[str, int] = {}
@@ -618,19 +690,19 @@ def _build_strategic_initiatives(findings: list[Finding]) -> tuple:
             pillars.add(f.pillar.replace("_", " ").title())
 
         sev_parts = [
-            f"{sev_counts[s]} {s.capitalize()}"
-            for s in _SEVERITY_ORDER
-            if s in sev_counts
+            f"{sev_counts[s]} {s.capitalize()}" for s in _SEVERITY_ORDER if s in sev_counts
         ]
 
-        initiatives.append(StrategicInitiative(
-            name=cfg["name"],
-            description=cfg["description"],
-            finding_count=len(deduped),
-            severity_summary=", ".join(sev_parts) if sev_parts else "None",
-            pillars_involved=", ".join(sorted(pillars)),
-            recommended_timeline=cfg["timeline"],
-        ))
+        initiatives.append(
+            StrategicInitiative(
+                name=cfg["name"],
+                description=cfg["description"],
+                finding_count=len(deduped),
+                severity_summary=", ".join(sev_parts) if sev_parts else "None",
+                pillars_involved=", ".join(sorted(pillars)),
+                recommended_timeline=cfg["timeline"],
+            )
+        )
 
     return tuple(initiatives)
 
@@ -638,15 +710,21 @@ def _build_strategic_initiatives(findings: list[Finding]) -> tuple:
 def _build_timeline(findings: list[Finding]) -> tuple:
     """Section 5: Place unique rule findings into Week 1 / Week 2 / Month 1 / Quarter."""
     buckets: dict[str, list[str]] = {
-        "Week 1": [], "Week 2": [], "Month 1": [], "Quarter": [],
+        "Week 1": [],
+        "Week 2": [],
+        "Month 1": [],
+        "Quarter": [],
     }
     _sev_to_period = {
-        "critical": "Week 1", "high": "Week 2",
-        "medium": "Month 1", "low": "Quarter", "informational": "Quarter",
+        "critical": "Week 1",
+        "high": "Week 2",
+        "medium": "Month 1",
+        "low": "Quarter",
+        "informational": "Quarter",
     }
     _foci = {
-        "Week 1":  "Critical finding remediation — immediate executive action required",
-        "Week 2":  "High severity remediation — dedicated security engineering sprint",
+        "Week 1": "Critical finding remediation — immediate executive action required",
+        "Week 2": "High severity remediation — dedicated security engineering sprint",
         "Month 1": "Medium severity remediation — planned sprint cycle",
         "Quarter": "Low severity and informational findings — maintenance backlog",
     }
@@ -676,15 +754,14 @@ def _build_expected_improvements(
     findings: list[Finding],
 ) -> ExpectedImprovement:
     """Section 6: Qualitative improvement projections — never guaranteed outcomes."""
-    crit  = agg.findings_by_severity.get("critical", 0)
-    high  = agg.findings_by_severity.get("high",     0)
-    med   = agg.findings_by_severity.get("medium",   0)
+    crit = agg.findings_by_severity.get("critical", 0)
+    high = agg.findings_by_severity.get("high", 0)
+    med = agg.findings_by_severity.get("medium", 0)
     score = agg.overall_compliance_score
 
     # Security increase estimate
     sec_ch = [
-        f for f in findings
-        if f.pillar == "security" and f.severity.value in ("critical", "high")
+        f for f in findings if f.pillar == "security" and f.severity.value in ("critical", "high")
     ]
     if len(sec_ch) >= 5:
         sec_inc = "Estimated 20–35 percentage point potential improvement in security posture"
@@ -755,11 +832,13 @@ def _build_dependencies(findings: list[Finding]) -> tuple:
         prereq_fn, dep_fn, prereq_label, dep_label, rationale = check
         try:
             if prereq_fn(titles) and dep_fn(titles):
-                deps.append(Dependency(
-                    prerequisite=prereq_label,
-                    dependent=dep_label,
-                    rationale=rationale,
-                ))
+                deps.append(
+                    Dependency(
+                        prerequisite=prereq_label,
+                        dependent=dep_label,
+                        rationale=rationale,
+                    )
+                )
         except Exception:
             pass
     return tuple(deps)
@@ -768,17 +847,17 @@ def _build_dependencies(findings: list[Finding]) -> tuple:
 def _build_checklist(deduped: list[dict]) -> tuple:
     """Section 8: Per-finding checklist plus standard close-out items."""
     _sev_cat = {
-        "critical":      "Immediate",
-        "high":          "Near-Term",
-        "medium":        "Medium-Term",
-        "low":           "Long-Term",
+        "critical": "Immediate",
+        "high": "Near-Term",
+        "medium": "Medium-Term",
+        "low": "Long-Term",
         "informational": "Long-Term",
     }
     items: list[ChecklistItem] = []
     for item in deduped:
-        cat  = _sev_cat.get(item["severity"], "Long-Term")
+        cat = _sev_cat.get(item["severity"], "Long-Term")
         verb = _checklist_verb(item["rule_id"])
-        res  = item["resources"][0] if item["resources"] else "affected resources"
+        res = item["resources"][0] if item["resources"] else "affected resources"
         items.append(ChecklistItem(category=cat, text=f"☐ {verb} {res}"))
 
     for text in (
@@ -798,15 +877,15 @@ def _build_management_summary(
     phases: tuple,
 ) -> ManagementSummary:
     """Section 9: Executive one-page management summary."""
-    immediate_ct  = sum(len(p.items) for p in phases if p.label == "Immediate")
-    near_term_ct  = sum(len(p.items) for p in phases if p.label == "Near-Term")
-    medium_ct     = sum(len(p.items) for p in phases if p.label == "Medium-Term")
-    long_term_ct  = sum(len(p.items) for p in phases if p.label == "Long-Term")
+    immediate_ct = sum(len(p.items) for p in phases if p.label == "Immediate")
+    near_term_ct = sum(len(p.items) for p in phases if p.label == "Near-Term")
+    medium_ct = sum(len(p.items) for p in phases if p.label == "Medium-Term")
+    long_term_ct = sum(len(p.items) for p in phases if p.label == "Long-Term")
 
     crit = agg.findings_by_severity.get("critical", 0)
-    high = agg.findings_by_severity.get("high",     0)
-    med  = agg.findings_by_severity.get("medium",   0)
-    low  = agg.findings_by_severity.get("low",      0)
+    high = agg.findings_by_severity.get("high", 0)
+    med = agg.findings_by_severity.get("medium", 0)
+    low = agg.findings_by_severity.get("low", 0)
 
     # Rough effort: critical ≈ 3.5 days avg, high ≈ 2 days, medium ≈ 5 h, low ≈ 1 h
     total_hours = crit * 28 + high * 16 + med * 5 + low * 1
@@ -896,6 +975,7 @@ def _build_management_summary(
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def build_remediation_plan(
     agg: AggregatedReport,
     findings: Sequence[Finding],
@@ -906,38 +986,47 @@ def build_remediation_plan(
     Never raises — returns a plan with empty/default sections on any error.
     """
     try:
-        all_f   = list(findings)
+        all_f = list(findings)
         deduped = _deduplicate_by_rule(all_f)
-        phases  = _build_phases(deduped)
+        phases = _build_phases(deduped)
         return RemediationPlan(
-            phases                = phases,
-            remediation_table     = _build_remediation_table(deduped),
-            quick_wins            = _build_quick_wins(all_f),
-            strategic_initiatives = _build_strategic_initiatives(all_f),
-            timeline              = _build_timeline(all_f),
-            expected_improvements = _build_expected_improvements(agg, all_f),
-            dependencies          = _build_dependencies(all_f),
-            checklist             = _build_checklist(deduped),
-            management_summary    = _build_management_summary(agg, phases),
+            phases=phases,
+            remediation_table=_build_remediation_table(deduped),
+            quick_wins=_build_quick_wins(all_f),
+            strategic_initiatives=_build_strategic_initiatives(all_f),
+            timeline=_build_timeline(all_f),
+            expected_improvements=_build_expected_improvements(agg, all_f),
+            dependencies=_build_dependencies(all_f),
+            checklist=_build_checklist(deduped),
+            management_summary=_build_management_summary(agg, phases),
         )
     except Exception:
         _empty_impr = ExpectedImprovement(
-            potential_security_increase   = "Not available",
-            potential_compliance_increase = "Not available",
-            potential_risk_reduction      = "Not available",
-            caveat                        = "Assessment data unavailable.",
+            potential_security_increase="Not available",
+            potential_compliance_increase="Not available",
+            potential_risk_reduction="Not available",
+            caveat="Assessment data unavailable.",
         )
         _empty_sum = ManagementSummary(
-            total_findings=0, immediate_count=0, near_term_count=0,
-            medium_term_count=0, long_term_count=0,
+            total_findings=0,
+            immediate_count=0,
+            near_term_count=0,
+            medium_term_count=0,
+            long_term_count=0,
             estimated_total_effort="Not available",
             estimated_duration="Not available",
-            top_priorities=(), expected_outcome="Not available", top_risks=(),
+            top_priorities=(),
+            expected_outcome="Not available",
+            top_risks=(),
         )
         return RemediationPlan(
-            phases=(), remediation_table=(), quick_wins=(),
-            strategic_initiatives=(), timeline=(),
+            phases=(),
+            remediation_table=(),
+            quick_wins=(),
+            strategic_initiatives=(),
+            timeline=(),
             expected_improvements=_empty_impr,
-            dependencies=(), checklist=(),
+            dependencies=(),
+            checklist=(),
             management_summary=_empty_sum,
         )

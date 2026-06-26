@@ -26,64 +26,63 @@ from __future__ import annotations
 
 import io
 import json
-from typing import Sequence
+from collections.abc import Sequence
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
-
 from waf_reporting.aggregator import AggregatedReport, PillarSummary
 from waf_reporting.architecture_diagram import hierarchy_rows, render_hierarchy_png
+from waf_reporting.business_impact_analysis import (
+    build_business_impact_analysis,
+    calculate_business_impact_score,
+)
+from waf_reporting.executive_insights import (
+    generate_executive_insights,
+)
 from waf_reporting.pdf_generator import (
     build_evidence_snapshot,
     build_executive_remediation_roadmap,
     calculate_maturity_rating,
     calculate_pillar_scores,
 )
-from waf_reporting.remediation_templates import get_remediation_detail
 from waf_reporting.remediation_playbook import (
     build_remediation_playbook,
     estimate_fix_time,
     expected_risk_reduction,
 )
-from waf_reporting.business_impact_analysis import (
-    build_business_impact_analysis,
-    calculate_business_impact_score,
-    aggregate_risk_category_levels,
-)
-from waf_reporting.executive_insights import (
-    generate_executive_insights,
+from waf_reporting.remediation_templates import get_remediation_detail
+from waf_reporting.services.compliance_mapper import (
+    GLOSSARY,
+    LIMITATIONS_TEXT,
+    METHODOLOGY_SECTIONS,
+    get_advisor_ref,
+    get_azure_policy,
+    get_compliance_frameworks,
 )
 from waf_reporting.services.dashboard_builder import build_dashboard_data
 from waf_reporting.services.remediation_planner import build_remediation_plan
-from waf_reporting.services.compliance_mapper import (
-    get_azure_policy,
-    get_advisor_ref,
-    get_compliance_frameworks,
-    GLOSSARY,
-    METHODOLOGY_SECTIONS,
-    LIMITATIONS_TEXT,
-)
+
 from waf_shared.domain.models.finding import Finding
 from waf_shared.domain.models.human_review import ComplianceStatus, HumanReviewAssessment
 
 # ── Colour palette ─────────────────────────────────────────────────────────────
 
-_HEADER_FILL   = PatternFill(fill_type="solid", fgColor="2C3E50")
-_HEADER_FONT   = Font(bold=True, color="ECF0F1")
-_SECTION_FILL  = PatternFill(fill_type="solid", fgColor="D9D9D9")
-_SECTION_FONT  = Font(bold=True)
-_ALT_FILL      = PatternFill(fill_type="solid", fgColor="F7F9FA")
-_PASS_FILL     = PatternFill(fill_type="solid", fgColor="D5F5E3")
-_FAIL_FILL     = PatternFill(fill_type="solid", fgColor="FADBD8")
-_WARN_FILL     = PatternFill(fill_type="solid", fgColor="FDEBD0")
-_NA_FILL       = PatternFill(fill_type="solid", fgColor="F2F3F4")
+_HEADER_FILL = PatternFill(fill_type="solid", fgColor="2C3E50")
+_HEADER_FONT = Font(bold=True, color="ECF0F1")
+_SECTION_FILL = PatternFill(fill_type="solid", fgColor="D9D9D9")
+_SECTION_FONT = Font(bold=True)
+_ALT_FILL = PatternFill(fill_type="solid", fgColor="F7F9FA")
+_PASS_FILL = PatternFill(fill_type="solid", fgColor="D5F5E3")
+_FAIL_FILL = PatternFill(fill_type="solid", fgColor="FADBD8")
+_WARN_FILL = PatternFill(fill_type="solid", fgColor="FDEBD0")
+_NA_FILL = PatternFill(fill_type="solid", fgColor="F2F3F4")
 
 _SEVERITY_FILLS: dict[str, PatternFill] = {
-    "critical":      PatternFill(fill_type="solid", fgColor="FF0000"),
-    "high":          PatternFill(fill_type="solid", fgColor="FF6600"),
-    "medium":        PatternFill(fill_type="solid", fgColor="FFCC00"),
-    "low":           PatternFill(fill_type="solid", fgColor="CCE5FF"),
+    "critical": PatternFill(fill_type="solid", fgColor="FF0000"),
+    "high": PatternFill(fill_type="solid", fgColor="FF6600"),
+    "medium": PatternFill(fill_type="solid", fgColor="FFCC00"),
+    "low": PatternFill(fill_type="solid", fgColor="CCE5FF"),
     "informational": PatternFill(fill_type="solid", fgColor="F2F2F2"),
 }
 
@@ -92,19 +91,35 @@ _SEVERITY_ORDER = ["critical", "high", "medium", "low", "informational"]
 
 # ── Finding grouping (presentation layer only) ─────────────────────────────────
 
+
 class _GroupedFinding:
     """Finding group for display: one entry per (rule_id, severity, recommendation)."""
-    __slots__ = ("rule_id", "title", "severity", "pillar", "recommendation",
-                 "waf_codes", "resource_names")
 
-    def __init__(self, rule_id: str, title: str, severity: str, pillar: str,
-                 recommendation: str, waf_codes: list[str]) -> None:
-        self.rule_id        = rule_id
-        self.title          = title
-        self.severity       = severity
-        self.pillar         = pillar
+    __slots__ = (
+        "rule_id",
+        "title",
+        "severity",
+        "pillar",
+        "recommendation",
+        "waf_codes",
+        "resource_names",
+    )
+
+    def __init__(
+        self,
+        rule_id: str,
+        title: str,
+        severity: str,
+        pillar: str,
+        recommendation: str,
+        waf_codes: list[str],
+    ) -> None:
+        self.rule_id = rule_id
+        self.title = title
+        self.severity = severity
+        self.pillar = pillar
         self.recommendation = recommendation
-        self.waf_codes      = waf_codes
+        self.waf_codes = waf_codes
         self.resource_names: list[str] = []
 
     @property
@@ -143,24 +158,34 @@ def _group_findings(findings: list[Finding]) -> list[_GroupedFinding]:
 
 
 _FINDING_HEADERS = [
-    "Finding ID", "Rule ID", "Resource ID", "Resource Type",
-    "Pillar", "Severity", "Status", "Title", "Recommendation",
-    "WAF Codes", "Microsoft URLs", "Confidence", "Created At",
+    "Finding ID",
+    "Rule ID",
+    "Resource ID",
+    "Resource Type",
+    "Pillar",
+    "Severity",
+    "Status",
+    "Title",
+    "Recommendation",
+    "WAF Codes",
+    "Microsoft URLs",
+    "Confidence",
+    "Created At",
     "Evidence Snapshot",
 ]
 
 _PILLAR_SHEETS = {
-    "security":               "Security",
-    "reliability":            "Reliability",
+    "security": "Security",
+    "reliability": "Reliability",
     "operational_excellence": "Operational Excellence",
     "performance_efficiency": "Performance Efficiency",
-    "cost_optimization":      "Cost Optimization",
+    "cost_optimization": "Cost Optimization",
 }
 
 _PILLAR_TO_IMPACT: dict[str, str] = {
-    "security":               "Security Exposure",
-    "reliability":            "Availability Risk",
-    "cost_optimization":      "Financial Waste",
+    "security": "Security Exposure",
+    "reliability": "Availability Risk",
+    "cost_optimization": "Financial Waste",
     "operational_excellence": "Operational Risk",
     "performance_efficiency": "Performance Degradation",
 }
@@ -169,6 +194,7 @@ _HUMAN_REVIEW_CODES = ["SE-10", "OE-03", "OE-04", "CO-09"]
 
 
 # ── Public class ───────────────────────────────────────────────────────────────
+
 
 class ExcelGenerator:
     """Generates a 14-sheet enterprise Excel workbook as bytes."""
@@ -228,8 +254,7 @@ class ExcelGenerator:
 
         # Set workbook properties
         try:
-            from datetime import datetime as _dt
-            wb.properties.title   = "Azure Well-Architected Framework Assessment Report"
+            wb.properties.title = "Azure Well-Architected Framework Assessment Report"
             wb.properties.subject = "WAF Assessment Findings and Recommendations"
             wb.properties.creator = "Azure WAF Assessment Platform"
             wb.properties.keywords = "Azure WAF Security Reliability Compliance Assessment"
@@ -260,25 +285,24 @@ class ExcelGenerator:
         and a clickable table of contents linking to all other sheets.
         """
         try:
-            from openpyxl.styles import Border, Side, numbers
-            from openpyxl.formatting.rule import ColorScaleRule
+            from openpyxl.styles import Border, Side
 
             data = build_dashboard_data(agg, findings)
-            ws   = wb.create_sheet("Visual Dashboard")
+            ws = wb.create_sheet("Visual Dashboard")
 
             # ── Palette helpers ──────────────────────────────────────────────
             _DARK_FILL = PatternFill(fill_type="solid", fgColor="2C3E50")
             _DARK_FONT = Font(bold=True, color="FFFFFF", size=12)
-            _SUB_FILL  = PatternFill(fill_type="solid", fgColor="1F4E79")
-            _SUB_FONT  = Font(bold=True, color="FFFFFF", size=10)
-            _KPI_FONT  = Font(bold=True, size=16)
-            _LBL_FONT  = Font(bold=True, size=9)
-            _VAL_FONT  = Font(size=9)
+            _SUB_FILL = PatternFill(fill_type="solid", fgColor="1F4E79")
+            _SUB_FONT = Font(bold=True, color="FFFFFF", size=10)
+            _KPI_FONT = Font(bold=True, size=16)
+            _LBL_FONT = Font(bold=True, size=9)
+            _VAL_FONT = Font(size=9)
             _LINK_FONT = Font(color="0563C1", underline="single", size=9)
             _THIN = Side(style="thin", color="BDC3C7")
             _border = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
             _center = Alignment(horizontal="center", vertical="center", wrap_text=True)
-            _left   = Alignment(horizontal="left",   vertical="center", wrap_text=True)
+            _left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
             def _hdr(ws, title: str, row_span: int = 1) -> None:
                 r = ws.max_row + 1
@@ -317,21 +341,21 @@ class ExcelGenerator:
 
             # ── Clickable Table of Contents ───────────────────────────────────
             _sub(ws, "Table of Contents")
-            toc_start = ws.max_row + 1
+            ws.max_row + 1
             toc_sheets = [
-                ("Executive Summary",    "Executive Summary"),
-                ("Executive Dashboard",  "Executive Dashboard"),
+                ("Executive Summary", "Executive Summary"),
+                ("Executive Dashboard", "Executive Dashboard"),
                 ("Architecture Diagram", "Architecture Diagram"),
-                ("Resource Inventory",   "Resource Inventory"),
-                ("Pillar Scorecard",     "Pillar Scorecard"),
-                ("Security",             "Security"),
-                ("Reliability",          "Reliability"),
+                ("Resource Inventory", "Resource Inventory"),
+                ("Pillar Scorecard", "Pillar Scorecard"),
+                ("Security", "Security"),
+                ("Reliability", "Reliability"),
                 ("Operational Excellence", "Operational Excellence"),
                 ("Performance Efficiency", "Performance Efficiency"),
-                ("Cost Optimization",    "Cost Optimization"),
-                ("Business Impact",      "Business Impact"),
-                ("Trend Analysis",       "Trend Analysis"),
-                ("All Findings",         "All Findings"),
+                ("Cost Optimization", "Cost Optimization"),
+                ("Business Impact", "Business Impact"),
+                ("Trend Analysis", "Trend Analysis"),
+                ("All Findings", "All Findings"),
             ]
             for display_name, sheet_name in toc_sheets:
                 r = ws.max_row + 1
@@ -356,9 +380,9 @@ class ExcelGenerator:
 
             _SEV_FILLS_LOCAL = {
                 "critical": PatternFill(fill_type="solid", fgColor="FADBD8"),
-                "high":     PatternFill(fill_type="solid", fgColor="FDEBD0"),
-                "medium":   PatternFill(fill_type="solid", fgColor="FEF9E7"),
-                "low":      PatternFill(fill_type="solid", fgColor="D5F5E3"),
+                "high": PatternFill(fill_type="solid", fgColor="FDEBD0"),
+                "medium": PatternFill(fill_type="solid", fgColor="FEF9E7"),
+                "low": PatternFill(fill_type="solid", fgColor="D5F5E3"),
             }
 
             def _status(val: float, thresholds=(90, 70, 50)):
@@ -371,37 +395,66 @@ class ExcelGenerator:
                 return "Critical"
 
             kpi_rows = [
-                ("Overall Compliance Score", f"{data.compliance_pct:.1f}%",
-                 _status(data.compliance_pct),
-                 _PASS_FILL if data.compliance_pct >= 70 else _FAIL_FILL),
-                ("Overall Risk Score", f"{data.risk_score:.1f}",
-                 "High Risk" if data.risk_score > 50 else "Moderate" if data.risk_score > 25 else "Low",
-                 _FAIL_FILL if data.risk_score > 50 else _WARN_FILL if data.risk_score > 25 else _PASS_FILL),
+                (
+                    "Overall Compliance Score",
+                    f"{data.compliance_pct:.1f}%",
+                    _status(data.compliance_pct),
+                    _PASS_FILL if data.compliance_pct >= 70 else _FAIL_FILL,
+                ),
+                (
+                    "Overall Risk Score",
+                    f"{data.risk_score:.1f}",
+                    "High Risk"
+                    if data.risk_score > 50
+                    else "Moderate"
+                    if data.risk_score > 25
+                    else "Low",
+                    _FAIL_FILL
+                    if data.risk_score > 50
+                    else _WARN_FILL
+                    if data.risk_score > 25
+                    else _PASS_FILL,
+                ),
                 ("Total Resources Assessed", str(data.total_resources), "—", _NA_FILL),
-                ("Total Findings",           str(data.total_findings),
-                 "Action Required" if data.total_findings > 0 else "Clean",
-                 _WARN_FILL if data.total_findings > 0 else _PASS_FILL),
-                ("Critical Findings",  str(data.critical_count),
-                 "Immediate Action" if data.critical_count > 0 else "None",
-                 _FAIL_FILL if data.critical_count > 0 else _NA_FILL),
-                ("High Findings",      str(data.high_count),
-                 "Within 7 Days" if data.high_count > 0 else "None",
-                 _WARN_FILL if data.high_count > 0 else _NA_FILL),
-                ("Medium Findings",    str(data.medium_count),
-                 "Within 30 Days" if data.medium_count > 0 else "None",
-                 _NA_FILL),
-                ("Low Findings",       str(data.low_count), "Next Cycle", _NA_FILL),
-                ("Human Reviews Req.", str(data.human_reviews_required),
-                 "Expert Review Needed" if data.human_reviews_required > 0 else "None",
-                 _WARN_FILL if data.human_reviews_required > 0 else _NA_FILL),
+                (
+                    "Total Findings",
+                    str(data.total_findings),
+                    "Action Required" if data.total_findings > 0 else "Clean",
+                    _WARN_FILL if data.total_findings > 0 else _PASS_FILL,
+                ),
+                (
+                    "Critical Findings",
+                    str(data.critical_count),
+                    "Immediate Action" if data.critical_count > 0 else "None",
+                    _FAIL_FILL if data.critical_count > 0 else _NA_FILL,
+                ),
+                (
+                    "High Findings",
+                    str(data.high_count),
+                    "Within 7 Days" if data.high_count > 0 else "None",
+                    _WARN_FILL if data.high_count > 0 else _NA_FILL,
+                ),
+                (
+                    "Medium Findings",
+                    str(data.medium_count),
+                    "Within 30 Days" if data.medium_count > 0 else "None",
+                    _NA_FILL,
+                ),
+                ("Low Findings", str(data.low_count), "Next Cycle", _NA_FILL),
+                (
+                    "Human Reviews Req.",
+                    str(data.human_reviews_required),
+                    "Expert Review Needed" if data.human_reviews_required > 0 else "None",
+                    _WARN_FILL if data.human_reviews_required > 0 else _NA_FILL,
+                ),
                 ("Distinct Rules Assessed", str(data.distinct_rules_assessed), "—", _NA_FILL),
             ]
             for lbl, val, status, row_fill in kpi_rows:
                 r = ws.max_row + 1
                 ws.append([lbl, val, status])
                 for c in range(1, 4):
-                    ws.cell(r, c).fill    = row_fill
-                    ws.cell(r, c).border  = _border
+                    ws.cell(r, c).fill = row_fill
+                    ws.cell(r, c).border = _border
                     ws.cell(r, c).alignment = _left
                 ws.cell(r, 1).font = _LBL_FONT
                 ws.cell(r, 2).font = Font(bold=True, size=11)
@@ -418,36 +471,39 @@ class ExcelGenerator:
                 ws.cell(hdr_r, c).alignment = _center
 
             _PILLAR_ORDER_XL = [
-                "security", "reliability", "operational_excellence",
-                "performance_efficiency", "cost_optimization",
+                "security",
+                "reliability",
+                "operational_excellence",
+                "performance_efficiency",
+                "cost_optimization",
             ]
             _PILLAR_DISPLAY_XL = {
-                "security":               "Security",
-                "reliability":            "Reliability",
+                "security": "Security",
+                "reliability": "Reliability",
                 "operational_excellence": "Operational Excellence",
                 "performance_efficiency": "Performance Efficiency",
-                "cost_optimization":      "Cost Optimization",
+                "cost_optimization": "Cost Optimization",
             }
             for pk in _PILLAR_ORDER_XL:
                 if pk not in data.pillar_scores:
                     continue
-                sc   = data.pillar_scores[pk]
+                sc = data.pillar_scores[pk]
                 scts = data.pillar_severity_counts.get(pk, {})
-                fill = (_PASS_FILL if sc >= 70
-                        else _WARN_FILL if sc >= 50
-                        else _FAIL_FILL)
+                fill = _PASS_FILL if sc >= 70 else _WARN_FILL if sc >= 50 else _FAIL_FILL
                 r = ws.max_row + 1
-                ws.append([
-                    _PILLAR_DISPLAY_XL.get(pk, pk),
-                    f"{sc:.1f}%",
-                    _status(sc),
-                    scts.get("critical", 0),
-                    scts.get("high",     0),
-                    scts.get("medium",   0),
-                    scts.get("low",      0),
-                ])
+                ws.append(
+                    [
+                        _PILLAR_DISPLAY_XL.get(pk, pk),
+                        f"{sc:.1f}%",
+                        _status(sc),
+                        scts.get("critical", 0),
+                        scts.get("high", 0),
+                        scts.get("medium", 0),
+                        scts.get("low", 0),
+                    ]
+                )
                 for c in range(1, 8):
-                    ws.cell(r, c).fill   = fill
+                    ws.cell(r, c).fill = fill
                     ws.cell(r, c).border = _border
                     ws.cell(r, c).alignment = _center
                 ws.cell(r, 1).alignment = _left
@@ -466,11 +522,11 @@ class ExcelGenerator:
             for sev in ["critical", "high", "medium", "low", "informational"]:
                 cnt = data.severity_counts.get(sev, 0)
                 pct = cnt / total_f * 100
-                r   = ws.max_row + 1
+                r = ws.max_row + 1
                 ws.append([sev.capitalize(), cnt, f"{pct:.1f}%"])
                 fill = _SEVERITY_FILLS.get(sev, _NA_FILL)
                 for c in range(1, 4):
-                    ws.cell(r, c).fill   = fill
+                    ws.cell(r, c).fill = fill
                     ws.cell(r, c).border = _border
                     ws.cell(r, c).alignment = _center
                 ws.cell(r, 1).alignment = _left
@@ -486,18 +542,21 @@ class ExcelGenerator:
                 ws.cell(hdr_r, c).alignment = _center
 
             max_rt = max((c for _, c in data.resource_type_counts), default=1)
-            for i, (label, cnt) in enumerate(data.resource_type_counts):
+            for _i, (label, cnt) in enumerate(data.resource_type_counts):
                 frac = cnt / max_rt if max_rt else 0
                 fill = (
-                    PatternFill(fill_type="solid", fgColor="FADBD8") if frac > 0.75 else
-                    PatternFill(fill_type="solid", fgColor="FDEBD0") if frac > 0.40 else
-                    PatternFill(fill_type="solid", fgColor="FEF9E7") if frac > 0.15 else
-                    _NA_FILL
+                    PatternFill(fill_type="solid", fgColor="FADBD8")
+                    if frac > 0.75
+                    else PatternFill(fill_type="solid", fgColor="FDEBD0")
+                    if frac > 0.40
+                    else PatternFill(fill_type="solid", fgColor="FEF9E7")
+                    if frac > 0.15
+                    else _NA_FILL
                 )
                 r = ws.max_row + 1
                 ws.append([label, cnt])
                 for c in range(1, 3):
-                    ws.cell(r, c).fill   = fill
+                    ws.cell(r, c).fill = fill
                     ws.cell(r, c).border = _border
                 ws.cell(r, 1).alignment = _left
                 ws.cell(r, 2).alignment = _center
@@ -506,10 +565,20 @@ class ExcelGenerator:
             # ── D6: Risk Heatmap ─────────────────────────────────────────────
             _sub(ws, "Risk Heatmap — Severity x Pillar")
             hdr_r = ws.max_row + 1
-            pillar_labels = ["Security", "Reliability", "Ops Excellence",
-                             "Perf Efficiency", "Cost Optim."]
-            pillar_keys   = ["security", "reliability", "operational_excellence",
-                             "performance_efficiency", "cost_optimization"]
+            pillar_labels = [
+                "Security",
+                "Reliability",
+                "Ops Excellence",
+                "Perf Efficiency",
+                "Cost Optim.",
+            ]
+            pillar_keys = [
+                "security",
+                "reliability",
+                "operational_excellence",
+                "performance_efficiency",
+                "cost_optimization",
+            ]
             ws.append(["Severity"] + pillar_labels)
             for c in range(1, len(pillar_labels) + 2):
                 ws.cell(hdr_r, c).fill = _HEADER_FILL
@@ -517,13 +586,15 @@ class ExcelGenerator:
                 ws.cell(hdr_r, c).alignment = _center
 
             _HEAT_FILLS = [
-                PatternFill(fill_type="solid", fgColor="F2F3F4"),   # 0
-                PatternFill(fill_type="solid", fgColor="FCF3CF"),   # 1-2
-                PatternFill(fill_type="solid", fgColor="F9A825"),   # 3-5
-                PatternFill(fill_type="solid", fgColor="E74C3C"),   # 6+
+                PatternFill(fill_type="solid", fgColor="F2F3F4"),  # 0
+                PatternFill(fill_type="solid", fgColor="FCF3CF"),  # 1-2
+                PatternFill(fill_type="solid", fgColor="F9A825"),  # 3-5
+                PatternFill(fill_type="solid", fgColor="E74C3C"),  # 6+
             ]
             _HEAT_FONTS = [
-                Font(size=9), Font(size=9), Font(bold=True, size=9),
+                Font(size=9),
+                Font(size=9),
+                Font(bold=True, size=9),
                 Font(bold=True, color="FFFFFF", size=9),
             ]
 
@@ -539,10 +610,10 @@ class ExcelGenerator:
                 ws.cell(r, 1).border = _border
                 for ci, pk in enumerate(pillar_keys, start=2):
                     cnt = sev_data.get(pk, 0)
-                    fi  = 0 if cnt == 0 else 1 if cnt <= 2 else 2 if cnt <= 5 else 3
-                    ws.cell(r, ci).fill      = _HEAT_FILLS[fi]
-                    ws.cell(r, ci).font      = _HEAT_FONTS[fi]
-                    ws.cell(r, ci).border    = _border
+                    fi = 0 if cnt == 0 else 1 if cnt <= 2 else 2 if cnt <= 5 else 3
+                    ws.cell(r, ci).fill = _HEAT_FILLS[fi]
+                    ws.cell(r, ci).font = _HEAT_FONTS[fi]
+                    ws.cell(r, ci).border = _border
                     ws.cell(r, ci).alignment = _center
             ws.append([])
 
@@ -550,11 +621,23 @@ class ExcelGenerator:
             _sub(ws, "Assessment Coverage")
             no_findings = max(0, data.resources_assessed - data.resources_with_findings)
             coverage_rows = [
-                ("Resources Assessed",          data.resources_assessed,           _NA_FILL),
-                ("Resources with Findings",     data.resources_with_findings,      _WARN_FILL if data.resources_with_findings > 0 else _NA_FILL),
-                ("Resources without Findings",  no_findings,                       _PASS_FILL if no_findings > 0 else _NA_FILL),
-                ("Human Review Findings",       data.human_review_findings,        _WARN_FILL if data.human_review_findings > 0 else _NA_FILL),
-                ("Distinct Rules Assessed",     data.distinct_rules_assessed,      _NA_FILL),
+                ("Resources Assessed", data.resources_assessed, _NA_FILL),
+                (
+                    "Resources with Findings",
+                    data.resources_with_findings,
+                    _WARN_FILL if data.resources_with_findings > 0 else _NA_FILL,
+                ),
+                (
+                    "Resources without Findings",
+                    no_findings,
+                    _PASS_FILL if no_findings > 0 else _NA_FILL,
+                ),
+                (
+                    "Human Review Findings",
+                    data.human_review_findings,
+                    _WARN_FILL if data.human_review_findings > 0 else _NA_FILL,
+                ),
+                ("Distinct Rules Assessed", data.distinct_rules_assessed, _NA_FILL),
             ]
             hdr_r = ws.max_row + 1
             ws.append(["Metric", "Value"])
@@ -567,7 +650,7 @@ class ExcelGenerator:
                 r = ws.max_row + 1
                 ws.append([lbl, val])
                 for c in range(1, 3):
-                    ws.cell(r, c).fill   = fill
+                    ws.cell(r, c).fill = fill
                     ws.cell(r, c).border = _border
                 ws.cell(r, 1).font = _LBL_FONT
                 ws.cell(r, 1).alignment = _left
@@ -606,14 +689,24 @@ class ExcelGenerator:
             colspan=5,
         )
         ws.append([])
-        ws.append([
-            "Assessment ID", str(agg.assessment_id),
-            "", "Generated At", agg.generated_at.strftime("%Y-%m-%d %H:%M UTC"),
-        ])
-        ws.append([
-            "Total Resources", str(agg.total_resources),
-            "", "Subscriptions", str(agg.subscription_count or "N/A"),
-        ])
+        ws.append(
+            [
+                "Assessment ID",
+                str(agg.assessment_id),
+                "",
+                "Generated At",
+                agg.generated_at.strftime("%Y-%m-%d %H:%M UTC"),
+            ]
+        )
+        ws.append(
+            [
+                "Total Resources",
+                str(agg.total_resources),
+                "",
+                "Subscriptions",
+                str(agg.subscription_count or "N/A"),
+            ]
+        )
         ws.append([])
 
         # ── Try PNG embed ──────────────────────────────────────────────────────
@@ -635,14 +728,22 @@ class ExcelGenerator:
                 ws.row_dimensions[6].height = 210
 
                 # Legend rows below the image placeholder
-                for _ in range(18):   # approximate rows the image occupies
+                for _ in range(18):  # approximate rows the image occupies
                     ws.append([])
                 ws.append(["Severity Color Legend", "", "", "", ""])
                 _apply_header_row(ws, ws.max_row, 2)
                 _sev_legend_rows = [
-                    ("Green",  "D5F5E3", "Compliant / Low risk (low or informational findings only)"),
+                    (
+                        "Green",
+                        "D5F5E3",
+                        "Compliant / Low risk (low or informational findings only)",
+                    ),
                     ("Yellow", "FEF9C3", "Medium risk (medium findings, no critical/high)"),
-                    ("Red",    "FADBD8", "High / Critical risk (at least one critical or high finding)"),
+                    (
+                        "Red",
+                        "FADBD8",
+                        "High / Critical risk (at least one critical or high finding)",
+                    ),
                 ]
                 for colour_name, hex_code, description in _sev_legend_rows:
                     row_n = ws.max_row + 1
@@ -659,17 +760,16 @@ class ExcelGenerator:
             ws.append([])
 
             hdr_row = ws.max_row + 1
-            ws.append(["Subscription", "Resource Group", "Resource Type",
-                        "Findings", "Risk Level"])
+            ws.append(["Subscription", "Resource Group", "Resource Type", "Findings", "Risk Level"])
             _apply_header_row(ws, hdr_row, 5)
 
             _risk_fills: dict[str, PatternFill] = {
                 "critical": PatternFill(fill_type="solid", fgColor="FADBD8"),
-                "high":     PatternFill(fill_type="solid", fgColor="FADBD8"),
-                "medium":   PatternFill(fill_type="solid", fgColor="FEF9C3"),
-                "low":      PatternFill(fill_type="solid", fgColor="D5F5E3"),
+                "high": PatternFill(fill_type="solid", fgColor="FADBD8"),
+                "medium": PatternFill(fill_type="solid", fgColor="FEF9C3"),
+                "low": PatternFill(fill_type="solid", fgColor="D5F5E3"),
                 "informational": PatternFill(fill_type="solid", fgColor="D5F5E3"),
-                "none":     PatternFill(fill_type="solid", fgColor="D5F5E3"),
+                "none": PatternFill(fill_type="solid", fgColor="D5F5E3"),
             }
             for sub_disp, rg_name, rt, count, worst_sev in hierarchy_rows(findings):
                 risk_label = worst_sev.capitalize() if worst_sev != "none" else "Compliant"
@@ -700,38 +800,37 @@ class ExcelGenerator:
         # ── Assessment information ─────────────────────────────────────────────
         _section(ws, "Assessment Information", colspan=2)
         date_str = (
-            agg.assessment_date.strftime("%Y-%m-%d")
-            if agg.assessment_date else "Not Available"
+            agg.assessment_date.strftime("%Y-%m-%d") if agg.assessment_date else "Not Available"
         )
         for k, v in [
-            ("Assessment ID",       str(agg.assessment_id)),
-            ("Tenant ID",           str(agg.tenant_id)),
-            ("Assessment Date",     date_str),
-            ("Report Generated",    agg.generated_at.strftime("%Y-%m-%d %H:%M UTC")),
-            ("Total Resources",     str(agg.total_resources)),
-            ("Overall Compliance",  f"{agg.overall_compliance_score:.1f}%"),
-            ("Overall Risk Score",  f"{agg.overall_risk_score:.1f}%"),
+            ("Assessment ID", str(agg.assessment_id)),
+            ("Tenant ID", str(agg.tenant_id)),
+            ("Assessment Date", date_str),
+            ("Report Generated", agg.generated_at.strftime("%Y-%m-%d %H:%M UTC")),
+            ("Total Resources", str(agg.total_resources)),
+            ("Overall Compliance", f"{agg.overall_compliance_score:.1f}%"),
+            ("Overall Risk Score", f"{agg.overall_risk_score:.1f}%"),
         ]:
             ws.append([k, v])
         ws.append([])
 
         # ── Executive Risk Rating ──────────────────────────────────────────────
         _section(ws, "Executive Risk Rating", colspan=2)
-        sev   = agg.findings_by_severity
-        crit  = sev.get("critical", 0)
-        high  = sev.get("high", 0)
+        sev = agg.findings_by_severity
+        crit = sev.get("critical", 0)
+        high = sev.get("high", 0)
         score = agg.overall_risk_score
         if crit > 0 or score >= 70:
             rating, rating_hex = "CRITICAL", "C0392B"
         elif high > 0 or score >= 40:
-            rating, rating_hex = "HIGH",     "E67E22"
+            rating, rating_hex = "HIGH", "E67E22"
         elif agg.total_findings > 0 or score >= 15:
-            rating, rating_hex = "MEDIUM",   "D4AC0D"
+            rating, rating_hex = "MEDIUM", "D4AC0D"
         else:
-            rating, rating_hex = "LOW",      "1E8449"
+            rating, rating_hex = "LOW", "1E8449"
 
         rating_fill = PatternFill(fill_type="solid", fgColor=rating_hex)
-        rating_row  = ws.max_row + 1
+        rating_row = ws.max_row + 1
         ws.append(["Overall Risk Rating", rating])
         for col in range(1, 3):
             ws.cell(row=rating_row, column=col).fill = rating_fill
@@ -739,13 +838,14 @@ class ExcelGenerator:
         ws.append([])
 
         legend_row = ws.max_row + 1
-        ws.append([
-            "CRITICAL = crit findings or risk ≥ 70%",
-            "HIGH = high findings or risk ≥ 40%",
-            "MEDIUM = any findings",
-            "LOW = no findings",
-        ])
-        fills_map = {"C0392B": 1, "E67E22": 2, "D4AC0D": 3, "1E8449": 4}
+        ws.append(
+            [
+                "CRITICAL = crit findings or risk ≥ 70%",
+                "HIGH = high findings or risk ≥ 40%",
+                "MEDIUM = any findings",
+                "LOW = no findings",
+            ]
+        )
         for col, hex_val in enumerate(["C0392B", "E67E22", "D4AC0D", "1E8449"], 1):
             c = ws.cell(row=legend_row, column=col)
             c.fill = PatternFill(fill_type="solid", fgColor=hex_val)
@@ -772,19 +872,23 @@ class ExcelGenerator:
             p for p, ps in agg.findings_by_pillar.items() if ps.compliance_score < 0.70
         ]
         if below_threshold:
-            pillars_str = ", ".join(p.replace("_", " ").title() for p in sorted(below_threshold)[:3])
+            pillars_str = ", ".join(
+                p.replace("_", " ").title() for p in sorted(below_threshold)[:3]
+            )
             risks.append(
                 f"Compliance gaps: {pillars_str} pillar(s) below 70% — audit and regulatory risk."
             )
         for pillar_key, label in [
-            ("reliability",            "Service resiliency concerns"),
+            ("reliability", "Service resiliency concerns"),
             ("operational_excellence", "Operational risk"),
-            ("cost_optimization",      "Financial exposure"),
+            ("cost_optimization", "Financial exposure"),
             ("performance_efficiency", "Performance risk"),
         ]:
             ps2 = agg.findings_by_pillar.get(pillar_key)
             if ps2 and ps2.total_findings > 0:
-                risks.append(f"{label}: {ps2.total_findings} finding(s) in {pillar_key.replace('_', ' ').title()} pillar.")
+                risks.append(
+                    f"{label}: {ps2.total_findings} finding(s) in {pillar_key.replace('_', ' ').title()} pillar."
+                )
         if not risks:
             risks.append("No significant business risks identified.")
 
@@ -803,29 +907,36 @@ class ExcelGenerator:
         if agg.top_5_risks:
             for i, risk in enumerate(agg.top_5_risks, 1):
                 row_n = ws.max_row + 1
-                ws.append([
-                    i,
-                    risk.title,
-                    risk.resource_id.rsplit("/", 1)[-1] if "/" in risk.resource_id else risk.resource_id,
-                    risk.severity.upper(),
-                    risk.business_impact,
-                ])
+                ws.append(
+                    [
+                        i,
+                        risk.title,
+                        risk.resource_id.rsplit("/", 1)[-1]
+                        if "/" in risk.resource_id
+                        else risk.resource_id,
+                        risk.severity.upper(),
+                        risk.business_impact,
+                    ]
+                )
                 _fill_row(ws, row_n, 5, _SEVERITY_FILLS.get(risk.severity, _NA_FILL))
         elif findings:
             sorted_f = sorted(
                 findings,
                 key=lambda f: _SEVERITY_ORDER.index(f.severity.value)
-                if f.severity.value in _SEVERITY_ORDER else 99,
+                if f.severity.value in _SEVERITY_ORDER
+                else 99,
             )[:5]
             for i, f in enumerate(sorted_f, 1):
                 row_n = ws.max_row + 1
-                ws.append([
-                    i,
-                    f.title,
-                    f.resource_id.rsplit("/", 1)[-1] if "/" in f.resource_id else f.resource_id,
-                    f.severity.value.upper(),
-                    _PILLAR_TO_IMPACT.get(f.pillar, "Operational Risk"),
-                ])
+                ws.append(
+                    [
+                        i,
+                        f.title,
+                        f.resource_id.rsplit("/", 1)[-1] if "/" in f.resource_id else f.resource_id,
+                        f.severity.value.upper(),
+                        _PILLAR_TO_IMPACT.get(f.pillar, "Operational Risk"),
+                    ]
+                )
                 _fill_row(ws, row_n, 5, _SEVERITY_FILLS.get(f.severity.value, _NA_FILL))
         else:
             ws.append(["—", "No findings recorded", "—", "—", "—"])
@@ -838,8 +949,8 @@ class ExcelGenerator:
         _apply_header_row(ws, hdr_row, 3)
 
         total = agg.total_findings
-        med   = sev.get("medium", 0)
-        low   = sev.get("low", 0)
+        med = sev.get("medium", 0)
+        low = sev.get("low", 0)
         current_c = agg.overall_compliance_score
 
         rem_h = total - high
@@ -874,16 +985,22 @@ class ExcelGenerator:
             return _FAIL_FILL
 
         for label, score_val in [
-            ("Current State",                    current_c),
-            ("After High Findings Remediated",   after_high_c),
-            ("After High + Medium Remediated",   after_hm_c),
-            ("Enterprise Target (90%)",          90.0),
+            ("Current State", current_c),
+            ("After High Findings Remediated", after_high_c),
+            ("After High + Medium Remediated", after_hm_c),
+            ("Enterprise Target (90%)", 90.0),
         ]:
             row_n = ws.max_row + 1
             delta_str = "Target" if label.startswith("Enterprise") else _delta(score_val)
             ws.append([label, f"{score_val:.1f}%", delta_str])
-            _fill_row(ws, row_n, 3, PatternFill(fill_type="solid", fgColor="D6EAF8")
-                      if label.startswith("Enterprise") else _proj_fill(score_val))
+            _fill_row(
+                ws,
+                row_n,
+                3,
+                PatternFill(fill_type="solid", fgColor="D6EAF8")
+                if label.startswith("Enterprise")
+                else _proj_fill(score_val),
+            )
             if label.startswith("Enterprise"):
                 for col in range(1, 4):
                     ws.cell(row=row_n, column=col).font = Font(bold=True)
@@ -892,9 +1009,9 @@ class ExcelGenerator:
         # ── Management Summary ─────────────────────────────────────────────────
         _section(ws, "Management Summary (CIO/CTO)", colspan=2)
         most_pillar = (
-            max(agg.findings_by_pillar,
-                key=lambda p: agg.findings_by_pillar[p].total_findings)
-            if agg.findings_by_pillar else None
+            max(agg.findings_by_pillar, key=lambda p: agg.findings_by_pillar[p].total_findings)
+            if agg.findings_by_pillar
+            else None
         )
         most_pillar_str = most_pillar.replace("_", " ").title() if most_pillar else "N/A"
 
@@ -937,8 +1054,10 @@ class ExcelGenerator:
                 mat_row = ws.max_row + 1
                 ws.append(["Maturity Level", maturity])
                 _MATURITY_HEX = {
-                    "Enterprise Ready":  "1E8449", "Strong": "27AE60",
-                    "Moderate": "E67E22", "Needs Improvement": "D4AC0D",
+                    "Enterprise Ready": "1E8449",
+                    "Strong": "27AE60",
+                    "Moderate": "E67E22",
+                    "Needs Improvement": "D4AC0D",
                     "High Risk": "C0392B",
                 }
                 mat_hex = _MATURITY_HEX.get(maturity, "2C3E50")
@@ -948,7 +1067,11 @@ class ExcelGenerator:
                     ws.cell(row=mat_row, column=col).fill = mat_fill
                     ws.cell(row=mat_row, column=col).font = mat_font
                 ws.append([])
-                ws.append(["Rule: 90+: Enterprise Ready | 80-89: Strong | 70-79: Moderate | 60-69: Needs Improvement | Below 60: High Risk"])
+                ws.append(
+                    [
+                        "Rule: 90+: Enterprise Ready | 80-89: Strong | 70-79: Moderate | 60-69: Needs Improvement | Below 60: High Risk"
+                    ]
+                )
         except Exception:
             pass  # Maturity block is optional
 
@@ -956,9 +1079,7 @@ class ExcelGenerator:
 
     # ── 2. Executive Dashboard ─────────────────────────────────────────────────
 
-    def _sheet_executive_dashboard(
-        self, wb: Workbook, agg: AggregatedReport
-    ) -> None:
+    def _sheet_executive_dashboard(self, wb: Workbook, agg: AggregatedReport) -> None:
         ws = wb.create_sheet("Executive Dashboard")
 
         _section(ws, "Azure WAF Assessment — Executive Dashboard", colspan=4)
@@ -967,11 +1088,19 @@ class ExcelGenerator:
         # Metadata block
         _section(ws, "Assessment Information", colspan=2)
         meta = [
-            ("Assessment ID",   str(agg.assessment_id)),
-            ("Tenant ID",       str(agg.tenant_id)),
-            ("Assessment Date", agg.assessment_date.strftime("%Y-%m-%d") if agg.assessment_date else "Not Available"),
+            ("Assessment ID", str(agg.assessment_id)),
+            ("Tenant ID", str(agg.tenant_id)),
+            (
+                "Assessment Date",
+                agg.assessment_date.strftime("%Y-%m-%d")
+                if agg.assessment_date
+                else "Not Available",
+            ),
             ("Report Generated", agg.generated_at.strftime("%Y-%m-%d %H:%M UTC")),
-            ("Subscriptions",   str(agg.subscription_count) if agg.subscription_count else "Not Available"),
+            (
+                "Subscriptions",
+                str(agg.subscription_count) if agg.subscription_count else "Not Available",
+            ),
         ]
         for k, v in meta:
             ws.append([k, v])
@@ -980,8 +1109,8 @@ class ExcelGenerator:
         # Findings metrics block
         _section(ws, "Finding Summary", colspan=2)
         ws.append(["Total Resources Assessed", agg.total_resources])
-        ws.append(["Resources with Findings",  agg.resources_with_findings])
-        ws.append(["Total Findings",           agg.total_findings])
+        ws.append(["Resources with Findings", agg.resources_with_findings])
+        ws.append(["Total Findings", agg.total_findings])
         for sev in _SEVERITY_ORDER:
             cnt = agg.findings_by_severity.get(sev, 0)
             row_n = ws.max_row + 1
@@ -994,10 +1123,10 @@ class ExcelGenerator:
         # Scoring block
         _section(ws, "Enterprise Scores (0–100)", colspan=2)
         scores = [
-            ("Overall Compliance Score",  f"{agg.overall_compliance_score:.1f}"),
-            ("Overall Risk Score",        f"{agg.overall_risk_score:.1f}"),
-            ("Weighted Severity Score",   f"{agg.weighted_severity_score:.1f}"),
-            ("Business Impact Score",     f"{agg.business_impact_score:.1f}"),
+            ("Overall Compliance Score", f"{agg.overall_compliance_score:.1f}"),
+            ("Overall Risk Score", f"{agg.overall_risk_score:.1f}"),
+            ("Weighted Severity Score", f"{agg.weighted_severity_score:.1f}"),
+            ("Business Impact Score", f"{agg.business_impact_score:.1f}"),
         ]
         for k, v in scores:
             ws.append([k, v])
@@ -1006,26 +1135,32 @@ class ExcelGenerator:
         # Coverage block
         _section(ws, "Framework Coverage", colspan=2)
         automated_pct = 93.0
-        hr_compliant = 0
         total_controls = 57
-        ws.append(["Automated Coverage (%)",      f"{automated_pct:.1f}%"])
-        ws.append(["Human Review Controls",       "4"])
-        ws.append(["Total Framework Controls",    str(total_controls)])
+        ws.append(["Automated Coverage (%)", f"{automated_pct:.1f}%"])
+        ws.append(["Human Review Controls", "4"])
+        ws.append(["Total Framework Controls", str(total_controls)])
         ws.append([])
 
         # Top 5 risks
         if agg.top_5_risks:
             _section(ws, "Top 5 Risks", colspan=4)
             hdr_row = ws.max_row + 1
-            ws.append(["#", "Title", "Resource", "Severity", "Pillar", "WAF Codes", "Business Impact"])
+            ws.append(
+                ["#", "Title", "Resource", "Severity", "Pillar", "WAF Codes", "Business Impact"]
+            )
             _apply_header_row(ws, hdr_row, 7)
             for i, risk in enumerate(agg.top_5_risks, 1):
-                ws.append([
-                    i, risk.title, risk.resource_id, risk.severity.upper(),
-                    risk.pillar.replace("_", " ").title(),
-                    ", ".join(risk.waf_codes) or "—",
-                    risk.business_impact,
-                ])
+                ws.append(
+                    [
+                        i,
+                        risk.title,
+                        risk.resource_id,
+                        risk.severity.upper(),
+                        risk.pillar.replace("_", " ").title(),
+                        ", ".join(risk.waf_codes) or "—",
+                        risk.business_impact,
+                    ]
+                )
                 fill = _SEVERITY_FILLS.get(risk.severity, _NA_FILL)
                 for col in range(1, 8):
                     ws.cell(row=ws.max_row, column=col).fill = fill
@@ -1039,36 +1174,43 @@ class ExcelGenerator:
         for pillar_name in sorted(agg.findings_by_pillar.keys()):
             ps = agg.findings_by_pillar[pillar_name]
             pct = f"{ps.compliance_score * 100:.1f}%"
-            ws.append([
-                pillar_name.replace("_", " ").title(),
-                pct,
-                ps.total_findings,
-                ps.findings_by_severity.get("critical", 0),
-                ps.findings_by_severity.get("high", 0),
-                ps.findings_by_severity.get("medium", 0),
-                ps.findings_by_severity.get("low", 0),
-            ])
+            ws.append(
+                [
+                    pillar_name.replace("_", " ").title(),
+                    pct,
+                    ps.total_findings,
+                    ps.findings_by_severity.get("critical", 0),
+                    ps.findings_by_severity.get("high", 0),
+                    ps.findings_by_severity.get("medium", 0),
+                    ps.findings_by_severity.get("low", 0),
+                ]
+            )
 
         _autosize(ws)
 
     # ── 2. Resource Inventory ──────────────────────────────────────────────────
 
-    def _sheet_resource_inventory(
-        self, wb: Workbook, agg: AggregatedReport
-    ) -> None:
+    def _sheet_resource_inventory(self, wb: Workbook, agg: AggregatedReport) -> None:
         ws = wb.create_sheet("Resource Inventory")
         _section(ws, "Resource Inventory — from Discovered Azure Resources", colspan=7)
         ws.append([])
 
         hdr_row = ws.max_row + 1
-        ws.append([
-            "Resource Type", "Total Resources", "Compliant",
-            "Non-Compliant", "Compliance %", "Critical Findings", "High Findings",
-        ])
+        ws.append(
+            [
+                "Resource Type",
+                "Total Resources",
+                "Compliant",
+                "Non-Compliant",
+                "Compliance %",
+                "Critical Findings",
+                "High Findings",
+            ]
+        )
         _apply_header_row(ws, hdr_row, 7)
 
         if not agg.resource_type_inventory:
-            ws.append(["Not Available" ] + [""] * 6)
+            ws.append(["Not Available"] + [""] * 6)
         else:
             for stats in sorted(
                 agg.resource_type_inventory.values(),
@@ -1076,15 +1218,17 @@ class ExcelGenerator:
                 reverse=True,
             ):
                 row_n = ws.max_row + 1
-                ws.append([
-                    stats.resource_type,
-                    stats.total,
-                    stats.compliant,
-                    stats.with_findings,
-                    f"{stats.compliance_pct:.1f}%",
-                    stats.critical_findings,
-                    stats.high_findings,
-                ])
+                ws.append(
+                    [
+                        stats.resource_type,
+                        stats.total,
+                        stats.compliant,
+                        stats.with_findings,
+                        f"{stats.compliance_pct:.1f}%",
+                        stats.critical_findings,
+                        stats.high_findings,
+                    ]
+                )
                 if stats.compliance_pct >= 70:
                     _fill_row(ws, row_n, 7, _PASS_FILL)
                 elif stats.with_findings > 0:
@@ -1105,16 +1249,16 @@ class ExcelGenerator:
         Conditional fill based on risk band.  Header row frozen.  Columns auto-fit.
         """
         _STATUS_FILLS: dict[str, PatternFill] = {
-            "Excellent":         PatternFill(fill_type="solid", fgColor="D5F5E3"),
-            "Good":              PatternFill(fill_type="solid", fgColor="A9DFBF"),
+            "Excellent": PatternFill(fill_type="solid", fgColor="D5F5E3"),
+            "Good": PatternFill(fill_type="solid", fgColor="A9DFBF"),
             "Needs Improvement": PatternFill(fill_type="solid", fgColor="FDEBD0"),
-            "High Risk":         PatternFill(fill_type="solid", fgColor="FADBD8"),
+            "High Risk": PatternFill(fill_type="solid", fgColor="FADBD8"),
         }
         _STATUS_FONT: dict[str, Font] = {
-            "Excellent":         Font(bold=True, color="145A32"),
-            "Good":              Font(bold=True, color="196F3D"),
+            "Excellent": Font(bold=True, color="145A32"),
+            "Good": Font(bold=True, color="196F3D"),
             "Needs Improvement": Font(bold=True, color="784212"),
-            "High Risk":         Font(bold=True, color="922B21"),
+            "High Risk": Font(bold=True, color="922B21"),
         }
 
         ws = wb.create_sheet("Pillar Scorecard")
@@ -1132,8 +1276,9 @@ class ExcelGenerator:
 
         # ── Column headers ────────────────────────────────────────────────
         hdr_row = ws.max_row + 1
-        ws.append(["Pillar", "Score", "Status", "Finding Count",
-                   "Critical", "High", "Medium", "Low"])
+        ws.append(
+            ["Pillar", "Score", "Status", "Finding Count", "Critical", "High", "Medium", "Low"]
+        )
         _apply_header_row(ws, hdr_row, 8)
 
         if not scores:
@@ -1156,19 +1301,19 @@ class ExcelGenerator:
         if scores:
             all_sc = [s[1] for s in scores]
             avg_sc = round(sum(all_sc) / len(all_sc), 1)
-            best   = max(scores, key=lambda s: s[1])
-            worst  = min(scores, key=lambda s: s[1])
+            best = max(scores, key=lambda s: s[1])
+            worst = min(scores, key=lambda s: s[1])
             maturity = calculate_maturity_rating(avg_sc)
 
             _section(ws, "Scorecard Summary", colspan=2)
             for k, v in [
-                ("Average Score",          f"{avg_sc:.1f} / 100"),
+                ("Average Score", f"{avg_sc:.1f} / 100"),
                 ("Highest Scoring Pillar", f"{best[0]}  (Score: {best[1]})"),
-                ("Lowest Scoring Pillar",  f"{worst[0]}  (Score: {worst[1]})"),
-                ("Overall Maturity",       maturity),
-                ("Total Findings",         str(sum(s[3] for s in scores))),
-                ("Critical Findings",      str(sum(s[4] for s in scores))),
-                ("High Findings",          str(sum(s[5] for s in scores))),
+                ("Lowest Scoring Pillar", f"{worst[0]}  (Score: {worst[1]})"),
+                ("Overall Maturity", maturity),
+                ("Total Findings", str(sum(s[3] for s in scores))),
+                ("Critical Findings", str(sum(s[4] for s in scores))),
+                ("High Findings", str(sum(s[5] for s in scores))),
             ]:
                 ws.append([k, v])
 
@@ -1176,8 +1321,10 @@ class ExcelGenerator:
             ws.append([])
             mat_row = ws.max_row + 1
             _MATURITY_HEX = {
-                "Enterprise Ready":  "1E8449", "Strong": "27AE60",
-                "Moderate": "E67E22", "Needs Improvement": "D4AC0D",
+                "Enterprise Ready": "1E8449",
+                "Strong": "27AE60",
+                "Moderate": "E67E22",
+                "Needs Improvement": "D4AC0D",
                 "High Risk": "C0392B",
             }
             mat_hex = _MATURITY_HEX.get(maturity, "2C3E50")
@@ -1188,10 +1335,15 @@ class ExcelGenerator:
                 ws.cell(row=mat_row, column=col).fill = mat_fill
                 ws.cell(row=mat_row, column=col).font = mat_font
             ws.append([])
-            ws.append(["Score Bands:  90+: Excellent  |  75-89: Good  |  60-74: Needs Improvement  |  <60: High Risk", ""])
+            ws.append(
+                [
+                    "Score Bands:  90+: Excellent  |  75-89: Good  |  60-74: Needs Improvement  |  <60: High Risk",
+                    "",
+                ]
+            )
 
         # ── Freeze header + auto-fit ──────────────────────────────────────
-        ws.freeze_panes = "A3"   # freeze title row + header row
+        ws.freeze_panes = "A3"  # freeze title row + header row
         _autosize(ws)
 
     # ── 3–7. Per-pillar sheets ─────────────────────────────────────────────────
@@ -1207,8 +1359,8 @@ class ExcelGenerator:
 
         if summary:
             _section(ws, f"{sheet_name} — Pillar Analysis", colspan=4)
-            ws.append(["Compliance Score",  f"{summary.compliance_score * 100:.1f}%"])
-            ws.append(["Total Findings",    summary.total_findings])
+            ws.append(["Compliance Score", f"{summary.compliance_score * 100:.1f}%"])
+            ws.append(["Total Findings", summary.total_findings])
             for sev in _SEVERITY_ORDER:
                 ws.append([sev.capitalize(), summary.findings_by_severity.get(sev, 0)])
             ws.append([])
@@ -1234,34 +1386,44 @@ class ExcelGenerator:
 
         # ── Grouped findings view ──────────────────────────────────────────────
         _PILLAR_GROUP_HEADERS = [
-            "#", "Severity", "Rule ID", "Title",
-            "Affected Resources", "Resource Names", "Recommendation",
+            "#",
+            "Severity",
+            "Rule ID",
+            "Title",
+            "Affected Resources",
+            "Resource Names",
+            "Recommendation",
         ]
         hdr_row = ws.max_row + 1
         ws.append(_PILLAR_GROUP_HEADERS)
         _apply_header_row(ws, hdr_row, len(_PILLAR_GROUP_HEADERS))
 
         if not findings:
-            ws.append(["—", "No findings for this pillar"] + ["—"] * (len(_PILLAR_GROUP_HEADERS) - 2))
+            ws.append(
+                ["—", "No findings for this pillar"] + ["—"] * (len(_PILLAR_GROUP_HEADERS) - 2)
+            )
         else:
             grouped = _group_findings(findings)
             for i, g in enumerate(grouped, 1):
-                shown   = g.resource_names[:50]
-                suffix  = f" (+{g.count - 50} more)" if g.count > 50 else ""
+                shown = g.resource_names[:50]
+                suffix = f" (+{g.count - 50} more)" if g.count > 50 else ""
                 res_str = " | ".join(shown) + suffix
 
                 row_n = ws.max_row + 1
-                ws.append([
-                    i,
-                    g.severity.upper(),
-                    g.rule_id,
-                    g.title,
-                    g.count,
-                    res_str,
-                    g.recommendation,
-                ])
-                _fill_row(ws, row_n, len(_PILLAR_GROUP_HEADERS),
-                          _SEVERITY_FILLS.get(g.severity, _NA_FILL))
+                ws.append(
+                    [
+                        i,
+                        g.severity.upper(),
+                        g.rule_id,
+                        g.title,
+                        g.count,
+                        res_str,
+                        g.recommendation,
+                    ]
+                )
+                _fill_row(
+                    ws, row_n, len(_PILLAR_GROUP_HEADERS), _SEVERITY_FILLS.get(g.severity, _NA_FILL)
+                )
                 ws.cell(row=row_n, column=6).alignment = Alignment(wrap_text=True)
                 ws.cell(row=row_n, column=7).alignment = Alignment(wrap_text=True)
 
@@ -1276,9 +1438,7 @@ class ExcelGenerator:
 
     # ── 8. Business Impact ─────────────────────────────────────────────────────
 
-    def _sheet_business_impact(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_business_impact(self, wb: Workbook, findings: list[Finding]) -> None:
         ws = wb.create_sheet("Business Impact")
         _section(ws, "Business Impact Analysis — derived from findings and pillars", colspan=5)
         ws.append([])
@@ -1291,9 +1451,7 @@ class ExcelGenerator:
                 extra = "Data Loss Risk"
                 if extra not in impact_map:
                     impact_map[extra] = {}
-                impact_map[extra][f.severity.value] = (
-                    impact_map[extra].get(f.severity.value, 0) + 1
-                )
+                impact_map[extra][f.severity.value] = impact_map[extra].get(f.severity.value, 0) + 1
             if category not in impact_map:
                 impact_map[category] = {}
             impact_map[category][f.severity.value] = (
@@ -1302,7 +1460,9 @@ class ExcelGenerator:
 
         _section(ws, "Impact Category Summary", colspan=5)
         hdr_row = ws.max_row + 1
-        ws.append(["Impact Category", "Critical", "High", "Medium", "Low", "Informational", "Total"])
+        ws.append(
+            ["Impact Category", "Critical", "High", "Medium", "Low", "Informational", "Total"]
+        )
         _apply_header_row(ws, hdr_row, 7)
 
         if not impact_map:
@@ -1311,39 +1471,55 @@ class ExcelGenerator:
             for category in sorted(impact_map.keys()):
                 sev_counts = impact_map[category]
                 total = sum(sev_counts.values())
-                ws.append([
-                    category,
-                    sev_counts.get("critical", 0),
-                    sev_counts.get("high", 0),
-                    sev_counts.get("medium", 0),
-                    sev_counts.get("low", 0),
-                    sev_counts.get("informational", 0),
-                    total,
-                ])
+                ws.append(
+                    [
+                        category,
+                        sev_counts.get("critical", 0),
+                        sev_counts.get("high", 0),
+                        sev_counts.get("medium", 0),
+                        sev_counts.get("low", 0),
+                        sev_counts.get("informational", 0),
+                        total,
+                    ]
+                )
         ws.append([])
 
         # Per-finding impact table
         _section(ws, "Finding-Level Impact Classification", colspan=5)
         hdr_row = ws.max_row + 1
-        ws.append([
-            "Title", "Resource ID", "Resource Type", "Severity",
-            "Pillar", "Impact Category", "Estimated Severity",
-        ])
+        ws.append(
+            [
+                "Title",
+                "Resource ID",
+                "Resource Type",
+                "Severity",
+                "Pillar",
+                "Impact Category",
+                "Estimated Severity",
+            ]
+        )
         _apply_header_row(ws, hdr_row, 7)
 
         sorted_f = sorted(
             findings,
             key=lambda f: _SEVERITY_ORDER.index(f.severity.value)
-            if f.severity.value in _SEVERITY_ORDER else 99,
+            if f.severity.value in _SEVERITY_ORDER
+            else 99,
         )
         for f in sorted_f:
             category = _PILLAR_TO_IMPACT.get(f.pillar, "Operational Risk")
             row_n = ws.max_row + 1
-            ws.append([
-                f.title, f.resource_id, f.resource_type,
-                f.severity.value.upper(), f.pillar.replace("_", " ").title(),
-                category, f.severity.value.capitalize(),
-            ])
+            ws.append(
+                [
+                    f.title,
+                    f.resource_id,
+                    f.resource_type,
+                    f.severity.value.upper(),
+                    f.pillar.replace("_", " ").title(),
+                    category,
+                    f.severity.value.capitalize(),
+                ]
+            )
             fill = _SEVERITY_FILLS.get(f.severity.value, _NA_FILL)
             _fill_row(ws, row_n, 7, fill)
 
@@ -1351,20 +1527,32 @@ class ExcelGenerator:
         ws.append([])
         _section(ws, "Business Risk Assessment — Qualitative Impact per Finding", colspan=6)
         bra_hdr_row = ws.max_row + 1
-        ws.append([
-            "Finding", "Severity", "Risk Category",
-            "Business Impact", "Business Priority", "Impact Score",
-        ])
+        ws.append(
+            [
+                "Finding",
+                "Severity",
+                "Risk Category",
+                "Business Impact",
+                "Business Priority",
+                "Impact Score",
+            ]
+        )
         _apply_header_row(ws, bra_hdr_row, 6)
 
         # Overall Business Impact Score summary row
         try:
             overall_score = calculate_business_impact_score(findings)
-            ws.append([
-                f"Overall Business Impact Score: {overall_score:.0f} / 100  "
-                f"(Critical=100  High=75  Medium=50  Low=25  Informational=0)",
-                "", "", "", "", "",
-            ])
+            ws.append(
+                [
+                    f"Overall Business Impact Score: {overall_score:.0f} / 100  "
+                    f"(Critical=100  High=75  Medium=50  Low=25  Informational=0)",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                ]
+            )
         except Exception:
             pass
 
@@ -1376,14 +1564,16 @@ class ExcelGenerator:
             try:
                 biz = build_business_impact_analysis(f)
                 bra_row_n = ws.max_row + 1
-                ws.append([
-                    f.title,
-                    f.severity.value.upper(),
-                    biz.risk_category,
-                    biz.finding_impact,
-                    biz.priority,
-                    biz.impact_score,
-                ])
+                ws.append(
+                    [
+                        f.title,
+                        f.severity.value.upper(),
+                        biz.risk_category,
+                        biz.finding_impact,
+                        biz.priority,
+                        biz.impact_score,
+                    ]
+                )
                 ws.cell(row=bra_row_n, column=2).fill = _SEVERITY_FILLS.get(
                     f.severity.value, _NA_FILL
                 )
@@ -1400,9 +1590,7 @@ class ExcelGenerator:
 
     # ── 9. AI Executive Insights ───────────────────────────────────────────────
 
-    def _sheet_executive_insights(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_executive_insights(self, wb: Workbook, findings: list[Finding]) -> None:
         ws = wb.create_sheet("AI Executive Insights")
         _section(
             ws,
@@ -1412,9 +1600,9 @@ class ExcelGenerator:
         ws.append([])
 
         _CONF_FILLS = {
-            "High":   PatternFill(fill_type="solid", fgColor="D5F5E3"),
+            "High": PatternFill(fill_type="solid", fgColor="D5F5E3"),
             "Medium": PatternFill(fill_type="solid", fgColor="FDEBD0"),
-            "Low":    PatternFill(fill_type="solid", fgColor="F2F3F4"),
+            "Low": PatternFill(fill_type="solid", fgColor="F2F3F4"),
         }
 
         try:
@@ -1429,9 +1617,7 @@ class ExcelGenerator:
             _section(ws, "Assessment Narrative", colspan=5)
             ws.append([insights.assessment_narrative, "", "", "", ""])
             _narr_row = ws.max_row
-            ws.cell(row=_narr_row, column=1).alignment = Alignment(
-                wrap_text=True, vertical="top"
-            )
+            ws.cell(row=_narr_row, column=1).alignment = Alignment(wrap_text=True, vertical="top")
             ws.row_dimensions[_narr_row].height = 90
             ws.append([])
         except Exception:
@@ -1442,9 +1628,9 @@ class ExcelGenerator:
             _section(ws, "Strategic Recommendations", colspan=5)
             recs = insights.strategic_recommendations
             for _label, _text in [
-                ("Immediate Focus (0–30 Days)",  recs.immediate_focus),
+                ("Immediate Focus (0–30 Days)", recs.immediate_focus),
                 ("Near-Term Focus (30–90 Days)", recs.near_term_focus),
-                ("Long-Term Focus (90+ Days)",   recs.long_term_focus),
+                ("Long-Term Focus (90+ Days)", recs.long_term_focus),
             ]:
                 _rec_row = ws.max_row + 1
                 ws.append([_label, _text, "", "", ""])
@@ -1461,22 +1647,31 @@ class ExcelGenerator:
         try:
             _section(ws, "Key Observations", colspan=5)
             _hdr_row = ws.max_row + 1
-            ws.append([
-                "Insight Type", "Insight", "Confidence",
-                "Supporting Findings", "Strategic Priority",
-            ])
+            ws.append(
+                [
+                    "Insight Type",
+                    "Insight",
+                    "Confidence",
+                    "Supporting Findings",
+                    "Strategic Priority",
+                ]
+            )
             _apply_header_row(ws, _hdr_row, 5)
 
             for _obs in insights.observations:
                 try:
                     _obs_row = ws.max_row + 1
-                    ws.append([
-                        _obs.insight_type,
-                        _obs.insight,
-                        _obs.confidence,
-                        "; ".join(_obs.supporting_findings) if _obs.supporting_findings else "—",
-                        _obs.strategic_priority,
-                    ])
+                    ws.append(
+                        [
+                            _obs.insight_type,
+                            _obs.insight,
+                            _obs.confidence,
+                            "; ".join(_obs.supporting_findings)
+                            if _obs.supporting_findings
+                            else "—",
+                            _obs.strategic_priority,
+                        ]
+                    )
                     ws.cell(row=_obs_row, column=2).alignment = Alignment(
                         wrap_text=True, vertical="top"
                     )
@@ -1504,48 +1699,63 @@ class ExcelGenerator:
 
     # ── 10. Traceability Matrix ────────────────────────────────────────────────
 
-    def _sheet_traceability_matrix(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_traceability_matrix(self, wb: Workbook, findings: list[Finding]) -> None:
         ws = wb.create_sheet("Traceability Matrix")
-        _section(ws, "Microsoft WAF Traceability Matrix — Finding → Rule → Control → URL", colspan=8)
+        _section(
+            ws, "Microsoft WAF Traceability Matrix — Finding → Rule → Control → URL", colspan=8
+        )
         ws.append([])
 
         hdr_row = ws.max_row + 1
-        ws.append([
-            "Finding Title", "Affected Resource", "Rule ID",
-            "WAF Code", "WAF Title", "Pillar",
-            "Severity", "Remediation", "Evidence Summary", "Microsoft URL",
-        ])
+        ws.append(
+            [
+                "Finding Title",
+                "Affected Resource",
+                "Rule ID",
+                "WAF Code",
+                "WAF Title",
+                "Pillar",
+                "Severity",
+                "Remediation",
+                "Evidence Summary",
+                "Microsoft URL",
+            ]
+        )
         _apply_header_row(ws, hdr_row, 10)
 
         sorted_f = sorted(
             findings,
             key=lambda f: _SEVERITY_ORDER.index(f.severity.value)
-            if f.severity.value in _SEVERITY_ORDER else 99,
+            if f.severity.value in _SEVERITY_ORDER
+            else 99,
         )
         for f in sorted_f:
             # One row per WAF code (or one row if no codes)
-            waf_entries = list(zip(
-                f.waf_codes or ["—"],
-                f.waf_titles or ["—"],
-                f.microsoft_urls or ["Not Available"],
-            ))
+            waf_entries = list(
+                zip(
+                    f.waf_codes or ["—"],
+                    f.waf_titles or ["—"],
+                    f.microsoft_urls or ["Not Available"],
+                    strict=False,
+                )
+            )
             evidence_str = _evidence_summary(f.evidence)
             for code, title_waf, url in waf_entries:
                 row_n = ws.max_row + 1
-                ws.append([
-                    f.title,
-                    f.resource_id,
-                    f.rule_id,
-                    code,
-                    title_waf,
-                    f.pillar.replace("_", " ").title(),
-                    f.severity.value.upper(),
-                    f.recommendation,
-                    evidence_str,
-                    url,
-                ])
+                ws.append(
+                    [
+                        f.title,
+                        f.resource_id,
+                        f.rule_id,
+                        code,
+                        title_waf,
+                        f.pillar.replace("_", " ").title(),
+                        f.severity.value.upper(),
+                        f.recommendation,
+                        evidence_str,
+                        url,
+                    ]
+                )
                 fill = _SEVERITY_FILLS.get(f.severity.value, _NA_FILL)
                 _fill_row(ws, row_n, 10, fill)
 
@@ -1555,22 +1765,32 @@ class ExcelGenerator:
 
     # ── 10. Human Reviews ──────────────────────────────────────────────────────
 
-    def _sheet_human_reviews(
-        self, wb: Workbook, reviews: list[HumanReviewAssessment]
-    ) -> None:
+    def _sheet_human_reviews(self, wb: Workbook, reviews: list[HumanReviewAssessment]) -> None:
         ws = wb.create_sheet("Human Reviews")
         _section(ws, "Human Review Results — SE-10, OE-03, OE-04, CO-09", colspan=6)
         ws.append([])
 
-        ws.append(["Note: These 4 controls require human assessment and cannot be "
-                   "evaluated via Azure APIs"])
+        ws.append(
+            [
+                "Note: These 4 controls require human assessment and cannot be "
+                "evaluated via Azure APIs"
+            ]
+        )
         ws.append([])
 
         hdr_row = ws.max_row + 1
-        ws.append([
-            "WAF Code", "Pillar", "Review Status",
-            "Compliance Status", "Score", "Reviewer", "Reviewed At", "Comments",
-        ])
+        ws.append(
+            [
+                "WAF Code",
+                "Pillar",
+                "Review Status",
+                "Compliance Status",
+                "Score",
+                "Reviewer",
+                "Reviewed At",
+                "Comments",
+            ]
+        )
         _apply_header_row(ws, hdr_row, 8)
 
         review_map = {r.control_code: r for r in reviews}
@@ -1583,16 +1803,18 @@ class ExcelGenerator:
             else:
                 status = review.compliance_status.value.replace("_", " ").upper()
                 row_n = ws.max_row + 1
-                ws.append([
-                    review.control_code,
-                    review.pillar,
-                    review.status.value.replace("_", " ").upper(),
-                    status,
-                    review.score,
-                    review.reviewer_oid,
-                    review.reviewed_at.strftime("%Y-%m-%d") if review.reviewed_at else "—",
-                    review.comments or "—",
-                ])
+                ws.append(
+                    [
+                        review.control_code,
+                        review.pillar,
+                        review.status.value.replace("_", " ").upper(),
+                        status,
+                        review.score,
+                        review.reviewer_oid,
+                        review.reviewed_at.strftime("%Y-%m-%d") if review.reviewed_at else "—",
+                        review.comments or "—",
+                    ]
+                )
                 if review.compliance_status == ComplianceStatus.COMPLIANT:
                     _fill_row(ws, row_n, 8, _PASS_FILL)
                 elif review.compliance_status == ComplianceStatus.PARTIALLY_COMPLIANT:
@@ -1612,20 +1834,20 @@ class ExcelGenerator:
             _apply_header_row(ws, hdr_row, 4)
             for review in sorted(reviews, key=lambda r: r.control_code):
                 for ans in review.answers:
-                    ws.append([
-                        review.control_code,
-                        ans.question_id,
-                        str(ans.answer),
-                        ans.notes or "",
-                    ])
+                    ws.append(
+                        [
+                            review.control_code,
+                            ans.question_id,
+                            str(ans.answer),
+                            ans.notes or "",
+                        ]
+                    )
 
         _autosize(ws)
 
     # ── 11. Trend Analysis ─────────────────────────────────────────────────────
 
-    def _sheet_trend_analysis(
-        self, wb: Workbook, agg: AggregatedReport
-    ) -> None:
+    def _sheet_trend_analysis(self, wb: Workbook, agg: AggregatedReport) -> None:
         ws = wb.create_sheet("Trend Analysis")
         _section(ws, "Trend Analysis — Historical Compliance Data", colspan=5)
         ws.append([])
@@ -1638,11 +1860,19 @@ class ExcelGenerator:
             return
 
         hdr_row = ws.max_row + 1
-        ws.append([
-            "Assessment Date", "Assessment ID", "Total Findings",
-            "Compliance Score (%)", "Security", "Reliability",
-            "Operational Excellence", "Performance", "Cost Optimization",
-        ])
+        ws.append(
+            [
+                "Assessment Date",
+                "Assessment ID",
+                "Total Findings",
+                "Compliance Score (%)",
+                "Security",
+                "Reliability",
+                "Operational Excellence",
+                "Performance",
+                "Cost Optimization",
+            ]
+        )
         _apply_header_row(ws, hdr_row, 9)
 
         prev_score: float | None = None
@@ -1652,17 +1882,19 @@ class ExcelGenerator:
                 delta = pt.compliance_score - prev_score
                 delta_label = f" (+{delta:.1f})" if delta >= 0 else f" ({delta:.1f})"
             row_n = ws.max_row + 1
-            ws.append([
-                pt.assessment_date.strftime("%Y-%m-%d"),
-                str(pt.assessment_id)[:8] + "…",
-                pt.total_findings,
-                f"{pt.compliance_score:.1f}%{delta_label}",
-                pt.findings_by_pillar.get("security", 0),
-                pt.findings_by_pillar.get("reliability", 0),
-                pt.findings_by_pillar.get("operational_excellence", 0),
-                pt.findings_by_pillar.get("performance_efficiency", 0),
-                pt.findings_by_pillar.get("cost_optimization", 0),
-            ])
+            ws.append(
+                [
+                    pt.assessment_date.strftime("%Y-%m-%d"),
+                    str(pt.assessment_id)[:8] + "…",
+                    pt.total_findings,
+                    f"{pt.compliance_score:.1f}%{delta_label}",
+                    pt.findings_by_pillar.get("security", 0),
+                    pt.findings_by_pillar.get("reliability", 0),
+                    pt.findings_by_pillar.get("operational_excellence", 0),
+                    pt.findings_by_pillar.get("performance_efficiency", 0),
+                    pt.findings_by_pillar.get("cost_optimization", 0),
+                ]
+            )
             if prev_score is not None and pt.compliance_score > prev_score:
                 _fill_row(ws, row_n, 9, _PASS_FILL)
             elif prev_score is not None and pt.compliance_score < prev_score:
@@ -1681,20 +1913,25 @@ class ExcelGenerator:
 
     # ── 12. Grouped Findings ───────────────────────────────────────────────────
 
-    def _sheet_grouped_findings(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_grouped_findings(self, wb: Workbook, findings: list[Finding]) -> None:
         ws = wb.create_sheet("Grouped Findings")
         _section(ws, "Findings Grouped by Rule — Deduplicated View", colspan=7)
-        ws.append([
-            "Each row represents one distinct rule violation. "
-            "'Affected Resources' is the count of unique resources that triggered this rule."
-        ])
+        ws.append(
+            [
+                "Each row represents one distinct rule violation. "
+                "'Affected Resources' is the count of unique resources that triggered this rule."
+            ]
+        )
         ws.append([])
 
         _GROUPED_HEADERS = [
-            "#", "Severity", "Rule ID", "Title",
-            "Affected Resources", "Resource Names", "Recommendation",
+            "#",
+            "Severity",
+            "Rule ID",
+            "Title",
+            "Affected Resources",
+            "Resource Names",
+            "Recommendation",
         ]
         hdr_row = ws.max_row + 1
         ws.append(_GROUPED_HEADERS)
@@ -1705,29 +1942,30 @@ class ExcelGenerator:
             ws.append(["—"] + ["No findings"] + ["—"] * (len(_GROUPED_HEADERS) - 2))
         else:
             for i, g in enumerate(grouped, 1):
-                shown      = g.resource_names[:50]
-                suffix     = f" (+{g.count - 50} more)" if g.count > 50 else ""
-                res_str    = " | ".join(shown) + suffix
-                codes_str  = ", ".join(g.waf_codes) if g.waf_codes else "—"
+                shown = g.resource_names[:50]
+                suffix = f" (+{g.count - 50} more)" if g.count > 50 else ""
+                res_str = " | ".join(shown) + suffix
+                ", ".join(g.waf_codes) if g.waf_codes else "—"
 
                 row_n = ws.max_row + 1
-                ws.append([
-                    i,
-                    g.severity.upper(),
-                    g.rule_id,
-                    g.title,
-                    g.count,
-                    res_str,
-                    g.recommendation,
-                ])
-                _fill_row(ws, row_n, len(_GROUPED_HEADERS),
-                          _SEVERITY_FILLS.get(g.severity, _NA_FILL))
+                ws.append(
+                    [
+                        i,
+                        g.severity.upper(),
+                        g.rule_id,
+                        g.title,
+                        g.count,
+                        res_str,
+                        g.recommendation,
+                    ]
+                )
+                _fill_row(
+                    ws, row_n, len(_GROUPED_HEADERS), _SEVERITY_FILLS.get(g.severity, _NA_FILL)
+                )
                 ws.cell(row=row_n, column=6).alignment = Alignment(wrap_text=True)
                 ws.cell(row=row_n, column=7).alignment = Alignment(wrap_text=True)
 
-        ws.auto_filter.ref = (
-            f"A{hdr_row}:{get_column_letter(len(_GROUPED_HEADERS))}{ws.max_row}"
-        )
+        ws.auto_filter.ref = f"A{hdr_row}:{get_column_letter(len(_GROUPED_HEADERS))}{ws.max_row}"
         ws.freeze_panes = f"A{hdr_row + 1}"
 
         # Fixed column widths — resource list and recommendation need generous space
@@ -1737,9 +1975,7 @@ class ExcelGenerator:
 
     # ── 13. Remediation Detail ─────────────────────────────────────────────────
 
-    def _sheet_remediation_detail(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_remediation_detail(self, wb: Workbook, findings: list[Finding]) -> None:
         """One row per distinct rule_id — all 7 remediation dimensions.
 
         Grouped by rule so engineers get a single authoritative reference per
@@ -1751,10 +1987,12 @@ class ExcelGenerator:
             "Remediation Detail — Business Impact, Technical Risk & IaC Guidance",
             colspan=12,
         )
-        ws.append([
-            "Grouped by rule (one row per rule_id). "
-            "Each row shows all 7 remediation dimensions with IaC snippets."
-        ])
+        ws.append(
+            [
+                "Grouped by rule (one row per rule_id). "
+                "Each row shows all 7 remediation dimensions with IaC snippets."
+            ]
+        )
         ws.append([])
 
         _REM_HEADERS = [
@@ -1805,21 +2043,23 @@ class ExcelGenerator:
             )
 
             row_n = ws.max_row + 1
-            ws.append([
-                i,
-                g.rule_id,
-                g.severity.upper(),
-                g.pillar.replace("_", " ").title(),
-                g.title,
-                g.count,
-                detail.business_impact,
-                detail.technical_risk,
-                detail.azure_cli,
-                detail.bicep,
-                detail.terraform,
-                detail.estimated_effort,
-                detail.risk_reduction,
-            ])
+            ws.append(
+                [
+                    i,
+                    g.rule_id,
+                    g.severity.upper(),
+                    g.pillar.replace("_", " ").title(),
+                    g.title,
+                    g.count,
+                    detail.business_impact,
+                    detail.technical_risk,
+                    detail.azure_cli,
+                    detail.bicep,
+                    detail.terraform,
+                    detail.estimated_effort,
+                    detail.risk_reduction,
+                ]
+            )
 
             sev_fill = _SEVERITY_FILLS.get(g.severity, _NA_FILL)
             # Severity badge only on severity cell (col 3)
@@ -1832,14 +2072,10 @@ class ExcelGenerator:
 
             # Wrap-text for long content columns
             for col in [7, 8, 9, 10, 11]:
-                ws.cell(row=row_n, column=col).alignment = Alignment(
-                    wrap_text=True, vertical="top"
-                )
+                ws.cell(row=row_n, column=col).alignment = Alignment(wrap_text=True, vertical="top")
             ws.row_dimensions[row_n].height = 90
 
-        ws.auto_filter.ref = (
-            f"A{hdr_row}:{get_column_letter(len(_REM_HEADERS))}{ws.max_row}"
-        )
+        ws.auto_filter.ref = f"A{hdr_row}:{get_column_letter(len(_REM_HEADERS))}{ws.max_row}"
         ws.freeze_panes = ws.cell(row=hdr_row + 1, column=1)
 
         _REM_COL_WIDTHS = [4, 14, 12, 20, 42, 10, 45, 45, 55, 55, 55, 28, 32]
@@ -1848,9 +2084,7 @@ class ExcelGenerator:
 
     # ── Remediation Roadmap [NEW] ──────────────────────────────────────────────
 
-    def _sheet_remediation_roadmap(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_remediation_roadmap(self, wb: Workbook, findings: list[Finding]) -> None:
         """Three-phase executive remediation roadmap — one row per deduplicated finding group."""
         ws = wb.create_sheet("Remediation Roadmap")
         _section(
@@ -1858,10 +2092,12 @@ class ExcelGenerator:
             "Executive Remediation Roadmap — 3-Phase Execution Plan",
             colspan=9,
         )
-        ws.append([
-            "Phase 1: 0–30 Days  |  Phase 2: 30–60 Days  |  Phase 3: 60–90 Days  |  "
-            "Priority score = severity weight + pillar bonus.  Effort based on affected resources."
-        ])
+        ws.append(
+            [
+                "Phase 1: 0–30 Days  |  Phase 2: 30–60 Days  |  Phase 3: 60–90 Days  |  "
+                "Priority score = severity weight + pillar bonus.  Effort based on affected resources."
+            ]
+        )
         ws.append([])
 
         _ROA_HEADERS = [
@@ -1893,27 +2129,25 @@ class ExcelGenerator:
             phase_label = f"{phase['name']} ({phase['timeframe']})"
             risk_red = phase["risk_reduction"]
             for item in phase["items"]:
-                ws.append([
-                    item["priority"],
-                    phase_label,
-                    item["title"],
-                    item["severity"].upper(),
-                    item["pillar"].replace("_", " ").title(),
-                    item["resource_count"],
-                    item["effort"],
-                    risk_red,
-                    item["recommendation"],
-                ])
+                ws.append(
+                    [
+                        item["priority"],
+                        phase_label,
+                        item["title"],
+                        item["severity"].upper(),
+                        item["pillar"].replace("_", " ").title(),
+                        item["resource_count"],
+                        item["effort"],
+                        risk_red,
+                        item["recommendation"],
+                    ]
+                )
                 row_n = ws.max_row
                 sev_fill = _SEVERITY_FILLS.get(item["severity"], _NA_FILL)
                 ws.cell(row=row_n, column=4).fill = sev_fill
-                ws.cell(row=row_n, column=9).alignment = Alignment(
-                    wrap_text=True, vertical="top"
-                )
+                ws.cell(row=row_n, column=9).alignment = Alignment(wrap_text=True, vertical="top")
 
-        ws.auto_filter.ref = (
-            f"A{hdr_row}:{get_column_letter(len(_ROA_HEADERS))}{ws.max_row}"
-        )
+        ws.auto_filter.ref = f"A{hdr_row}:{get_column_letter(len(_ROA_HEADERS))}{ws.max_row}"
         ws.freeze_panes = ws.cell(row=hdr_row + 1, column=1)
 
         _ROA_COL_WIDTHS = [10, 34, 46, 14, 28, 18, 18, 24, 60]
@@ -1922,9 +2156,7 @@ class ExcelGenerator:
 
     # ── Remediation Playbooks ─────────────────────────────────────────────────
 
-    def _sheet_remediation_playbooks(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_remediation_playbooks(self, wb: Workbook, findings: list[Finding]) -> None:
         """One row per unique rule_id — Portal steps, CLI, PowerShell, Bicep, Terraform.
 
         Unknown rules display "Manual remediation guidance required." rather than
@@ -1936,11 +2168,13 @@ class ExcelGenerator:
             "Remediation Playbooks — Step-by-Step Implementation Guidance",
             colspan=9,
         )
-        ws.append([
-            "One row per unique WAF rule. "
-            "Known rules provide Portal, CLI, PowerShell, Bicep, and Terraform guidance. "
-            "Unknown rules display manual remediation guidance."
-        ])
+        ws.append(
+            [
+                "One row per unique WAF rule. "
+                "Known rules provide Portal, CLI, PowerShell, Bicep, and Terraform guidance. "
+                "Unknown rules display manual remediation guidance."
+            ]
+        )
         ws.append([])
 
         _HDR = [
@@ -1972,21 +2206,25 @@ class ExcelGenerator:
         sorted_rules = sorted(
             seen.values(),
             key=lambda f: _SEVERITY_ORDER.index(f.severity.value)
-            if f.severity.value in _SEVERITY_ORDER else 99,
+            if f.severity.value in _SEVERITY_ORDER
+            else 99,
         )
 
         for f in sorted_rules:
             try:
-                playbook  = build_remediation_playbook(f)
-                fix_time  = estimate_fix_time(f)
-                risk_red  = expected_risk_reduction(f)
+                playbook = build_remediation_playbook(f)
+                fix_time = estimate_fix_time(f)
+                risk_red = expected_risk_reduction(f)
 
                 if playbook is None:
                     row_data = [
                         f.title,
                         f.severity.value.upper(),
                         "Manual remediation guidance required.",
-                        "—", "—", "—", "—",
+                        "—",
+                        "—",
+                        "—",
+                        "—",
                         fix_time,
                         risk_red,
                     ]
@@ -2007,9 +2245,7 @@ class ExcelGenerator:
                 ws.append(row_data)
 
                 # Severity badge on column 2
-                ws.cell(row=row_n, column=2).fill = _SEVERITY_FILLS.get(
-                    f.severity.value, _NA_FILL
-                )
+                ws.cell(row=row_n, column=2).fill = _SEVERITY_FILLS.get(f.severity.value, _NA_FILL)
 
                 # Wrap-text + top-align on all columns
                 for col in range(1, len(_HDR) + 1):
@@ -2021,9 +2257,7 @@ class ExcelGenerator:
             except Exception:
                 pass  # Never abort workbook generation
 
-        ws.auto_filter.ref = (
-            f"A{hdr_row}:{get_column_letter(len(_HDR))}{ws.max_row}"
-        )
+        ws.auto_filter.ref = f"A{hdr_row}:{get_column_letter(len(_HDR))}{ws.max_row}"
         ws.freeze_panes = ws.cell(row=hdr_row + 1, column=1)
 
         _PB_COL_WIDTHS = [46, 14, 42, 55, 55, 55, 55, 16, 16]
@@ -2035,7 +2269,7 @@ class ExcelGenerator:
     def _sheet_enterprise_remediation_roadmap(
         self,
         wb: Workbook,
-        aggregated: "AggregatedReport",
+        aggregated: AggregatedReport,
         findings: list[Finding],
     ) -> None:
         """9-section enterprise implementation roadmap worksheet.
@@ -2052,10 +2286,10 @@ class ExcelGenerator:
 
         # Phase fills (colour-coded)
         _PHASE_FILLS: dict[str, PatternFill] = {
-            "Immediate":   PatternFill(fill_type="solid", fgColor="C0392B"),
-            "Near-Term":   PatternFill(fill_type="solid", fgColor="E67E22"),
+            "Immediate": PatternFill(fill_type="solid", fgColor="C0392B"),
+            "Near-Term": PatternFill(fill_type="solid", fgColor="E67E22"),
             "Medium-Term": PatternFill(fill_type="solid", fgColor="F1C40F"),
-            "Long-Term":   PatternFill(fill_type="solid", fgColor="16A085"),
+            "Long-Term": PatternFill(fill_type="solid", fgColor="16A085"),
         }
         _PHASE_FONT_DARK: set[str] = {"Medium-Term"}  # dark text on yellow bg
         _PHASE_FONTS: dict[str, Font] = {
@@ -2065,10 +2299,10 @@ class ExcelGenerator:
 
         _IMPACT_FILLS: dict[str, PatternFill] = {
             "Very High": PatternFill(fill_type="solid", fgColor="FADBD8"),
-            "High":      PatternFill(fill_type="solid", fgColor="FDEBD0"),
-            "Moderate":  PatternFill(fill_type="solid", fgColor="FDEBD0"),
-            "Low":       PatternFill(fill_type="solid", fgColor="D5F5E3"),
-            "Minimal":   PatternFill(fill_type="solid", fgColor="D5F5E3"),
+            "High": PatternFill(fill_type="solid", fgColor="FDEBD0"),
+            "Moderate": PatternFill(fill_type="solid", fgColor="FDEBD0"),
+            "Low": PatternFill(fill_type="solid", fgColor="D5F5E3"),
+            "Minimal": PatternFill(fill_type="solid", fgColor="D5F5E3"),
         }
 
         def _section_banner(title: str, subtitle: str = "") -> int:
@@ -2076,23 +2310,23 @@ class ExcelGenerator:
             row = ws.max_row + 2
             ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=10)
             cell = ws.cell(row=row, column=1, value=title)
-            cell.font   = Font(bold=True, color="ECF0F1", size=12)
-            cell.fill   = PatternFill(fill_type="solid", fgColor="2C3E50")
+            cell.font = Font(bold=True, color="ECF0F1", size=12)
+            cell.fill = PatternFill(fill_type="solid", fgColor="2C3E50")
             cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
             if subtitle:
                 row += 1
                 ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=10)
                 sc = ws.cell(row=row, column=1, value=subtitle)
-                sc.font      = Font(italic=True, size=9, color="555555")
-                sc.fill      = PatternFill(fill_type="solid", fgColor="F2F3F4")
+                sc.font = Font(italic=True, size=9, color="555555")
+                sc.fill = PatternFill(fill_type="solid", fgColor="F2F3F4")
                 sc.alignment = Alignment(horizontal="left", vertical="center", indent=1)
             return row + 2
 
         def _header_row(row: int, headers: list[str], fill: PatternFill = _HEADER_FILL) -> None:
             for col_idx, h in enumerate(headers, 1):
                 c = ws.cell(row=row, column=col_idx, value=h)
-                c.font      = _HEADER_FONT
-                c.fill      = fill
+                c.font = _HEADER_FONT
+                c.fill = fill
                 c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
         def _data_row(row: int, values: list, alt: bool = False) -> None:
@@ -2124,7 +2358,7 @@ class ExcelGenerator:
                     ws.cell(r, 3, ph.severity_bucket)
                     ws.cell(r, 4, len(ph.items))
                     fill = _PHASE_FILLS.get(ph.label)
-                    fnt  = _PHASE_FONTS.get(ph.label)
+                    fnt = _PHASE_FONTS.get(ph.label)
                     for col in range(1, 5):
                         if fill:
                             ws.cell(r, col).fill = fill
@@ -2140,11 +2374,14 @@ class ExcelGenerator:
 
                     # Phase header
                     ws.merge_cells(
-                        start_row=next_row, start_column=1,
-                        end_row=next_row, end_column=6,
+                        start_row=next_row,
+                        start_column=1,
+                        end_row=next_row,
+                        end_column=6,
                     )
                     phc = ws.cell(
-                        next_row, 1,
+                        next_row,
+                        1,
                         f"{ph.label}  ·  {ph.timeframe}  ·  {ph.severity_bucket}  "
                         f"·  {len(ph.items)} finding(s)",
                     )
@@ -2158,14 +2395,18 @@ class ExcelGenerator:
                     next_row += 1
 
                     for alt_idx, item in enumerate(ph.items[:30]):
-                        _data_row(next_row, [
-                            item.rank,
-                            item.title[:80],
-                            item.owner,
-                            item.estimated_effort,
-                            item.estimated_risk_reduction,
-                            item.verification_step[:100],
-                        ], alt=alt_idx % 2 == 1)
+                        _data_row(
+                            next_row,
+                            [
+                                item.rank,
+                                item.title[:80],
+                                item.owner,
+                                item.estimated_effort,
+                                item.estimated_risk_reduction,
+                                item.verification_step[:100],
+                            ],
+                            alt=alt_idx % 2 == 1,
+                        )
                         # colour risk reduction
                         rr_fill = _IMPACT_FILLS.get(item.estimated_risk_reduction)
                         if rr_fill:
@@ -2186,25 +2427,36 @@ class ExcelGenerator:
                 "and verification. Sorted by severity.",
             )
             hdrs = [
-                "#", "Finding", "Severity", "Pillar",
-                "WAF Controls", "Owner", "Priority",
-                "Effort", "Risk Reduction", "Verification",
+                "#",
+                "Finding",
+                "Severity",
+                "Pillar",
+                "WAF Controls",
+                "Owner",
+                "Priority",
+                "Effort",
+                "Risk Reduction",
+                "Verification",
             ]
             _header_row(next_row, hdrs)
             for alt_idx, item in enumerate(plan.remediation_table):
                 r = next_row + 1 + alt_idx
-                _data_row(r, [
-                    item.rank,
-                    item.title[:80],
-                    item.severity.upper(),
-                    item.pillar[:30],
-                    item.waf_controls[:20],
-                    item.owner[:22],
-                    item.priority_label,
-                    item.estimated_effort,
-                    item.estimated_risk_reduction,
-                    item.verification_step[:100],
-                ], alt=alt_idx % 2 == 1)
+                _data_row(
+                    r,
+                    [
+                        item.rank,
+                        item.title[:80],
+                        item.severity.upper(),
+                        item.pillar[:30],
+                        item.waf_controls[:20],
+                        item.owner[:22],
+                        item.priority_label,
+                        item.estimated_effort,
+                        item.estimated_risk_reduction,
+                        item.verification_step[:100],
+                    ],
+                    alt=alt_idx % 2 == 1,
+                )
                 # Severity colour
                 sev_fill = _SEVERITY_FILLS.get(item.severity)
                 if sev_fill:
@@ -2229,22 +2481,32 @@ class ExcelGenerator:
                 "Sorted by impact then effort.",
             )
             hdrs = [
-                "#", "Finding", "Pillar", "Severity",
-                "Impact", "Effort", "WAF Controls", "Recommendation",
+                "#",
+                "Finding",
+                "Pillar",
+                "Severity",
+                "Impact",
+                "Effort",
+                "WAF Controls",
+                "Recommendation",
             ]
             _header_row(next_row, hdrs)
             for alt_idx, qw in enumerate(plan.quick_wins):
                 r = next_row + 1 + alt_idx
-                _data_row(r, [
-                    qw.rank,
-                    qw.title[:70],
-                    qw.pillar[:20],
-                    qw.severity.upper(),
-                    qw.impact_label,
-                    qw.effort_label,
-                    qw.waf_controls[:18],
-                    qw.recommendation[:100],
-                ], alt=alt_idx % 2 == 1)
+                _data_row(
+                    r,
+                    [
+                        qw.rank,
+                        qw.title[:70],
+                        qw.pillar[:20],
+                        qw.severity.upper(),
+                        qw.impact_label,
+                        qw.effort_label,
+                        qw.waf_controls[:18],
+                        qw.recommendation[:100],
+                    ],
+                    alt=alt_idx % 2 == 1,
+                )
                 imp_fill = _IMPACT_FILLS.get(qw.impact_label)
                 if imp_fill:
                     ws.cell(r, 5).fill = imp_fill
@@ -2270,16 +2532,21 @@ class ExcelGenerator:
                 _header_row(next_row, hdrs)
                 for alt_idx, si in enumerate(plan.strategic_initiatives):
                     r = next_row + 1 + alt_idx
-                    _data_row(r, [
-                        si.name,
-                        si.finding_count,
-                        si.severity_summary[:50],
-                        si.pillars_involved[:40],
-                        si.recommended_timeline,
-                    ], alt=alt_idx % 2 == 1)
+                    _data_row(
+                        r,
+                        [
+                            si.name,
+                            si.finding_count,
+                            si.severity_summary[:50],
+                            si.pillars_involved[:40],
+                            si.recommended_timeline,
+                        ],
+                        alt=alt_idx % 2 == 1,
+                    )
                     # Description tooltip as comment (openpyxl Note)
                     try:
                         from openpyxl.comments import Comment
+
                         comment = Comment(si.description[:200], "WAF Report")
                         ws.cell(r, 1).comment = comment
                     except Exception:
@@ -2287,8 +2554,10 @@ class ExcelGenerator:
                 next_row = next_row + len(plan.strategic_initiatives) + 3
             else:
                 ws.merge_cells(
-                    start_row=next_row, start_column=1,
-                    end_row=next_row, end_column=5,
+                    start_row=next_row,
+                    start_column=1,
+                    end_row=next_row,
+                    end_column=5,
                 )
                 ws.cell(next_row, 1, "No strategic groupings identified.").font = Font(italic=True)
                 next_row += 3
@@ -2305,20 +2574,22 @@ class ExcelGenerator:
                 "Week 1 / Week 2 / Month 1 / Quarter.",
             )
             _TL_FILLS = {
-                "Week 1":  PatternFill(fill_type="solid", fgColor="C0392B"),
-                "Week 2":  PatternFill(fill_type="solid", fgColor="E67E22"),
+                "Week 1": PatternFill(fill_type="solid", fgColor="C0392B"),
+                "Week 2": PatternFill(fill_type="solid", fgColor="E67E22"),
                 "Month 1": PatternFill(fill_type="solid", fgColor="1F77B4"),
                 "Quarter": PatternFill(fill_type="solid", fgColor="16A085"),
             }
             for period in plan.timeline:
                 ws.merge_cells(
-                    start_row=next_row, start_column=1,
-                    end_row=next_row, end_column=4,
+                    start_row=next_row,
+                    start_column=1,
+                    end_row=next_row,
+                    end_column=4,
                 )
                 pc = ws.cell(
-                    next_row, 1,
-                    f"{period.period}  ·  {period.focus}  ·  "
-                    f"{period.finding_count} finding(s)",
+                    next_row,
+                    1,
+                    f"{period.period}  ·  {period.focus}  ·  " f"{period.finding_count} finding(s)",
                 )
                 pc.fill = _TL_FILLS.get(period.period, _HEADER_FILL)
                 pc.font = Font(bold=True, color="FFFFFF")
@@ -2327,8 +2598,10 @@ class ExcelGenerator:
 
                 for act in period.activities:
                     ws.merge_cells(
-                        start_row=next_row, start_column=1,
-                        end_row=next_row, end_column=4,
+                        start_row=next_row,
+                        start_column=1,
+                        end_row=next_row,
+                        end_column=4,
                     )
                     ac = ws.cell(next_row, 1, f"  • {act}")
                     ac.alignment = Alignment(vertical="top", indent=2)
@@ -2352,9 +2625,9 @@ class ExcelGenerator:
             hdrs = ["Metric", "Projection"]
             _header_row(next_row, hdrs[:2])
             impr_data = [
-                ("Potential Security Score Increase",   ei.potential_security_increase),
-                ("Potential Compliance Increase",        ei.potential_compliance_increase),
-                ("Potential Risk Reduction",             ei.potential_risk_reduction),
+                ("Potential Security Score Increase", ei.potential_security_increase),
+                ("Potential Compliance Increase", ei.potential_compliance_increase),
+                ("Potential Risk Reduction", ei.potential_risk_reduction),
             ]
             for alt_idx, (metric, projection) in enumerate(impr_data):
                 r = next_row + 1 + alt_idx
@@ -2366,7 +2639,7 @@ class ExcelGenerator:
             r = next_row + 4
             ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=5)
             c = ws.cell(r, 1, ei.caveat)
-            c.font      = Font(italic=True, size=8, color="777777")
+            c.font = Font(italic=True, size=8, color="777777")
             c.alignment = Alignment(horizontal="left", wrap_text=True)
             next_row = r + 3
         except Exception:
@@ -2386,19 +2659,27 @@ class ExcelGenerator:
                 _header_row(next_row, hdrs[:4])
                 for alt_idx, dep in enumerate(plan.dependencies):
                     r = next_row + 1 + alt_idx
-                    _data_row(r, [
-                        dep.prerequisite,
-                        "→",
-                        dep.dependent,
-                        dep.rationale,
-                    ], alt=alt_idx % 2 == 1)
+                    _data_row(
+                        r,
+                        [
+                            dep.prerequisite,
+                            "→",
+                            dep.dependent,
+                            dep.rationale,
+                        ],
+                        alt=alt_idx % 2 == 1,
+                    )
                 next_row = next_row + len(plan.dependencies) + 3
             else:
                 ws.merge_cells(
-                    start_row=next_row, start_column=1,
-                    end_row=next_row, end_column=4,
+                    start_row=next_row,
+                    start_column=1,
+                    end_row=next_row,
+                    end_column=4,
                 )
-                ws.cell(next_row, 1, "No implementation dependencies detected.").font = Font(italic=True)
+                ws.cell(next_row, 1, "No implementation dependencies detected.").font = Font(
+                    italic=True
+                )
                 next_row += 3
         except Exception:
             next_row = ws.max_row + 3
@@ -2422,12 +2703,15 @@ class ExcelGenerator:
                     texts = categories.get(cat)
                     if not texts:
                         continue
-                    cat_fill = _PHASE_FILLS.get(cat,
-                        PatternFill(fill_type="solid", fgColor="2C3E50"))
+                    cat_fill = _PHASE_FILLS.get(
+                        cat, PatternFill(fill_type="solid", fgColor="2C3E50")
+                    )
                     cat_font = _PHASE_FONTS.get(cat, Font(bold=True, color="FFFFFF"))
                     ws.merge_cells(
-                        start_row=next_row, start_column=1,
-                        end_row=next_row, end_column=3,
+                        start_row=next_row,
+                        start_column=1,
+                        end_row=next_row,
+                        end_column=3,
                     )
                     cc = ws.cell(next_row, 1, cat)
                     cc.fill = cat_fill
@@ -2436,8 +2720,10 @@ class ExcelGenerator:
                     next_row += 1
                     for alt_idx, text in enumerate(texts):
                         ws.merge_cells(
-                            start_row=next_row, start_column=1,
-                            end_row=next_row, end_column=3,
+                            start_row=next_row,
+                            start_column=1,
+                            end_row=next_row,
+                            end_column=3,
                         )
                         tc = ws.cell(next_row, 1, text)
                         if alt_idx % 2 == 1:
@@ -2457,20 +2743,19 @@ class ExcelGenerator:
         try:
             next_row = _section_banner(
                 "Section 9 — Management Summary",
-                "Executive one-page implementation overview. "
-                "Professional consulting language.",
+                "Executive one-page implementation overview. " "Professional consulting language.",
             )
             ms = plan.management_summary
 
             # Metrics table
             metrics = [
-                ("Total Findings",           ms.total_findings),
-                ("Immediate (0–7 days)",      ms.immediate_count),
-                ("Near-Term (7–30 days)",     ms.near_term_count),
+                ("Total Findings", ms.total_findings),
+                ("Immediate (0–7 days)", ms.immediate_count),
+                ("Near-Term (7–30 days)", ms.near_term_count),
                 ("Medium-Term (30–90 days)", ms.medium_term_count),
-                ("Long-Term (90+ days)",     ms.long_term_count),
-                ("Estimated Total Effort",   ms.estimated_total_effort),
-                ("Estimated Duration",        ms.estimated_duration),
+                ("Long-Term (90+ days)", ms.long_term_count),
+                ("Estimated Total Effort", ms.estimated_total_effort),
+                ("Estimated Duration", ms.estimated_duration),
             ]
             _header_row(next_row, ["Metric", "Value"])
             _METRIC_ROW_FILLS = [None, _FAIL_FILL, _WARN_FILL, _WARN_FILL, None, None, None]
@@ -2492,16 +2777,20 @@ class ExcelGenerator:
             # Top priorities
             if ms.top_priorities:
                 ws.merge_cells(
-                    start_row=next_row, start_column=1,
-                    end_row=next_row, end_column=4,
+                    start_row=next_row,
+                    start_column=1,
+                    end_row=next_row,
+                    end_column=4,
                 )
                 phc = ws.cell(next_row, 1, "Highest Priorities")
                 phc.font = Font(bold=True, size=11)
                 next_row += 1
                 for i, prio in enumerate(ms.top_priorities, 1):
                     ws.merge_cells(
-                        start_row=next_row, start_column=1,
-                        end_row=next_row, end_column=4,
+                        start_row=next_row,
+                        start_column=1,
+                        end_row=next_row,
+                        end_column=4,
                     )
                     pc = ws.cell(next_row, 1, f"{i}. {prio}")
                     pc.fill = PatternFill(fill_type="solid", fgColor="EBF5FB")
@@ -2511,36 +2800,43 @@ class ExcelGenerator:
 
             # Expected outcome
             ws.merge_cells(
-                start_row=next_row, start_column=1,
-                end_row=next_row, end_column=6,
+                start_row=next_row,
+                start_column=1,
+                end_row=next_row,
+                end_column=6,
             )
             ws.cell(next_row, 1, "Expected Business Outcome").font = Font(bold=True, size=11)
             next_row += 1
             ws.merge_cells(
-                start_row=next_row, start_column=1,
-                end_row=next_row + 2, end_column=6,
+                start_row=next_row,
+                start_column=1,
+                end_row=next_row + 2,
+                end_column=6,
             )
             oc = ws.cell(next_row, 1, ms.expected_outcome)
-            oc.fill      = PatternFill(fill_type="solid", fgColor="EBF5FB")
-            oc.alignment = Alignment(horizontal="left", vertical="top",
-                                     wrap_text=True, indent=1)
+            oc.fill = PatternFill(fill_type="solid", fgColor="EBF5FB")
+            oc.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True, indent=1)
             next_row += 3
 
             # Top risks
             if ms.top_risks:
                 ws.merge_cells(
-                    start_row=next_row, start_column=1,
-                    end_row=next_row, end_column=6,
+                    start_row=next_row,
+                    start_column=1,
+                    end_row=next_row,
+                    end_column=6,
                 )
                 ws.cell(next_row, 1, "Top Implementation Risks").font = Font(bold=True, size=11)
                 next_row += 1
                 for risk in ms.top_risks:
                     ws.merge_cells(
-                        start_row=next_row, start_column=1,
-                        end_row=next_row, end_column=6,
+                        start_row=next_row,
+                        start_column=1,
+                        end_row=next_row,
+                        end_column=6,
                     )
                     rc = ws.cell(next_row, 1, f"• {risk}")
-                    rc.fill      = PatternFill(fill_type="solid", fgColor="FEF9E7")
+                    rc.fill = PatternFill(fill_type="solid", fgColor="FEF9E7")
                     rc.alignment = Alignment(horizontal="left", indent=1)
                     next_row += 1
         except Exception:
@@ -2571,6 +2867,7 @@ class ExcelGenerator:
         for col_idx, width in enumerate(_COL_WIDTHS, 1):
             try:
                 from openpyxl.utils import get_column_letter as _gcl
+
                 ws.column_dimensions[_gcl(col_idx)].width = width
             except Exception:
                 pass
@@ -2587,9 +2884,7 @@ class ExcelGenerator:
 
     # ── 14. Raw Findings ───────────────────────────────────────────────────────
 
-    def _sheet_raw_findings(
-        self, wb: Workbook, findings: list[Finding]
-    ) -> None:
+    def _sheet_raw_findings(self, wb: Workbook, findings: list[Finding]) -> None:
         ws = wb.create_sheet("All Findings")
         ws.append(_FINDING_HEADERS)
         _apply_header_row(ws, 1, len(_FINDING_HEADERS))
@@ -2597,7 +2892,8 @@ class ExcelGenerator:
         sorted_f = sorted(
             findings,
             key=lambda f: _SEVERITY_ORDER.index(f.severity.value)
-            if f.severity.value in _SEVERITY_ORDER else 99,
+            if f.severity.value in _SEVERITY_ORDER
+            else 99,
         )
         for f in sorted_f:
             _append_finding_row(ws, f)
@@ -2633,16 +2929,20 @@ class ExcelGenerator:
                 existing = code_severity.get(code)
                 new_sev = f.severity.value
                 if existing is None or (
-                    _SEVERITY_ORDER.index(new_sev) <
-                    _SEVERITY_ORDER.index(existing)
+                    _SEVERITY_ORDER.index(new_sev) < _SEVERITY_ORDER.index(existing)
                 ):
                     code_severity[code] = new_sev
 
         hdr_row = ws.max_row + 1
-        ws.append([
-            "WAF Code", "Assessment Type",
-            "Finding Count", "Worst Severity", "Coverage Status",
-        ])
+        ws.append(
+            [
+                "WAF Code",
+                "Assessment Type",
+                "Finding Count",
+                "Worst Severity",
+                "Coverage Status",
+            ]
+        )
         _apply_header_row(ws, hdr_row, 5)
 
         # Automated controls with findings
@@ -2690,8 +2990,11 @@ class ExcelGenerator:
 
         # Pillars with no findings
         all_pillars = {
-            "security", "reliability", "cost_optimization",
-            "operational_excellence", "performance_efficiency",
+            "security",
+            "reliability",
+            "cost_optimization",
+            "operational_excellence",
+            "performance_efficiency",
         }
         assessed_pillars = set(agg.findings_by_pillar.keys())
         unassessed_pillars = all_pillars - assessed_pillars
@@ -2753,8 +3056,8 @@ class ExcelGenerator:
             # ── Header ──
             ws.merge_cells("A1:M1")
             hdr = ws.cell(1, 1, "Compliance Framework Mapping — Informational Only")
-            hdr.font      = Font(bold=True, color="ECF0F1", size=13)
-            hdr.fill      = PatternFill(fill_type="solid", fgColor="2C3E50")
+            hdr.font = Font(bold=True, color="ECF0F1", size=13)
+            hdr.fill = PatternFill(fill_type="solid", fgColor="2C3E50")
             hdr.alignment = Alignment(horizontal="center", vertical="center")
 
             subtitle_text = (
@@ -2763,22 +3066,31 @@ class ExcelGenerator:
             )
             ws.merge_cells("A2:M2")
             sub = ws.cell(2, 1, subtitle_text)
-            sub.font      = Font(italic=True, size=9, color="555555")
-            sub.fill      = PatternFill(fill_type="solid", fgColor="F2F3F4")
+            sub.font = Font(italic=True, size=9, color="555555")
+            sub.fill = PatternFill(fill_type="solid", fgColor="F2F3F4")
             sub.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
             ws.row_dimensions[2].height = 30
 
             # ── Column headers ──
             COL_HEADERS = [
-                "Rule ID", "Finding Title", "Severity", "Pillar",
-                "Azure Policy Name", "Policy Definition ID", "Policy Category",
-                "Advisor Category", "Advisor Recommendation",
-                "CIS Azure 2.0", "ISO 27001:2022", "NIST CSF", "MCSB",
+                "Rule ID",
+                "Finding Title",
+                "Severity",
+                "Pillar",
+                "Azure Policy Name",
+                "Policy Definition ID",
+                "Policy Category",
+                "Advisor Category",
+                "Advisor Recommendation",
+                "CIS Azure 2.0",
+                "ISO 27001:2022",
+                "NIST CSF",
+                "MCSB",
             ]
             for col_idx, h in enumerate(COL_HEADERS, 1):
                 c = ws.cell(3, col_idx, h)
-                c.font      = _HEADER_FONT
-                c.fill      = _HEADER_FILL
+                c.font = _HEADER_FONT
+                c.fill = _HEADER_FILL
                 c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             ws.row_dimensions[3].height = 28
 
@@ -2791,14 +3103,15 @@ class ExcelGenerator:
             sorted_findings = sorted(
                 seen.values(),
                 key=lambda x: _SEVERITY_ORDER.index(x.severity.value)
-                if x.severity.value in _SEVERITY_ORDER else 99,
+                if x.severity.value in _SEVERITY_ORDER
+                else 99,
             )
 
             for alt_idx, f in enumerate(sorted_findings):
                 r = 4 + alt_idx
                 policy = get_azure_policy(f.rule_id)
-                adv    = get_advisor_ref(f.rule_id, f.pillar)
-                fw     = get_compliance_frameworks(f.rule_id)
+                adv = get_advisor_ref(f.rule_id, f.pillar)
+                fw = get_compliance_frameworks(f.rule_id)
 
                 vals = [
                     f.rule_id[:20],
@@ -2829,7 +3142,7 @@ class ExcelGenerator:
 
             # ── Auto-filter, freeze, column widths ──
             ws.auto_filter.ref = f"A3:M{3 + len(sorted_findings)}"
-            ws.freeze_panes    = "A4"
+            ws.freeze_panes = "A4"
 
             _COL_WIDTHS = [16, 44, 12, 20, 46, 38, 20, 16, 46, 16, 16, 16, 14]
             for col_idx, width in enumerate(_COL_WIDTHS, 1):
@@ -2837,9 +3150,9 @@ class ExcelGenerator:
 
             # Print settings
             ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
-            ws.page_setup.fitToPage   = True
-            ws.page_setup.fitToWidth  = 1
-            ws.print_title_rows       = "3:3"
+            ws.page_setup.fitToPage = True
+            ws.page_setup.fitToWidth = 1
+            ws.print_title_rows = "3:3"
         except Exception:
             pass
 
@@ -2856,34 +3169,51 @@ class ExcelGenerator:
 
             ws.merge_cells("A1:F1")
             hdr = ws.cell(1, 1, "Executive Risk Matrix — Likelihood vs Impact")
-            hdr.font      = Font(bold=True, color="ECF0F1", size=13)
-            hdr.fill      = PatternFill(fill_type="solid", fgColor="2C3E50")
+            hdr.font = Font(bold=True, color="ECF0F1", size=13)
+            hdr.fill = PatternFill(fill_type="solid", fgColor="2C3E50")
             hdr.alignment = Alignment(horizontal="center", vertical="center")
 
             ws.merge_cells("A2:F2")
-            sub = ws.cell(2, 1,
+            sub = ws.cell(
+                2,
+                1,
                 "Deterministic mapping from severity to risk zone. "
-                "No risk values are invented — likelihood and impact are derived from finding severity."
+                "No risk values are invented — likelihood and impact are derived from finding severity.",
             )
-            sub.font      = Font(italic=True, size=9, color="555555")
-            sub.fill      = PatternFill(fill_type="solid", fgColor="F2F3F4")
+            sub.font = Font(italic=True, size=9, color="555555")
+            sub.fill = PatternFill(fill_type="solid", fgColor="F2F3F4")
             sub.alignment = Alignment(horizontal="left", wrap_text=True)
 
             # Matrix header row
-            _IMPACT_LABELS = ["", "Low Impact", "Medium Impact", "High Impact", "Critical Impact", "Total"]
+            _IMPACT_LABELS = [
+                "",
+                "Low Impact",
+                "Medium Impact",
+                "High Impact",
+                "Critical Impact",
+                "Total",
+            ]
             for col_idx, label in enumerate(_IMPACT_LABELS, 1):
                 c = ws.cell(4, col_idx, label)
-                c.font      = _HEADER_FONT
-                c.fill      = _HEADER_FILL
+                c.font = _HEADER_FONT
+                c.fill = _HEADER_FILL
                 c.alignment = Alignment(horizontal="center", vertical="center")
 
             _LIKELIHOOD_LABELS = ["High Likelihood", "Medium Likelihood", "Low Likelihood"]
-            _SEV_TO_LIKELIHOOD = {"critical": "High Likelihood", "high": "High Likelihood",
-                                  "medium": "Medium Likelihood",
-                                  "low": "Low Likelihood", "informational": "Low Likelihood"}
-            _SEV_TO_IMPACT = {"critical": "Critical Impact", "high": "High Impact",
-                              "medium": "Medium Impact",
-                              "low": "Low Impact", "informational": "Low Impact"}
+            _SEV_TO_LIKELIHOOD = {
+                "critical": "High Likelihood",
+                "high": "High Likelihood",
+                "medium": "Medium Likelihood",
+                "low": "Low Likelihood",
+                "informational": "Low Likelihood",
+            }
+            _SEV_TO_IMPACT = {
+                "critical": "Critical Impact",
+                "high": "High Impact",
+                "medium": "Medium Impact",
+                "low": "Low Impact",
+                "informational": "Low Impact",
+            }
 
             cell_counts: dict[tuple[str, str], int] = {}
             for f in findings:
@@ -2892,17 +3222,17 @@ class ExcelGenerator:
                 cell_counts[(lk, im)] = cell_counts.get((lk, im), 0) + 1
 
             _ZONE_FILLS: dict[tuple[str, str], PatternFill] = {}
-            _score_map = {
-                "High Likelihood": 3, "Medium Likelihood": 2, "Low Likelihood": 1
-            }
+            _score_map = {"High Likelihood": 3, "Medium Likelihood": 2, "Low Likelihood": 1}
             _impact_map = {
-                "Critical Impact": 4, "High Impact": 3,
-                "Medium Impact": 2, "Low Impact": 1
+                "Critical Impact": 4,
+                "High Impact": 3,
+                "Medium Impact": 2,
+                "Low Impact": 1,
             }
             _HEATMAP_COLORS = {
-                (True,  True):  "C0392B",  # high lk + critical impact
-                (True,  False): "E67E22",  # high lk + lower impact
-                (False, True):  "E67E22",  # low lk + critical impact
+                (True, True): "C0392B",  # high lk + critical impact
+                (True, False): "E67E22",  # high lk + lower impact
+                (False, True): "E67E22",  # low lk + critical impact
                 (False, False): "F1C40F",  # medium combinations
             }
 
@@ -2923,9 +3253,8 @@ class ExcelGenerator:
                 row_total = 0
                 for col_idx, im in enumerate(_IMP_COLS, 2):
                     count = cell_counts.get((lk, im), 0)
-                    c = ws.cell(row_idx, col_idx,
-                                f"{count} finding(s)" if count else "—")
-                    c.fill      = _cell_fill(lk, im)
+                    c = ws.cell(row_idx, col_idx, f"{count} finding(s)" if count else "—")
+                    c.fill = _cell_fill(lk, im)
                     c.alignment = Alignment(horizontal="center", vertical="center")
                     if count:
                         c.font = Font(bold=True)
@@ -2935,9 +3264,7 @@ class ExcelGenerator:
             # Totals row
             ws.cell(9, 1, "Total").font = Font(bold=True)
             for col_idx, im in enumerate(_IMP_COLS, 2):
-                total = sum(
-                    cell_counts.get((lk, im), 0) for lk in _LIKELIHOOD_LABELS
-                )
+                total = sum(cell_counts.get((lk, im), 0) for lk in _LIKELIHOOD_LABELS)
                 ws.cell(9, col_idx, total).alignment = Alignment(horizontal="center")
             grand_total = sum(cell_counts.values())
             ws.cell(9, 6, grand_total).font = Font(bold=True)
@@ -2945,18 +3272,28 @@ class ExcelGenerator:
             # Legend
             ws.cell(11, 1, "Risk Zone Legend").font = Font(bold=True, size=11)
             _LEGEND = [
-                ("C0392B", "Critical Zone",  "High likelihood of exploitation with critical impact — act immediately"),
-                ("E67E22", "High Zone",      "Elevated probability or high impact — prioritise in current sprint"),
-                ("F1C40F", "Medium Zone",    "Moderate risk — address within the current quarter"),
-                ("2ECC71", "Low Zone",       "Limited risk — include in routine maintenance backlog"),
+                (
+                    "C0392B",
+                    "Critical Zone",
+                    "High likelihood of exploitation with critical impact — act immediately",
+                ),
+                (
+                    "E67E22",
+                    "High Zone",
+                    "Elevated probability or high impact — prioritise in current sprint",
+                ),
+                ("F1C40F", "Medium Zone", "Moderate risk — address within the current quarter"),
+                ("2ECC71", "Low Zone", "Limited risk — include in routine maintenance backlog"),
             ]
             for leg_idx, (color, label, desc) in enumerate(_LEGEND, 12):
                 ws.cell(leg_idx, 1, "").fill = PatternFill(fill_type="solid", fgColor=color)
                 ws.cell(leg_idx, 2, label).font = Font(bold=True)
                 ws.cell(leg_idx, 3, desc)
                 ws.merge_cells(
-                    start_row=leg_idx, start_column=3,
-                    end_row=leg_idx, end_column=6,
+                    start_row=leg_idx,
+                    start_column=3,
+                    end_row=leg_idx,
+                    end_column=6,
                 )
 
             # Finding breakdown table
@@ -2964,8 +3301,8 @@ class ExcelGenerator:
             hdrs = ["#", "Finding Title", "Severity", "Likelihood", "Impact", "Risk Zone"]
             for col_idx, h in enumerate(hdrs, 1):
                 c = ws.cell(19, col_idx, h)
-                c.font  = _HEADER_FONT
-                c.fill  = _HEADER_FILL
+                c.font = _HEADER_FONT
+                c.fill = _HEADER_FILL
                 c.alignment = Alignment(horizontal="center")
 
             seen: set[str] = set()
@@ -2973,13 +3310,14 @@ class ExcelGenerator:
             for f in sorted(
                 findings,
                 key=lambda x: _SEVERITY_ORDER.index(x.severity.value)
-                if x.severity.value in _SEVERITY_ORDER else 99,
+                if x.severity.value in _SEVERITY_ORDER
+                else 99,
             ):
                 if f.rule_id in seen:
                     continue
                 seen.add(f.rule_id)
-                lk   = _SEV_TO_LIKELIHOOD.get(f.severity.value, "Low Likelihood")
-                im   = _SEV_TO_IMPACT.get(f.severity.value, "Low Impact")
+                lk = _SEV_TO_LIKELIHOOD.get(f.severity.value, "Low Likelihood")
+                im = _SEV_TO_IMPACT.get(f.severity.value, "Low Impact")
                 zone = {
                     "Critical Impact": {
                         "High Likelihood": "Critical",
@@ -2987,7 +3325,8 @@ class ExcelGenerator:
                         "Low Likelihood": "High",
                     }.get(lk, "High"),
                 }.get(im) or {
-                    "High Likelihood": "High", "Medium Likelihood": "Medium",
+                    "High Likelihood": "High",
+                    "Medium Likelihood": "Medium",
                     "Low Likelihood": "Low",
                 }.get(lk, "Low")
                 vals = [row_n - 19, f.title[:60], f.severity.value.upper(), lk, im, zone]
@@ -3016,7 +3355,7 @@ class ExcelGenerator:
     def _sheet_audit_trail(
         self,
         wb: Workbook,
-        agg: "AggregatedReport",
+        agg: AggregatedReport,
     ) -> None:
         """Complete assessment audit trail — no secrets, no tokens."""
         try:
@@ -3024,22 +3363,25 @@ class ExcelGenerator:
 
             ws.merge_cells("A1:C1")
             hdr = ws.cell(1, 1, "Assessment Audit Trail")
-            hdr.font      = Font(bold=True, color="ECF0F1", size=13)
-            hdr.fill      = PatternFill(fill_type="solid", fgColor="2C3E50")
+            hdr.font = Font(bold=True, color="ECF0F1", size=13)
+            hdr.fill = PatternFill(fill_type="solid", fgColor="2C3E50")
             hdr.alignment = Alignment(horizontal="center", vertical="center")
 
             ws.merge_cells("A2:C2")
-            sub = ws.cell(2, 1,
+            sub = ws.cell(
+                2,
+                1,
                 "Complete audit trail for this assessment. No credentials, tokens, "
-                "or sensitive system information is included.")
+                "or sensitive system information is included.",
+            )
             sub.font = Font(italic=True, size=9, color="555555")
             sub.fill = PatternFill(fill_type="solid", fgColor="F2F3F4")
 
             def _section_hdr(row: int, title: str) -> None:
                 ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
                 c = ws.cell(row, 1, title)
-                c.font  = Font(bold=True, color="ECF0F1", size=10)
-                c.fill  = PatternFill(fill_type="solid", fgColor="1F77B4")
+                c.font = Font(bold=True, color="ECF0F1", size=10)
+                c.fill = PatternFill(fill_type="solid", fgColor="1F77B4")
                 c.alignment = Alignment(horizontal="left", indent=1)
 
             def _kv(row: int, key: str, value: str, alt: bool = False) -> None:
@@ -3052,23 +3394,29 @@ class ExcelGenerator:
 
             gen_ts = (
                 agg.generated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-                if agg.generated_at else "Not Available"
+                if agg.generated_at
+                else "Not Available"
             )
 
             _section_hdr(4, "Assessment Identifiers")
-            _kv(5,  "Assessment ID",   str(agg.assessment_id))
-            _kv(6,  "Tenant ID",       str(agg.tenant_id),   alt=True)
-            _kv(7,  "Report Version",  "2.0")
-            _kv(8,  "Generation Time", gen_ts,               alt=True)
+            _kv(5, "Assessment ID", str(agg.assessment_id))
+            _kv(6, "Tenant ID", str(agg.tenant_id), alt=True)
+            _kv(7, "Report Version", "2.0")
+            _kv(8, "Generation Time", gen_ts, alt=True)
 
             _section_hdr(10, "Assessment Metrics")
             _kv(11, "Total Resources Assessed", str(agg.total_resources))
-            _kv(12, "Resources with Findings",  str(agg.resources_with_findings), alt=True)
-            _kv(13, "Total Findings",            str(agg.total_findings))
-            _kv(14, "Overall Compliance Score",  f"{agg.overall_compliance_score:.1f}%", alt=True)
-            _kv(15, "Overall Risk Score",        f"{agg.overall_risk_score:.1f}")
-            _kv(16, "Coverage Percentage",       f"{getattr(agg, 'coverage_percentage', 0):.1f}%", alt=True)
-            _kv(17, "Subscription Count",        str(getattr(agg, 'subscription_count', 'N/A')))
+            _kv(12, "Resources with Findings", str(agg.resources_with_findings), alt=True)
+            _kv(13, "Total Findings", str(agg.total_findings))
+            _kv(14, "Overall Compliance Score", f"{agg.overall_compliance_score:.1f}%", alt=True)
+            _kv(15, "Overall Risk Score", f"{agg.overall_risk_score:.1f}")
+            _kv(
+                16,
+                "Coverage Percentage",
+                f"{getattr(agg, 'coverage_percentage', 0):.1f}%",
+                alt=True,
+            )
+            _kv(17, "Subscription Count", str(getattr(agg, "subscription_count", "N/A")))
 
             _section_hdr(19, "Finding Severity Distribution")
             for i, sev in enumerate(["critical", "high", "medium", "low", "informational"]):
@@ -3080,13 +3428,16 @@ class ExcelGenerator:
                     ws.cell(r, 1).fill = sev_fill
 
             _section_hdr(26, "Report Generator Information")
-            _kv(27, "Generator",          "Azure WAF Assessment Platform — Excel Generator")
-            _kv(28, "Generator Version",  "2.0",                  alt=True)
-            _kv(29, "Report Format",      "XLSX — openpyxl")
-            _kv(30, "Classification",     "CONFIDENTIAL",         alt=True)
-            _kv(31, "Disclaimer",
-                    "This report is generated from assessment data only. "
-                    "No data is fabricated or interpolated.")
+            _kv(27, "Generator", "Azure WAF Assessment Platform — Excel Generator")
+            _kv(28, "Generator Version", "2.0", alt=True)
+            _kv(29, "Report Format", "XLSX — openpyxl")
+            _kv(30, "Classification", "CONFIDENTIAL", alt=True)
+            _kv(
+                31,
+                "Disclaimer",
+                "This report is generated from assessment data only. "
+                "No data is fabricated or interpolated.",
+            )
 
             for col_idx, width in [(1, 28), (2, 36), (3, 36)]:
                 ws.column_dimensions[get_column_letter(col_idx)].width = width
@@ -3105,22 +3456,22 @@ class ExcelGenerator:
 
             ws.merge_cells("A1:B1")
             hdr = ws.cell(1, 1, "Azure WAF Assessment — Glossary")
-            hdr.font      = Font(bold=True, color="ECF0F1", size=13)
-            hdr.fill      = PatternFill(fill_type="solid", fgColor="2C3E50")
+            hdr.font = Font(bold=True, color="ECF0F1", size=13)
+            hdr.fill = PatternFill(fill_type="solid", fgColor="2C3E50")
             hdr.alignment = Alignment(horizontal="center", vertical="center")
 
-            ws.cell(2, 1, "Term").font  = _HEADER_FONT
-            ws.cell(2, 1).fill          = _HEADER_FILL
-            ws.cell(2, 1).alignment     = Alignment(horizontal="center")
-            ws.cell(2, 2, "Definition").font  = _HEADER_FONT
-            ws.cell(2, 2).fill               = _HEADER_FILL
-            ws.cell(2, 2).alignment          = Alignment(horizontal="center")
+            ws.cell(2, 1, "Term").font = _HEADER_FONT
+            ws.cell(2, 1).fill = _HEADER_FILL
+            ws.cell(2, 1).alignment = Alignment(horizontal="center")
+            ws.cell(2, 2, "Definition").font = _HEADER_FONT
+            ws.cell(2, 2).fill = _HEADER_FILL
+            ws.cell(2, 2).alignment = Alignment(horizontal="center")
 
             sorted_glossary = sorted(GLOSSARY, key=lambda x: x[0].lower())
             for alt_idx, (term, defn) in enumerate(sorted_glossary):
                 r = 3 + alt_idx
                 tc = ws.cell(r, 1, term)
-                tc.font      = Font(bold=True)
+                tc.font = Font(bold=True)
                 tc.alignment = Alignment(vertical="top", wrap_text=True)
                 dc = ws.cell(r, 2, defn)
                 dc.alignment = Alignment(vertical="top", wrap_text=True)
@@ -3132,9 +3483,9 @@ class ExcelGenerator:
             ws.column_dimensions["A"].width = 28
             ws.column_dimensions["B"].width = 90
             ws.freeze_panes = "A3"
-            ws.page_setup.fitToPage  = True
+            ws.page_setup.fitToPage = True
             ws.page_setup.fitToWidth = 1
-            ws.print_title_rows      = "2:2"
+            ws.print_title_rows = "2:2"
         except Exception:
             pass
 
@@ -3150,21 +3501,21 @@ class ExcelGenerator:
 
             ws.merge_cells("A1:C1")
             hdr = ws.cell(1, 1, "Assessment Methodology")
-            hdr.font      = Font(bold=True, color="ECF0F1", size=13)
-            hdr.fill      = PatternFill(fill_type="solid", fgColor="2C3E50")
+            hdr.font = Font(bold=True, color="ECF0F1", size=13)
+            hdr.fill = PatternFill(fill_type="solid", fgColor="2C3E50")
             hdr.alignment = Alignment(horizontal="center", vertical="center")
 
             # Methodology phases
             for col_idx, h in enumerate(["Phase", "Description"], 1):
                 c = ws.cell(2, col_idx, h)
-                c.font      = _HEADER_FONT
-                c.fill      = _HEADER_FILL
+                c.font = _HEADER_FONT
+                c.fill = _HEADER_FILL
                 c.alignment = Alignment(horizontal="center")
 
             for alt_idx, (phase, desc) in enumerate(METHODOLOGY_SECTIONS):
                 r = 3 + alt_idx
                 pc = ws.cell(r, 1, phase)
-                pc.font      = Font(bold=True)
+                pc.font = Font(bold=True)
                 pc.alignment = Alignment(vertical="top", wrap_text=True)
                 dc = ws.cell(r, 2, desc)
                 dc.alignment = Alignment(vertical="top", wrap_text=True)
@@ -3176,12 +3527,14 @@ class ExcelGenerator:
             # Limitations section
             lim_start = 3 + len(METHODOLOGY_SECTIONS) + 2
             ws.merge_cells(
-                start_row=lim_start, start_column=1,
-                end_row=lim_start, end_column=3,
+                start_row=lim_start,
+                start_column=1,
+                end_row=lim_start,
+                end_column=3,
             )
             ls_hdr = ws.cell(lim_start, 1, "Assessment Limitations")
-            ls_hdr.font  = Font(bold=True, color="ECF0F1", size=11)
-            ls_hdr.fill  = PatternFill(fill_type="solid", fgColor="E67E22")
+            ls_hdr.font = Font(bold=True, color="ECF0F1", size=11)
+            ls_hdr.fill = PatternFill(fill_type="solid", fgColor="E67E22")
             ls_hdr.alignment = Alignment(horizontal="left", indent=1)
 
             for alt_idx, limitation in enumerate(LIMITATIONS_TEXT):
@@ -3197,13 +3550,14 @@ class ExcelGenerator:
             ws.column_dimensions["B"].width = 90
             ws.freeze_panes = "A3"
             ws.print_title_rows = "2:2"
-            ws.page_setup.fitToPage  = True
+            ws.page_setup.fitToPage = True
             ws.page_setup.fitToWidth = 1
         except Exception:
             pass
 
 
 # ── Module-level helpers ───────────────────────────────────────────────────────
+
 
 def _section(ws: object, title: str, colspan: int = 2) -> None:  # type: ignore[type-arg]
     row = getattr(ws, "max_row", 0) + 1  # type: ignore[union-attr]
@@ -3231,22 +3585,24 @@ def _append_finding_row(ws: object, f: Finding) -> None:  # type: ignore[type-ar
         ev_json = json.dumps(ev_snap, default=str) if ev_snap else "Evidence unavailable"
     except Exception:
         ev_json = "Evidence unavailable"
-    ws.append([  # type: ignore[union-attr]
-        str(f.id),
-        f.rule_id,
-        f.resource_id,
-        f.resource_type,
-        f.pillar,
-        f.severity.value,
-        f.status.value,
-        f.title,
-        f.recommendation,
-        ", ".join(f.waf_codes) or "—",
-        ", ".join(f.microsoft_urls) or "—",
-        f"{f.confidence_score:.2f}",
-        f.created_at.strftime("%Y-%m-%d %H:%M UTC") if f.created_at else "",
-        ev_json,
-    ])
+    ws.append(
+        [  # type: ignore[union-attr]
+            str(f.id),
+            f.rule_id,
+            f.resource_id,
+            f.resource_type,
+            f.pillar,
+            f.severity.value,
+            f.status.value,
+            f.title,
+            f.recommendation,
+            ", ".join(f.waf_codes) or "—",
+            ", ".join(f.microsoft_urls) or "—",
+            f"{f.confidence_score:.2f}",
+            f.created_at.strftime("%Y-%m-%d %H:%M UTC") if f.created_at else "",
+            ev_json,
+        ]
+    )
     row_num = ws.max_row  # type: ignore[union-attr]
     fill = _SEVERITY_FILLS.get(f.severity.value)
     if fill:

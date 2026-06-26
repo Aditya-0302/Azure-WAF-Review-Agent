@@ -30,12 +30,8 @@ def upgrade() -> None:
     op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
 
     # ── Enum types ────────────────────────────────────────────────────────────
-    op.execute(
-        "CREATE TYPE plan_tier AS ENUM ('standard', 'premium', 'enterprise')"
-    )
-    op.execute(
-        "CREATE TYPE user_role AS ENUM ('tenant_admin', 'tenant_viewer', 'platform_admin')"
-    )
+    op.execute("CREATE TYPE plan_tier AS ENUM ('standard', 'premium', 'enterprise')")
+    op.execute("CREATE TYPE user_role AS ENUM ('tenant_admin', 'tenant_viewer', 'platform_admin')")
     op.execute("""
         CREATE TYPE credential_health AS ENUM (
             'healthy', 'expiring_soon', 'expired', 'invalid', 'unchecked'
@@ -99,9 +95,7 @@ def upgrade() -> None:
             UNIQUE (tenant_id, subscription_id)
         )
     """)
-    op.execute(
-        "CREATE INDEX idx_credentials_tenant_id ON subscription_credentials(tenant_id)"
-    )
+    op.execute("CREATE INDEX idx_credentials_tenant_id ON subscription_credentials(tenant_id)")
     op.execute("""
         CREATE INDEX idx_credentials_health ON subscription_credentials(health)
             WHERE health IN ('expiring_soon', 'expired')

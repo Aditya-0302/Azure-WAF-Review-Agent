@@ -3,11 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -29,7 +25,15 @@ def _minimal_app() -> FastAPI:
     async def handle_not_found(request: Request, exc: AssessmentNotFoundError) -> JSONResponse:
         return JSONResponse(
             status_code=404,
-            content={"error": {"code": exc.code, "message": exc.message, "detail": None, "trace_id": "", "request_id": ""}},
+            content={
+                "error": {
+                    "code": exc.code,
+                    "message": exc.message,
+                    "detail": None,
+                    "trace_id": "",
+                    "request_id": "",
+                }
+            },
         )
 
     @app.exception_handler(QuotaExceededException)
@@ -40,7 +44,11 @@ def _minimal_app() -> FastAPI:
                 "error": {
                     "code": exc.code,
                     "message": exc.message,
-                    "detail": {"quota_name": exc.quota_name, "limit": exc.limit, "current": exc.current},
+                    "detail": {
+                        "quota_name": exc.quota_name,
+                        "limit": exc.limit,
+                        "current": exc.current,
+                    },
                     "trace_id": "",
                     "request_id": "",
                 }
@@ -56,7 +64,9 @@ def _minimal_app() -> FastAPI:
 
     @app.get("/raise/quota")
     async def _raise_quota() -> None:
-        raise QuotaExceededException("max_concurrent_assessments", limit=3, current=3, tenant_id=tid)
+        raise QuotaExceededException(
+            "max_concurrent_assessments", limit=3, current=3, tenant_id=tid
+        )
 
     return app
 
@@ -121,7 +131,15 @@ class TestErrorResponseSchema:
         async def handle_db(request: Request, exc: DatabaseError) -> JSONResponse:
             return JSONResponse(
                 status_code=503,
-                content={"error": {"code": "DATABASE_ERROR", "message": "A database error occurred", "detail": None, "trace_id": "", "request_id": ""}},
+                content={
+                    "error": {
+                        "code": "DATABASE_ERROR",
+                        "message": "A database error occurred",
+                        "detail": None,
+                        "trace_id": "",
+                        "request_id": "",
+                    }
+                },
             )
 
         @app.get("/raise/db")

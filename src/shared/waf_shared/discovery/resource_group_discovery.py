@@ -45,9 +45,7 @@ class ResourceGroupDiscoveryService:
             async for rg in client.resource_groups.list():
                 raw_groups.append(rg)
             groups = [_map_resource_group(rg, subscription_id) for rg in raw_groups]
-            self._metrics.resource_groups_discovered.add(
-                len(groups), {"subscription_id": _sub_id}
-            )
+            self._metrics.resource_groups_discovered.add(len(groups), {"subscription_id": _sub_id})
             _logger.info(
                 "discovery.resource_groups.listed",
                 subscription_id=_sub_id,
@@ -55,9 +53,7 @@ class ResourceGroupDiscoveryService:
             )
             return groups
         except HttpResponseError as exc:
-            self._metrics.api_errors.add(
-                1, {"service": "resource_groups", "operation": "list"}
-            )
+            self._metrics.api_errors.add(1, {"service": "resource_groups", "operation": "list"})
             raise ResourceDiscoveryError(
                 service="ResourceManagementClient", reason=str(exc)
             ) from exc
@@ -94,9 +90,7 @@ class ResourceGroupDiscoveryService:
         except HttpResponseError as exc:
             if exc.status_code == 404:
                 return None
-            self._metrics.api_errors.add(
-                1, {"service": "resource_groups", "operation": "get"}
-            )
+            self._metrics.api_errors.add(1, {"service": "resource_groups", "operation": "get"})
             raise ResourceDiscoveryError(
                 service="ResourceManagementClient", reason=str(exc)
             ) from exc

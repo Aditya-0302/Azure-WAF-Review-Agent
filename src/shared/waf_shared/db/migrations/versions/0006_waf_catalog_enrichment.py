@@ -14,8 +14,8 @@ All columns default to an empty JSONB array so existing rows remain valid
 without a backfill migration.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "0006"

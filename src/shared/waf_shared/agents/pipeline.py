@@ -23,7 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from waf_shared.agents.contracts import (
     AgentContext,
@@ -42,7 +42,7 @@ from waf_shared.agents.events import (
     StageStartedEvent,
 )
 from waf_shared.agents.interfaces import IAgent, IEventBus, IPipeline
-from waf_shared.agents.retry import RetryContext, RetryPolicy, with_agent_retry
+from waf_shared.agents.retry import RetryPolicy, with_agent_retry
 from waf_shared.agents.state import AgentState
 from waf_shared.telemetry.logging import StructuredLogger
 
@@ -306,7 +306,7 @@ class Pipeline(IPipeline[TInput, TOutput]):
                         stage.agent.execute(inp, ctx),
                         timeout=stage.timeout_seconds,
                     )
-                except asyncio.TimeoutError as exc:
+                except TimeoutError as exc:
                     from waf_shared.domain.errors.infrastructure_errors import AgentTimeoutError
 
                     raise AgentTimeoutError(

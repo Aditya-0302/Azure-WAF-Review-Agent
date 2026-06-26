@@ -42,7 +42,7 @@ def _make_rg_client(
     client.__aexit__ = AsyncMock(return_value=False)
 
     async def _list_iter():
-        for item in (list_items or []):
+        for item in list_items or []:
             yield item
 
     client.resource_groups = AsyncMock()

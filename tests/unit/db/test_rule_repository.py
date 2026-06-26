@@ -67,9 +67,7 @@ class TestWafRuleRepositoryListActive:
         from waf_shared.db.repositories.rule_repository import WafRuleRepository
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            return_value=[_make_rule_row(condition_dsl=None)]
-        )
+        mock_conn.fetch = AsyncMock(return_value=[_make_rule_row(condition_dsl=None)])
 
         repo = WafRuleRepository(conn=mock_conn, uow_tenant_id=uuid.uuid4())
         results = await repo.list_active()
@@ -84,9 +82,7 @@ class TestWafRuleRepositoryListActive:
 
         dsl = {"operator": "equals", "field": "enabledState", "value": "Enabled"}
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            return_value=[_make_rule_row(condition_dsl=dsl)]
-        )
+        mock_conn.fetch = AsyncMock(return_value=[_make_rule_row(condition_dsl=dsl)])
 
         repo = WafRuleRepository(conn=mock_conn, uow_tenant_id=uuid.uuid4())
         results = await repo.list_active()
@@ -100,9 +96,7 @@ class TestWafRuleRepositoryListActive:
 
         dsl = {"operator": "equals", "field": "enabledState", "value": "Enabled"}
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            return_value=[_make_rule_row(condition_dsl=json.dumps(dsl))]
-        )
+        mock_conn.fetch = AsyncMock(return_value=[_make_rule_row(condition_dsl=json.dumps(dsl))])
 
         repo = WafRuleRepository(conn=mock_conn, uow_tenant_id=uuid.uuid4())
         results = await repo.list_active()
@@ -147,9 +141,7 @@ class TestWafRuleRepositoryUpsert:
 
         dsl = {"operator": "contains", "field": "wafMode", "value": "Prevention"}
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            return_value=[_make_rule_row(condition_dsl=dsl)]
-        )
+        mock_conn.fetch = AsyncMock(return_value=[_make_rule_row(condition_dsl=dsl)])
 
         repo = WafRuleRepository(conn=mock_conn, uow_tenant_id=uuid.uuid4())
         result = await repo.upsert(_make_waf_rule(condition_dsl=dsl))
@@ -163,9 +155,7 @@ class TestWafRuleRepositoryUpsert:
 
         dsl = {"operator": "contains", "field": "wafMode", "value": "Prevention"}
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            return_value=[_make_rule_row(condition_dsl=json.dumps(dsl))]
-        )
+        mock_conn.fetch = AsyncMock(return_value=[_make_rule_row(condition_dsl=json.dumps(dsl))])
 
         repo = WafRuleRepository(conn=mock_conn, uow_tenant_id=uuid.uuid4())
         result = await repo.upsert(_make_waf_rule(condition_dsl=dsl))
@@ -177,9 +167,7 @@ class TestWafRuleRepositoryUpsert:
         from waf_shared.db.repositories.rule_repository import WafRuleRepository
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            return_value=[_make_rule_row(condition_dsl=None)]
-        )
+        mock_conn.fetch = AsyncMock(return_value=[_make_rule_row(condition_dsl=None)])
 
         repo = WafRuleRepository(conn=mock_conn, uow_tenant_id=uuid.uuid4())
         result = await repo.upsert(_make_waf_rule(condition_dsl=None))

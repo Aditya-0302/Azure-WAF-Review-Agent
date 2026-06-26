@@ -93,9 +93,7 @@ class AuthorizationService:
             )
 
     @staticmethod
-    def require_acknowledge_finding(
-        auth: AuthContext, tenant_id: uuid.UUID
-    ) -> None:
+    def require_acknowledge_finding(auth: AuthContext, tenant_id: uuid.UUID) -> None:
         if not AuthorizationService.can_acknowledge_finding(auth, tenant_id):
             raise PermissionDeniedError(
                 principal_id=auth.user_id,
@@ -115,9 +113,7 @@ class AuthorizationService:
         return False
 
     @staticmethod
-    def require_manage_credentials(
-        auth: AuthContext, tenant_id: uuid.UUID
-    ) -> None:
+    def require_manage_credentials(auth: AuthContext, tenant_id: uuid.UUID) -> None:
         if not AuthorizationService.can_manage_credentials(auth, tenant_id):
             raise PermissionDeniedError(
                 principal_id=auth.user_id,
@@ -132,9 +128,7 @@ class AuthorizationService:
         return auth.role == UserRole.PLATFORM_ADMIN
 
     @staticmethod
-    def require_manage_tenant(
-        auth: AuthContext, target_tenant_id: uuid.UUID
-    ) -> None:
+    def require_manage_tenant(auth: AuthContext, target_tenant_id: uuid.UUID) -> None:
         if not AuthorizationService.can_manage_tenant(auth, target_tenant_id):
             raise PermissionDeniedError(
                 principal_id=auth.user_id,

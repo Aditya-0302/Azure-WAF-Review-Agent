@@ -39,6 +39,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from waf_catalog.catalog import WafCatalog
+from waf_reasoning.deterministic_pipeline import DeterministicPipeline
+from waf_reasoning.llm_pipeline import LLMPipeline
+
 from waf_shared.auth.credential_provider import CrossTenantCredentialProvider
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
 from waf_shared.db.repositories.credential_repository import CredentialRepository
@@ -57,19 +61,16 @@ from waf_shared.domain.events.assessment_events import (
 )
 from waf_shared.domain.events.base import CloudEventEnvelope
 from waf_shared.domain.models.assessment import (
+    TERMINAL_STATUSES,
     AssessmentResource,
     AssessmentStatus,
     BatchStatus,
-    TERMINAL_STATUSES,
 )
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.rule import EvaluationType, WafRule
 from waf_shared.messaging.queue_names import REPORTING_REQUESTED
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_catalog.catalog import WafCatalog
-from waf_reasoning.deterministic_pipeline import DeterministicPipeline
-from waf_reasoning.llm_pipeline import LLMPipeline
 
 # Permanent errors: mark batch FAILED and complete the SB message (no retry).
 _HANDLED_ERRORS = (
@@ -141,9 +142,7 @@ class ReasoningHandler:
     # ── Orchestration ──────────────────────────────────────────────────────────
 
     async def _handle(self, event: ReasoningRequestedEvent, log: StructuredLogger) -> None:
-        assessment = await self._assessment_repo.get_by_id(
-            event.tenant_id, event.assessment_id
-        )
+        assessment = await self._assessment_repo.get_by_id(event.tenant_id, event.assessment_id)
         if assessment is None:
             log.error("reasoning.handler.assessment_not_found")
             return
@@ -205,11 +204,15 @@ class ReasoningHandler:
                 enriched: list[Finding] = []
                 for f in all_findings:
                     e = catalog.enrich_finding(f.rule_id)
-                    enriched.append(f.model_copy(update={
-                        "waf_codes": e.waf_codes,
-                        "waf_titles": e.waf_titles,
-                        "microsoft_urls": e.microsoft_urls,
-                    }))
+                    enriched.append(
+                        f.model_copy(
+                            update={
+                                "waf_codes": e.waf_codes,
+                                "waf_titles": e.waf_titles,
+                                "microsoft_urls": e.microsoft_urls,
+                            }
+                        )
+                    )
                 all_findings = enriched
 
                 # Step 3a — persistence guard: every finding for a mapped rule
@@ -219,7 +222,8 @@ class ReasoningHandler:
                 # batch rather than inserting findings with silent empty metadata.
                 mapped_rule_ids = catalog.get_mapped_rule_ids()
                 enrichment_failures = [
-                    f.rule_id for f in all_findings
+                    f.rule_id
+                    for f in all_findings
                     if f.rule_id in mapped_rule_ids and not f.waf_codes
                 ]
                 if enrichment_failures:
@@ -253,9 +257,7 @@ class ReasoningHandler:
             return
 
         # Step 5 — last batch: re-read assessment for cancellation gate.
-        refreshed = await self._assessment_repo.get_by_id(
-            event.tenant_id, event.assessment_id
-        )
+        refreshed = await self._assessment_repo.get_by_id(event.tenant_id, event.assessment_id)
         if refreshed is not None and refreshed.is_cancellation_pending:
             log.info("reasoning.handler.cancelled_before_reporting")
             return
@@ -308,9 +310,7 @@ class ReasoningHandler:
 
             # Skip extraction-failed resources — no meaningful properties.
             if resource.raw_properties.get("_extraction_failed"):
-                resource_log.warning(
-                    "reasoning.handler.resource_skip_extraction_failed"
-                )
+                resource_log.warning("reasoning.handler.resource_skip_extraction_failed")
                 continue
 
             rules = await self._load_applicable_rules(resource, pillar_filter)
@@ -331,7 +331,8 @@ class ReasoningHandler:
             # LLM pipeline (when provider is wired up).
             if self._llm_pipeline is not None:
                 llm_rules = [
-                    r for r in rules
+                    r
+                    for r in rules
                     if r.evaluation_type in (EvaluationType.LLM, EvaluationType.HYBRID)
                 ]
                 if llm_rules:
@@ -345,7 +346,9 @@ class ReasoningHandler:
 
             # Advisor-mapped rules.
             advisor_rules = [
-                r for r in rules if r.evaluation_type.value == "advisor_mapped"
+                r
+                for r in rules
+                if r.evaluation_type.value == "advisor_mapped"
                 # hybrid rules with advisor source handled above via LLM pipeline
             ]
             if advisor_rules:
@@ -447,44 +450,42 @@ class ReasoningHandler:
     ) -> list[Finding]:
         findings: list[Finding] = []
         resource_recs = [
-            rec for rec in advisor_recs
-            if rec.resource_id.lower() == resource.resource_id.lower()
+            rec for rec in advisor_recs if rec.resource_id.lower() == resource.resource_id.lower()
         ]
 
         for rule in rules:
-            matching = [
-                rec for rec in resource_recs
-                if _advisor_matches_rule(rec, rule)
-            ]
+            matching = [rec for rec in resource_recs if _advisor_matches_rule(rec, rule)]
             if not matching:
                 continue  # No advisor finding → no FAIL finding.
 
             for rec in matching:
-                findings.append(Finding(
-                    id=uuid.uuid4(),
-                    assessment_id=event.assessment_id,
-                    batch_id=event.batch_id,
-                    tenant_id=event.tenant_id,
-                    rule_id=rule.rule_id,
-                    resource_id=resource.resource_id,
-                    resource_type=resource.resource_type,
-                    status=FindingStatus.OPEN,
-                    severity=Severity(rule.severity),
-                    pillar=rule.pillar.value,
-                    confidence_score=0.9,
-                    title=rule.title,
-                    recommendation=rec.long_description or rule.recommendation,
-                    evidence={
-                        "result": "FAIL",
-                        "evaluation_type": "advisor_mapped",
-                        "advisor_id": rec.id,
-                        "advisor_category": rec.category,
-                        "advisor_impact": rec.impact,
-                        "advisor_description": rec.short_description,
-                    },
-                    evaluation_type="advisor_mapped",
-                    created_at=datetime.now(UTC),
-                ))
+                findings.append(
+                    Finding(
+                        id=uuid.uuid4(),
+                        assessment_id=event.assessment_id,
+                        batch_id=event.batch_id,
+                        tenant_id=event.tenant_id,
+                        rule_id=rule.rule_id,
+                        resource_id=resource.resource_id,
+                        resource_type=resource.resource_type,
+                        status=FindingStatus.OPEN,
+                        severity=Severity(rule.severity),
+                        pillar=rule.pillar.value,
+                        confidence_score=0.9,
+                        title=rule.title,
+                        recommendation=rec.long_description or rule.recommendation,
+                        evidence={
+                            "result": "FAIL",
+                            "evaluation_type": "advisor_mapped",
+                            "advisor_id": rec.id,
+                            "advisor_category": rec.category,
+                            "advisor_impact": rec.impact,
+                            "advisor_description": rec.short_description,
+                        },
+                        evaluation_type="advisor_mapped",
+                        created_at=datetime.now(UTC),
+                    )
+                )
 
         return findings
 
@@ -507,13 +508,12 @@ class ReasoningHandler:
         return [r for r in all_rules if r.pillar.value in normalised]
 
     async def _count_all_findings(self, event: ReasoningRequestedEvent) -> int:
-        rows = await self._finding_repo.count_by_pillar(
-            event.tenant_id, event.assessment_id
-        )
+        rows = await self._finding_repo.count_by_pillar(event.tenant_id, event.assessment_id)
         return sum(rows.values())
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _advisor_matches_rule(rec: Any, rule: WafRule) -> bool:
     """Return True if an Advisor recommendation maps to a WAF rule."""

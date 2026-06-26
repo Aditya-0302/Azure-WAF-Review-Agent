@@ -6,7 +6,6 @@ All runtime database access uses asyncpg directly via BaseRepository.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 
 import sqlalchemy as sa

@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
 import pytest
-import pytest_asyncio
 
 from waf_shared.domain.models.assessment import Assessment, AssessmentStatus
-from waf_shared.domain.models.tenant import PlanTier, Tenant, TenantQuota, UserRole
+from waf_shared.domain.models.tenant import PlanTier, Tenant, TenantQuota
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -75,7 +73,9 @@ def sample_quota(tenant_id: uuid.UUID) -> TenantQuota:
 
 
 @pytest.fixture
-def sample_assessment(assessment_id: uuid.UUID, tenant_id: uuid.UUID, user_oid: uuid.UUID) -> Assessment:
+def sample_assessment(
+    assessment_id: uuid.UUID, tenant_id: uuid.UUID, user_oid: uuid.UUID
+) -> Assessment:
     return Assessment(
         id=assessment_id,
         tenant_id=tenant_id,

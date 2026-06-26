@@ -15,11 +15,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 
+from waf_api.dependencies.db import get_db_pool
 from waf_shared.db.pool import DatabasePool
 from waf_shared.db.repositories.rule_repository import WafRuleRepository
 from waf_shared.telemetry.logging import StructuredLogger
-
-from waf_api.dependencies.db import get_db_pool
 
 router = APIRouter(prefix="/v1/system", tags=["system"])
 

@@ -45,9 +45,7 @@ def upgrade() -> None:
     op.execute(
         "CREATE INDEX idx_assessment_reports_assessment_id ON assessment_reports(assessment_id)"
     )
-    op.execute(
-        "CREATE INDEX idx_assessment_reports_tenant_id ON assessment_reports(tenant_id)"
-    )
+    op.execute("CREATE INDEX idx_assessment_reports_tenant_id ON assessment_reports(tenant_id)")
     op.execute("ALTER TABLE assessment_reports ENABLE ROW LEVEL SECURITY")
     op.execute("""
         CREATE POLICY tenant_isolation_policy ON assessment_reports

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -20,7 +19,6 @@ from waf_shared.agents.pipeline import (
 )
 from waf_shared.agents.retry import RetryPolicy
 from waf_shared.agents.state import AgentState
-
 
 # ── Concrete test agents ──────────────────────────────────────────────────────
 

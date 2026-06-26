@@ -17,7 +17,6 @@ from waf_shared.domain.events.assessment_events import (
 )
 from waf_shared.domain.events.base import CloudEventEnvelope
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

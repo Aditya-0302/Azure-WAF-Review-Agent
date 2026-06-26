@@ -16,18 +16,14 @@ def _make_token_provider(
     subscription_token: str = "sub-token",
 ) -> tuple[TokenProvider, MagicMock, MagicMock]:
     platform_provider = AsyncMock()
-    platform_provider.get_token = AsyncMock(
-        return_value=MagicMock(token=platform_token)
-    )
+    platform_provider.get_token = AsyncMock(return_value=MagicMock(token=platform_token))
 
     cross_tenant_provider = AsyncMock()
     mock_sub_cred = AsyncMock()
     mock_sub_cred.get_token = AsyncMock(
         return_value=MagicMock(token=subscription_token, expires_on=9999999999)
     )
-    cross_tenant_provider.get_credential_for_subscription = AsyncMock(
-        return_value=mock_sub_cred
-    )
+    cross_tenant_provider.get_credential_for_subscription = AsyncMock(return_value=mock_sub_cred)
     cross_tenant_provider.invalidate_cache = AsyncMock()
 
     config = PlatformAuthConfig()
@@ -46,36 +42,28 @@ class TestTokenProviderPlatformTokens:
         provider, mock_plat, _ = _make_token_provider(platform_token="arm-tok")
         result = await provider.get_arm_token()
         assert result == "arm-tok"
-        mock_plat.get_token.assert_awaited_once_with(
-            "https://management.azure.com/.default"
-        )
+        mock_plat.get_token.assert_awaited_once_with("https://management.azure.com/.default")
 
     @pytest.mark.asyncio
     async def test_get_keyvault_token_uses_kv_scope(self) -> None:
         provider, mock_plat, _ = _make_token_provider(platform_token="kv-tok")
         result = await provider.get_keyvault_token()
         assert result == "kv-tok"
-        mock_plat.get_token.assert_awaited_once_with(
-            "https://vault.azure.net/.default"
-        )
+        mock_plat.get_token.assert_awaited_once_with("https://vault.azure.net/.default")
 
     @pytest.mark.asyncio
     async def test_get_graph_token_uses_graph_scope(self) -> None:
         provider, mock_plat, _ = _make_token_provider(platform_token="graph-tok")
         result = await provider.get_graph_token()
         assert result == "graph-tok"
-        mock_plat.get_token.assert_awaited_once_with(
-            "https://graph.microsoft.com/.default"
-        )
+        mock_plat.get_token.assert_awaited_once_with("https://graph.microsoft.com/.default")
 
     @pytest.mark.asyncio
     async def test_get_platform_token_uses_provided_scope(self) -> None:
         provider, mock_plat, _ = _make_token_provider(platform_token="custom-tok")
         result = await provider.get_platform_token("https://custom.azure.net/.default")
         assert result == "custom-tok"
-        mock_plat.get_token.assert_awaited_once_with(
-            "https://custom.azure.net/.default"
-        )
+        mock_plat.get_token.assert_awaited_once_with("https://custom.azure.net/.default")
 
 
 @pytest.mark.unit
@@ -100,12 +88,8 @@ class TestTokenProviderSubscriptionTokens:
     async def test_get_subscription_token_passes_custom_scope(self) -> None:
         provider, _, mock_cross = _make_token_provider()
         mock_sub_cred = AsyncMock()
-        mock_sub_cred.get_token = AsyncMock(
-            return_value=MagicMock(token="scope-tok", expires_on=1)
-        )
-        mock_cross.get_credential_for_subscription = AsyncMock(
-            return_value=mock_sub_cred
-        )
+        mock_sub_cred.get_token = AsyncMock(return_value=MagicMock(token="scope-tok", expires_on=1))
+        mock_cross.get_credential_for_subscription = AsyncMock(return_value=mock_sub_cred)
 
         result = await provider.get_subscription_token(
             subscription_id=uuid.uuid4(),

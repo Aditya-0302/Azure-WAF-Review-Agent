@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 import asyncpg
 
@@ -11,9 +10,7 @@ from waf_shared.db.pool import DatabasePool
 from waf_shared.db.repository import BaseRepository
 from waf_shared.domain.models.webhook import TenantWebhookEndpoint, WebhookDelivery
 
-_ENDPOINT_COLS = (
-    "id, tenant_id, webhook_url, secret_kv_name, is_active, created_at, updated_at"
-)
+_ENDPOINT_COLS = "id, tenant_id, webhook_url, secret_kv_name, is_active, created_at, updated_at"
 _DELIVERY_COLS = (
     "id, tenant_id, assessment_id, webhook_url, attempt, "
     "status_code, success, error_detail, delivered_at"

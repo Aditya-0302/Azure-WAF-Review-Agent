@@ -16,9 +16,7 @@ import sys
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_env_file: str | None = (
-    None if ("pytest" in sys.modules or os.getenv("WAF_NO_DOTENV")) else ".env"
-)
+_env_file: str | None = None if ("pytest" in sys.modules or os.getenv("WAF_NO_DOTENV")) else ".env"
 
 
 class AgentSettings(BaseSettings):
@@ -74,7 +72,7 @@ class AgentSettings(BaseSettings):
     otel_exporter_enabled: bool = False
 
     @model_validator(mode="after")
-    def require_azure_config(self) -> "AgentSettings":
+    def require_azure_config(self) -> AgentSettings:
         missing: list[str] = []
         if not self.keyvault_uri:
             missing.append("KEYVAULT_URI")
@@ -83,8 +81,7 @@ class AgentSettings(BaseSettings):
         if not self.azure_client_id:
             missing.append("AZURE_CLIENT_ID")
         if self.auth_mode == "default_chain" and (
-            self.azure_client_secret is None
-            or not self.azure_client_secret.get_secret_value()
+            self.azure_client_secret is None or not self.azure_client_secret.get_secret_value()
         ):
             missing.append("AZURE_CLIENT_SECRET")
         if missing:

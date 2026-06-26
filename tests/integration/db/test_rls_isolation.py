@@ -18,13 +18,12 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_tenant_a_cannot_see_tenant_b_assessments(db_pool: "DatabasePool") -> None:  # type: ignore[name-defined]
+async def test_tenant_a_cannot_see_tenant_b_assessments(db_pool: DatabasePool) -> None:  # type: ignore[name-defined]
     """
     Given: tenant_A and tenant_B both have assessments in the database
     When: AssessmentRepository is called with tenant_B's tenant_id
     Then: it NEVER returns tenant_A's data
     """
-    from waf_shared.db.pool import DatabasePool
 
     tenant_a_id = uuid.uuid4()
     tenant_b_id = uuid.uuid4()
@@ -37,11 +36,17 @@ async def test_tenant_a_cannot_see_tenant_b_assessments(db_pool: "DatabasePool")
     async with db_pool.acquire_write() as conn:
         await conn.execute(
             "INSERT INTO tenants (id, slug, display_name, azure_tenant_id) VALUES ($1, $2, $3, $4)",
-            tenant_a_id, f"tenant-a-{tenant_a_id.hex[:6]}", "Tenant A", uuid.uuid4(),
+            tenant_a_id,
+            f"tenant-a-{tenant_a_id.hex[:6]}",
+            "Tenant A",
+            uuid.uuid4(),
         )
         await conn.execute(
             "INSERT INTO tenants (id, slug, display_name, azure_tenant_id) VALUES ($1, $2, $3, $4)",
-            tenant_b_id, f"tenant-b-{tenant_b_id.hex[:6]}", "Tenant B", uuid.uuid4(),
+            tenant_b_id,
+            f"tenant-b-{tenant_b_id.hex[:6]}",
+            "Tenant B",
+            uuid.uuid4(),
         )
 
     # Query as tenant_B — must never see tenant_A rows
@@ -66,7 +71,7 @@ async def test_tenant_a_cannot_see_tenant_b_assessments(db_pool: "DatabasePool")
 
 
 @pytest.mark.asyncio
-async def test_assessment_list_scoped_to_tenant(db_pool: "DatabasePool") -> None:  # type: ignore[name-defined]
+async def test_assessment_list_scoped_to_tenant(db_pool: DatabasePool) -> None:  # type: ignore[name-defined]
     """list() must only return assessments belonging to the requesting tenant."""
     if db_pool is None:
         pytest.skip("db_pool fixture not available outside integration environment")
@@ -79,11 +84,17 @@ async def test_assessment_list_scoped_to_tenant(db_pool: "DatabasePool") -> None
     async with db_pool.acquire_write() as conn:
         await conn.execute(
             "INSERT INTO tenants (id, slug, display_name, azure_tenant_id) VALUES ($1,$2,$3,$4)",
-            tenant_a, f"ta-{tenant_a.hex[:6]}", "Tenant A", uuid.uuid4(),
+            tenant_a,
+            f"ta-{tenant_a.hex[:6]}",
+            "Tenant A",
+            uuid.uuid4(),
         )
         await conn.execute(
             "INSERT INTO tenants (id, slug, display_name, azure_tenant_id) VALUES ($1,$2,$3,$4)",
-            tenant_b, f"tb-{tenant_b.hex[:6]}", "Tenant B", uuid.uuid4(),
+            tenant_b,
+            f"tb-{tenant_b.hex[:6]}",
+            "Tenant B",
+            uuid.uuid4(),
         )
         a_aid = uuid.uuid4()
         b_aid = uuid.uuid4()
@@ -94,7 +105,8 @@ async def test_assessment_list_scoped_to_tenant(db_pool: "DatabasePool") -> None
                     total_batches, completed_batches, failed_batches, created_at, updated_at)
                 VALUES ($1,$2,'completed','{}','{}',1,1,0,NOW(),NOW())
                 """,
-                aid, tid,
+                aid,
+                tid,
             )
 
     repo = AssessmentRepository(pool=db_pool)
@@ -106,7 +118,7 @@ async def test_assessment_list_scoped_to_tenant(db_pool: "DatabasePool") -> None
 
 
 @pytest.mark.asyncio
-async def test_findings_rls_cross_tenant(db_pool: "DatabasePool") -> None:  # type: ignore[name-defined]
+async def test_findings_rls_cross_tenant(db_pool: DatabasePool) -> None:  # type: ignore[name-defined]
     """Findings table RLS must prevent cross-tenant queries."""
     if db_pool is None:
         pytest.skip("db_pool fixture not available outside integration environment")
@@ -120,7 +132,10 @@ async def test_findings_rls_cross_tenant(db_pool: "DatabasePool") -> None:  # ty
         for tid, slug in [(tenant_a, "fa"), (tenant_b, "fb")]:
             await conn.execute(
                 "INSERT INTO tenants (id, slug, display_name, azure_tenant_id) VALUES ($1,$2,$3,$4)",
-                tid, f"{slug}-{tid.hex[:6]}", f"Tenant {slug}", uuid.uuid4(),
+                tid,
+                f"{slug}-{tid.hex[:6]}",
+                f"Tenant {slug}",
+                uuid.uuid4(),
             )
         b_aid = uuid.uuid4()
         await conn.execute(
@@ -129,7 +144,8 @@ async def test_findings_rls_cross_tenant(db_pool: "DatabasePool") -> None:  # ty
                 total_batches, completed_batches, failed_batches, created_at, updated_at)
             VALUES ($1,$2,'completed','{}','{}',1,1,0,NOW(),NOW())
             """,
-            b_aid, tenant_b,
+            b_aid,
+            tenant_b,
         )
         await conn.execute(
             """
@@ -141,7 +157,10 @@ async def test_findings_rls_cross_tenant(db_pool: "DatabasePool") -> None:  # ty
                       'mc/virtualmachines','open','critical','security',0.9,
                       'Test','Fix','{}','deterministic',NOW())
             """,
-            uuid.uuid4(), b_aid, uuid.uuid4(), tenant_b,
+            uuid.uuid4(),
+            b_aid,
+            uuid.uuid4(),
+            tenant_b,
         )
 
     repo = FindingRepository(pool=db_pool)
@@ -150,7 +169,7 @@ async def test_findings_rls_cross_tenant(db_pool: "DatabasePool") -> None:  # ty
 
 
 @pytest.mark.asyncio
-async def test_uow_transaction_rollback_on_error(db_pool: "DatabasePool") -> None:  # type: ignore[name-defined]
+async def test_uow_transaction_rollback_on_error(db_pool: DatabasePool) -> None:  # type: ignore[name-defined]
     """A failed UoW write must roll back the entire transaction."""
     if db_pool is None:
         pytest.skip("db_pool fixture not available outside integration environment")
@@ -163,7 +182,10 @@ async def test_uow_transaction_rollback_on_error(db_pool: "DatabasePool") -> Non
                 await conn.execute(
                     "INSERT INTO tenants (id, slug, display_name, azure_tenant_id) "
                     "VALUES ($1,$2,$3,$4)",
-                    rid, f"r-{rid.hex[:6]}", "Rollback Test", uuid.uuid4(),
+                    rid,
+                    f"r-{rid.hex[:6]}",
+                    "Rollback Test",
+                    uuid.uuid4(),
                 )
                 raise RuntimeError("forced rollback")
 

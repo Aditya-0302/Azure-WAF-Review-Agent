@@ -103,6 +103,7 @@ class GeminiProvider:
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _extract_text(response: object) -> str:
     """Extract text content from a Gemini response object."""
     try:

@@ -74,7 +74,7 @@ async def with_azure_retry(
 
             raise
 
-        except ServiceRequestError as exc:
+        except ServiceRequestError:
             if attempt < max_attempts:
                 logger.warning(
                     "discovery.retry.network_error",

@@ -222,6 +222,7 @@ class TestAssessmentRepositoryIdempotencyKey:
 
 # ── Helpers for resource row tests ────────────────────────────────────────────
 
+
 def _make_resource_row(
     *,
     tenant_id: uuid.UUID,
@@ -268,6 +269,7 @@ def _make_assessment_resource(
 
 
 # ── normalize_jsonb unit tests ────────────────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestNormalizeJsonb:
@@ -326,6 +328,7 @@ class TestNormalizeJsonb:
 
 
 # ── upsert_resource JSONB round-trip tests ────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestUpsertResourceJsonb:
@@ -419,6 +422,7 @@ class TestUpsertResourceJsonb:
 
 
 # ── complete_batch_and_check_fanin tests ──────────────────────────────────────
+
 
 @pytest.mark.unit
 class TestCompleteBatchAndCheckFanin:

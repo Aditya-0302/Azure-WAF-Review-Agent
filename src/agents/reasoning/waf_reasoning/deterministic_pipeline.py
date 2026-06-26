@@ -20,12 +20,13 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from waf_reasoning.dsl_evaluator import evaluate_condition
+
 from waf_shared.domain.errors.domain_errors import DSLValidationError
 from waf_shared.domain.models.assessment import AssessmentResource
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.rule import EvaluationType, WafRule
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_reasoning.dsl_evaluator import evaluate_condition
 
 _DETERMINISTIC_RESULT_PASS = "PASS"
 _DETERMINISTIC_RESULT_FAIL = "FAIL"
@@ -138,6 +139,7 @@ class DeterministicPipeline:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _make_finding(
     *,

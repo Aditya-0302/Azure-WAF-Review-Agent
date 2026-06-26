@@ -11,8 +11,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from waf_shared.agents.interfaces import IAgentMiddleware, NextHandler
 from waf_shared.agents.contracts import AgentContext, AgentInput, AgentOutput
+from waf_shared.agents.interfaces import IAgentMiddleware, NextHandler
 from waf_shared.agents.metrics import AgentMetrics
 from waf_shared.domain.errors.infrastructure_errors import AgentTimeoutError
 from waf_shared.telemetry.logging import StructuredLogger
@@ -102,7 +102,7 @@ class TimeoutMiddleware(IAgentMiddleware):
     ) -> AgentOutput[Any]:
         try:
             return await asyncio.wait_for(next(agent_input, context), timeout=self._timeout)
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             raise AgentTimeoutError(
                 agent_name=context.stage_name,
                 timeout_seconds=self._timeout,

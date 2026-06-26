@@ -72,13 +72,12 @@ def _validate_webhook_url(url: str) -> None:
         addr = ipaddress.ip_address(hostname)
         for network in _BLOCKED_NETWORKS:
             if addr in network:
-                raise ValueError(
-                    f"Webhook URL resolves to a private/reserved IP address ({addr})"
-                )
+                raise ValueError(f"Webhook URL resolves to a private/reserved IP address ({addr})")
     except ValueError as exc:
         # Re-raise our explicit messages; ignore "not a valid IP address" (hostname case).
         if "Webhook URL" in str(exc):
             raise
+
 
 async def _call_aenter(obj: Any) -> Any:
     """Call __aenter__ on obj, routing around unittest.mock._get_method wrapping.
@@ -206,7 +205,7 @@ class WebhookService:
                                 error_detail = f"HTTP {status_code}"
                         finally:
                             await _post_result.__aexit__(None, None, None)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     error_detail = "request timed out after 30s"
                     log.warning("reporting.webhook.timeout", attempt=attempt_num)
                 except aiohttp.ClientError as exc:

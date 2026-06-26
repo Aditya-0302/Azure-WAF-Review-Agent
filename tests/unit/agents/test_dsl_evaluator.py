@@ -7,13 +7,13 @@ array operators, and error handling.  No I/O — pure Python.
 from __future__ import annotations
 
 import pytest
-
-from waf_shared.domain.errors.domain_errors import DSLValidationError
 from waf_reasoning.dsl_evaluator import (
     _resolve_path,
     _to_bool,
     evaluate_condition,
 )
+
+from waf_shared.domain.errors.domain_errors import DSLValidationError
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -153,7 +153,9 @@ class TestExistenceOperators:
 @pytest.mark.unit
 class TestEqualityOperators:
     def test_eq_string_match(self) -> None:
-        assert _eval({"op": "eq", "path": "tier", "value": "Standard"}, {"tier": "Standard"}) is True
+        assert (
+            _eval({"op": "eq", "path": "tier", "value": "Standard"}, {"tier": "Standard"}) is True
+        )
 
     def test_eq_string_mismatch(self) -> None:
         assert _eval({"op": "eq", "path": "tier", "value": "Standard"}, {"tier": "Basic"}) is False
@@ -171,7 +173,9 @@ class TestEqualityOperators:
         assert _eval({"op": "ne", "path": "tier", "value": "Basic"}, {"tier": "Standard"}) is True
 
     def test_ne_mismatch(self) -> None:
-        assert _eval({"op": "ne", "path": "tier", "value": "Standard"}, {"tier": "Standard"}) is False
+        assert (
+            _eval({"op": "ne", "path": "tier", "value": "Standard"}, {"tier": "Standard"}) is False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -182,32 +186,44 @@ class TestEqualityOperators:
 @pytest.mark.unit
 class TestMembershipOperators:
     def test_in_match(self) -> None:
-        assert _eval(
-            {"op": "in", "path": "sku", "values": ["Standard", "Premium"]},
-            {"sku": "Standard"},
-        ) is True
+        assert (
+            _eval(
+                {"op": "in", "path": "sku", "values": ["Standard", "Premium"]},
+                {"sku": "Standard"},
+            )
+            is True
+        )
 
     def test_in_no_match(self) -> None:
-        assert _eval(
-            {"op": "in", "path": "sku", "values": ["Standard", "Premium"]},
-            {"sku": "Basic"},
-        ) is False
+        assert (
+            _eval(
+                {"op": "in", "path": "sku", "values": ["Standard", "Premium"]},
+                {"sku": "Basic"},
+            )
+            is False
+        )
 
     def test_in_missing_values_raises(self) -> None:
         with pytest.raises(DSLValidationError):
             _eval({"op": "in", "path": "sku"}, {"sku": "Standard"})
 
     def test_not_in_match(self) -> None:
-        assert _eval(
-            {"op": "not_in", "path": "sku", "values": ["Basic"]},
-            {"sku": "Standard"},
-        ) is True
+        assert (
+            _eval(
+                {"op": "not_in", "path": "sku", "values": ["Basic"]},
+                {"sku": "Standard"},
+            )
+            is True
+        )
 
     def test_not_in_no_match(self) -> None:
-        assert _eval(
-            {"op": "not_in", "path": "sku", "values": ["Standard"]},
-            {"sku": "Standard"},
-        ) is False
+        assert (
+            _eval(
+                {"op": "not_in", "path": "sku", "values": ["Standard"]},
+                {"sku": "Standard"},
+            )
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -268,37 +284,52 @@ class TestNumericOperators:
 @pytest.mark.unit
 class TestStringOperators:
     def test_contains_case_insensitive_default(self) -> None:
-        assert _eval(
-            {"op": "contains", "path": "name", "value": "prod"},
-            {"name": "PRODUCTION-vm"},
-        ) is True
+        assert (
+            _eval(
+                {"op": "contains", "path": "name", "value": "prod"},
+                {"name": "PRODUCTION-vm"},
+            )
+            is True
+        )
 
     def test_contains_case_sensitive_false(self) -> None:
-        assert _eval(
-            {"op": "contains", "path": "name", "value": "Prod", "ci": False},
-            {"name": "production-vm"},
-        ) is False
+        assert (
+            _eval(
+                {"op": "contains", "path": "name", "value": "Prod", "ci": False},
+                {"name": "production-vm"},
+            )
+            is False
+        )
 
     def test_contains_non_string_returns_false(self) -> None:
         assert _eval({"op": "contains", "path": "val", "value": "x"}, {"val": 123}) is False
 
     def test_starts_with_match(self) -> None:
-        assert _eval(
-            {"op": "starts_with", "path": "id", "value": "/subscriptions/"},
-            {"id": "/subscriptions/abc123"},
-        ) is True
+        assert (
+            _eval(
+                {"op": "starts_with", "path": "id", "value": "/subscriptions/"},
+                {"id": "/subscriptions/abc123"},
+            )
+            is True
+        )
 
     def test_starts_with_ci(self) -> None:
-        assert _eval(
-            {"op": "starts_with", "path": "id", "value": "/SUBSCRIPTIONS/", "ci": True},
-            {"id": "/subscriptions/abc123"},
-        ) is True
+        assert (
+            _eval(
+                {"op": "starts_with", "path": "id", "value": "/SUBSCRIPTIONS/", "ci": True},
+                {"id": "/subscriptions/abc123"},
+            )
+            is True
+        )
 
     def test_starts_with_no_match(self) -> None:
-        assert _eval(
-            {"op": "starts_with", "path": "id", "value": "/tenants/"},
-            {"id": "/subscriptions/abc"},
-        ) is False
+        assert (
+            _eval(
+                {"op": "starts_with", "path": "id", "value": "/tenants/"},
+                {"id": "/subscriptions/abc"},
+            )
+            is False
+        )
 
     def test_starts_with_non_string_returns_false(self) -> None:
         assert _eval({"op": "starts_with", "path": "val", "value": "/"}, {"val": 42}) is False
@@ -315,16 +346,22 @@ class TestBoolEqOperator:
         assert _eval({"op": "bool_eq", "path": "enabled", "value": True}, {"enabled": True}) is True
 
     def test_bool_eq_string_true(self) -> None:
-        assert _eval({"op": "bool_eq", "path": "enabled", "value": True}, {"enabled": "true"}) is True
+        assert (
+            _eval({"op": "bool_eq", "path": "enabled", "value": True}, {"enabled": "true"}) is True
+        )
 
     def test_bool_eq_int_truthy(self) -> None:
         assert _eval({"op": "bool_eq", "path": "enabled", "value": True}, {"enabled": 1}) is True
 
     def test_bool_eq_false_false(self) -> None:
-        assert _eval({"op": "bool_eq", "path": "enabled", "value": False}, {"enabled": False}) is True
+        assert (
+            _eval({"op": "bool_eq", "path": "enabled", "value": False}, {"enabled": False}) is True
+        )
 
     def test_bool_eq_mismatch(self) -> None:
-        assert _eval({"op": "bool_eq", "path": "enabled", "value": True}, {"enabled": False}) is False
+        assert (
+            _eval({"op": "bool_eq", "path": "enabled", "value": True}, {"enabled": False}) is False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -341,10 +378,15 @@ class TestLengthOperators:
         assert _eval({"op": "length_eq", "path": "name", "value": 3}, {"name": "abc"}) is True
 
     def test_length_eq_dict(self) -> None:
-        assert _eval({"op": "length_eq", "path": "tags", "value": 2}, {"tags": {"a": 1, "b": 2}}) is True
+        assert (
+            _eval({"op": "length_eq", "path": "tags", "value": 2}, {"tags": {"a": 1, "b": 2}})
+            is True
+        )
 
     def test_length_eq_wrong_count(self) -> None:
-        assert _eval({"op": "length_eq", "path": "zones", "value": 2}, {"zones": [1, 2, 3]}) is False
+        assert (
+            _eval({"op": "length_eq", "path": "zones", "value": 2}, {"zones": [1, 2, 3]}) is False
+        )
 
     def test_length_gte_match(self) -> None:
         assert _eval({"op": "length_gte", "path": "items", "value": 1}, {"items": [1, 2]}) is True
@@ -374,66 +416,87 @@ class TestLengthOperators:
 class TestArrayMatchingOperators:
     def test_any_match_true(self) -> None:
         props = {"items": [{"name": "a"}, {"name": "b"}]}
-        assert _eval(
-            {
-                "op": "any_match",
-                "path": "items",
-                "condition": {"op": "eq", "path": "name", "value": "b"},
-            },
-            props,
-        ) is True
+        assert (
+            _eval(
+                {
+                    "op": "any_match",
+                    "path": "items",
+                    "condition": {"op": "eq", "path": "name", "value": "b"},
+                },
+                props,
+            )
+            is True
+        )
 
     def test_any_match_false(self) -> None:
         props = {"items": [{"name": "a"}, {"name": "c"}]}
-        assert _eval(
-            {
-                "op": "any_match",
-                "path": "items",
-                "condition": {"op": "eq", "path": "name", "value": "b"},
-            },
-            props,
-        ) is False
+        assert (
+            _eval(
+                {
+                    "op": "any_match",
+                    "path": "items",
+                    "condition": {"op": "eq", "path": "name", "value": "b"},
+                },
+                props,
+            )
+            is False
+        )
 
     def test_any_match_empty_array_is_false(self) -> None:
-        assert _eval(
-            {"op": "any_match", "path": "items", "condition": {"op": "always_pass"}},
-            {"items": []},
-        ) is False
+        assert (
+            _eval(
+                {"op": "any_match", "path": "items", "condition": {"op": "always_pass"}},
+                {"items": []},
+            )
+            is False
+        )
 
     def test_any_match_non_array_is_false(self) -> None:
-        assert _eval(
-            {"op": "any_match", "path": "val", "condition": {"op": "always_pass"}},
-            {"val": "not a list"},
-        ) is False
+        assert (
+            _eval(
+                {"op": "any_match", "path": "val", "condition": {"op": "always_pass"}},
+                {"val": "not a list"},
+            )
+            is False
+        )
 
     def test_all_match_true(self) -> None:
         props = {"zones": [{"id": "1"}, {"id": "1"}]}
-        assert _eval(
-            {
-                "op": "all_match",
-                "path": "zones",
-                "condition": {"op": "eq", "path": "id", "value": "1"},
-            },
-            props,
-        ) is True
+        assert (
+            _eval(
+                {
+                    "op": "all_match",
+                    "path": "zones",
+                    "condition": {"op": "eq", "path": "id", "value": "1"},
+                },
+                props,
+            )
+            is True
+        )
 
     def test_all_match_one_fails(self) -> None:
         props = {"zones": [{"id": "1"}, {"id": "2"}]}
-        assert _eval(
-            {
-                "op": "all_match",
-                "path": "zones",
-                "condition": {"op": "eq", "path": "id", "value": "1"},
-            },
-            props,
-        ) is False
+        assert (
+            _eval(
+                {
+                    "op": "all_match",
+                    "path": "zones",
+                    "condition": {"op": "eq", "path": "id", "value": "1"},
+                },
+                props,
+            )
+            is False
+        )
 
     def test_all_match_empty_array_is_true(self) -> None:
         """all() of an empty sequence is vacuously true."""
-        assert _eval(
-            {"op": "all_match", "path": "items", "condition": {"op": "always_fail"}},
-            {"items": []},
-        ) is True
+        assert (
+            _eval(
+                {"op": "all_match", "path": "items", "condition": {"op": "always_fail"}},
+                {"items": []},
+            )
+            is True
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -626,8 +689,14 @@ class TestRealWorldScenarios:
             ],
         }
         assert _eval(cond, {"properties": {}}) is True
-        assert _eval(cond, {"properties": {"transparentDataEncryption": {"status": "Disabled"}}}) is True
-        assert _eval(cond, {"properties": {"transparentDataEncryption": {"status": "Enabled"}}}) is False
+        assert (
+            _eval(cond, {"properties": {"transparentDataEncryption": {"status": "Disabled"}}})
+            is True
+        )
+        assert (
+            _eval(cond, {"properties": {"transparentDataEncryption": {"status": "Enabled"}}})
+            is False
+        )
 
     def test_network_security_group_open_ssh(self) -> None:
         """SEC-NSG-001: NSG allows SSH from any source."""

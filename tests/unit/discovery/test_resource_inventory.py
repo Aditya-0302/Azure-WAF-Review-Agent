@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -26,7 +26,8 @@ def _make_resource_row(
     properties: dict | None = None,
 ) -> dict:
     return {
-        "id": resource_id or f"/subscriptions/{uuid.uuid4()}/resourceGroups/{rg}/providers/{rtype}/{name}",
+        "id": resource_id
+        or f"/subscriptions/{uuid.uuid4()}/resourceGroups/{rg}/providers/{rtype}/{name}",
         "name": name,
         "type": rtype,
         "location": location,
@@ -128,9 +129,7 @@ class TestResourceInventoryServiceListInRG:
         credential = AsyncMock()
 
         svc = ResourceInventoryService(graph_client=mock_graph)
-        result = await svc.list_resources_in_resource_group(
-            credential, sub_id, "target-rg"
-        )
+        result = await svc.list_resources_in_resource_group(credential, sub_id, "target-rg")
 
         kql_used: str = mock_graph.query_all.call_args[0][2]
         assert "target-rg" in kql_used
@@ -144,9 +143,7 @@ class TestResourceInventoryServiceListInRG:
 
         svc = ResourceInventoryService(graph_client=mock_graph)
         with pytest.raises(ValueError, match="Invalid resource group name"):
-            await svc.list_resources_in_resource_group(
-                credential, sub_id, "'; DROP TABLE--"
-            )
+            await svc.list_resources_in_resource_group(credential, sub_id, "'; DROP TABLE--")
 
 
 @pytest.mark.unit

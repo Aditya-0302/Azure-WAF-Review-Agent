@@ -83,9 +83,7 @@ def detect_changes() -> ChangeReport:
     controls_raw: list[dict] = json.loads(controls_path.read_text(encoding="utf-8"))
 
     inventory_version: str = inventory.get("framework_version", "")
-    inventory_codes: set[str] = {
-        r["code"] for r in inventory.get("recommendations", [])
-    }
+    inventory_codes: set[str] = {r["code"] for r in inventory.get("recommendations", [])}
 
     controls_versions: set[str] = set()
     controls_codes: set[str] = set()
@@ -97,7 +95,9 @@ def detect_changes() -> ChangeReport:
 
     added = sorted(inventory_codes - controls_codes)
     removed = sorted(controls_codes - inventory_codes)
-    version_changed = bool(inventory_version and current_version and inventory_version != current_version)
+    version_changed = bool(
+        inventory_version and current_version and inventory_version != current_version
+    )
 
     return ChangeReport(
         added_codes=added,

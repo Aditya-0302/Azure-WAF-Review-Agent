@@ -16,9 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Load .env in normal runtime (uvicorn, python -m). Skip it when running under
 # pytest so test assertions on default field values are not overridden by a
 # developer's local .env file. WAF_NO_DOTENV=1 provides an explicit CI escape hatch.
-_env_file: str | None = (
-    None if ("pytest" in sys.modules or os.getenv("WAF_NO_DOTENV")) else ".env"
-)
+_env_file: str | None = None if ("pytest" in sys.modules or os.getenv("WAF_NO_DOTENV")) else ".env"
 
 
 class AppEnvironment(StrEnum):
@@ -127,9 +125,7 @@ class Settings(BaseSettings):
     def valid_api_auth_mode(cls, v: str) -> str:
         allowed = {"entra", "development"}
         if v not in allowed:
-            raise ValueError(
-                f"API_AUTH_MODE must be one of {sorted(allowed)}, got '{v}'"
-            )
+            raise ValueError(f"API_AUTH_MODE must be one of {sorted(allowed)}, got '{v}'")
         return v
 
     @field_validator("db_pool_max_size")
@@ -141,13 +137,12 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def guard_production_defaults(self) -> "Settings":
+    def guard_production_defaults(self) -> Settings:
         # DefaultAzureCredential inside Docker has no CLI or Managed Identity
         # available — EnvironmentCredential is the only working source, which
         # requires AZURE_CLIENT_SECRET.  Fail fast before any network call.
         if self.auth_mode == "default_chain" and (
-            self.azure_client_secret is None
-            or not self.azure_client_secret.get_secret_value()
+            self.azure_client_secret is None or not self.azure_client_secret.get_secret_value()
         ):
             raise ValueError(
                 "AZURE_CLIENT_SECRET is required when AUTH_MODE=default_chain. "

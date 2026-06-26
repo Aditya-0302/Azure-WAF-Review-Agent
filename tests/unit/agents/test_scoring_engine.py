@@ -12,16 +12,15 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-
+from waf_reporting.aggregator import PillarSummary
+from waf_reporting.scoring import ScoringResult, compute_scores
 from waf_reporting.scoring_config import DEFAULT_SCORING_WEIGHTS, ScoringWeights
 from waf_reporting.scoring_engine import CatalogRule, ScoringEngine
-from waf_reporting.scoring import ScoringResult, compute_scores
-from waf_reporting.aggregator import PillarSummary
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _engine(weights: ScoringWeights | None = None) -> ScoringEngine:
     return ScoringEngine(weights or DEFAULT_SCORING_WEIGHTS)
@@ -46,6 +45,7 @@ def _pillar_summary(
     sev_counts: dict[str, int],
 ) -> PillarSummary:
     from waf_reporting.aggregator import _pillar_compliance_score
+
     total = sum(sev_counts.values())
     return PillarSummary(
         pillar=pillar,
@@ -59,12 +59,18 @@ def _pillar_summary(
 # ScoringEngine.compute_pillar_scores
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestComputePillarScores:
     def test_no_findings_scores_100(self) -> None:
         engine = _engine()
-        rules = [_rule(pillar="security", severity="critical",
-                       resource_types=["microsoft.compute/virtualmachines"])]
+        rules = [
+            _rule(
+                pillar="security",
+                severity="critical",
+                resource_types=["microsoft.compute/virtualmachines"],
+            )
+        ]
         rt_counts = {"microsoft.compute/virtualmachines": 3}
         pillar_rt_sev: dict = {}  # no findings
 
@@ -74,29 +80,31 @@ class TestComputePillarScores:
     def test_all_resources_fail_critical_scores_0(self) -> None:
         engine = _engine()
         # One critical rule for 2 VMs; both VMs fail the rule
-        rules = [_rule(pillar="security", severity="critical",
-                       resource_types=["microsoft.compute/virtualmachines"])]
+        rules = [
+            _rule(
+                pillar="security",
+                severity="critical",
+                resource_types=["microsoft.compute/virtualmachines"],
+            )
+        ]
         rt_counts = {"microsoft.compute/virtualmachines": 2}
         # 2 critical findings for VMs in security pillar
-        pillar_rt_sev = {
-            "security": {
-                "microsoft.compute/virtualmachines": {"critical": 2}
-            }
-        }
+        pillar_rt_sev = {"security": {"microsoft.compute/virtualmachines": {"critical": 2}}}
         scores = engine.compute_pillar_scores(rules, rt_counts, pillar_rt_sev)
         assert scores["security"] == pytest.approx(0.0, abs=0.1)
 
     def test_half_resources_fail_scores_50(self) -> None:
         engine = _engine()
         # One medium rule for 4 VMs; 2 VMs fail → weighted_failed = 2×5×1.2
-        rules = [_rule(pillar="security", severity="medium",
-                       resource_types=["microsoft.compute/virtualmachines"])]
+        rules = [
+            _rule(
+                pillar="security",
+                severity="medium",
+                resource_types=["microsoft.compute/virtualmachines"],
+            )
+        ]
         rt_counts = {"microsoft.compute/virtualmachines": 4}
-        pillar_rt_sev = {
-            "security": {
-                "microsoft.compute/virtualmachines": {"medium": 2}
-            }
-        }
+        pillar_rt_sev = {"security": {"microsoft.compute/virtualmachines": {"medium": 2}}}
         scores = engine.compute_pillar_scores(rules, rt_counts, pillar_rt_sev)
         assert scores["security"] == pytest.approx(50.0, abs=0.2)
 
@@ -184,22 +192,23 @@ class TestComputePillarScores:
         # The applicable weight is the same in both scenarios (both rules apply).
         # Only the *failed* rule changes.
         rules = [
-            _rule("R-CRIT", "security", "critical",
-                  resource_types=["microsoft.compute/virtualmachines"]),
-            _rule("R-LOW", "security", "low",
-                  resource_types=["microsoft.compute/virtualmachines"]),
+            _rule(
+                "R-CRIT",
+                "security",
+                "critical",
+                resource_types=["microsoft.compute/virtualmachines"],
+            ),
+            _rule("R-LOW", "security", "low", resource_types=["microsoft.compute/virtualmachines"]),
         ]
         rt_counts = {"microsoft.compute/virtualmachines": 1}
 
         # Scenario A: resource fails the critical rule only
         scores_a = engine.compute_pillar_scores(
-            rules, rt_counts,
-            {"security": {"microsoft.compute/virtualmachines": {"critical": 1}}}
+            rules, rt_counts, {"security": {"microsoft.compute/virtualmachines": {"critical": 1}}}
         )
         # Scenario B: resource fails the low-severity rule only
         scores_b = engine.compute_pillar_scores(
-            rules, rt_counts,
-            {"security": {"microsoft.compute/virtualmachines": {"low": 1}}}
+            rules, rt_counts, {"security": {"microsoft.compute/virtualmachines": {"low": 1}}}
         )
         # Critical failure deducts weight=10; low failure deducts weight=2
         # → critical failure → lower compliance score
@@ -209,6 +218,7 @@ class TestComputePillarScores:
 # ---------------------------------------------------------------------------
 # ScoringEngine.compute_overall_score
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestComputeOverallScore:
@@ -270,6 +280,7 @@ class TestComputeOverallScore:
 # ScoringEngine.compute_risk_score
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestComputeRiskScore:
     def test_perfect_compliance_gives_low_risk(self) -> None:
@@ -286,7 +297,7 @@ class TestComputeRiskScore:
         engine = _engine()
         # 50% compliance base; all findings critical → +10 amplification
         risk_all_crit = engine.compute_risk_score({"critical": 5}, 50.0)
-        risk_all_low  = engine.compute_risk_score({"low": 5}, 50.0)
+        risk_all_low = engine.compute_risk_score({"low": 5}, 50.0)
         assert risk_all_crit > risk_all_low
 
     def test_risk_capped_at_100(self) -> None:
@@ -298,6 +309,7 @@ class TestComputeRiskScore:
 # ---------------------------------------------------------------------------
 # ScoringEngine.compute_weighted_severity_score
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestComputeWeightedSeverityScore:
@@ -319,15 +331,16 @@ class TestComputeWeightedSeverityScore:
     def test_severity_ordering(self) -> None:
         engine = _engine()
         critical_score = engine.compute_weighted_severity_score({"critical": 5})
-        high_score     = engine.compute_weighted_severity_score({"high": 5})
-        medium_score   = engine.compute_weighted_severity_score({"medium": 5})
-        low_score      = engine.compute_weighted_severity_score({"low": 5})
+        high_score = engine.compute_weighted_severity_score({"high": 5})
+        medium_score = engine.compute_weighted_severity_score({"medium": 5})
+        low_score = engine.compute_weighted_severity_score({"low": 5})
         assert critical_score > high_score > medium_score > low_score
 
 
 # ---------------------------------------------------------------------------
 # ScoringEngine.compute_business_impact_score
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestComputeBusinessImpactScore:
@@ -352,8 +365,10 @@ class TestComputeBusinessImpactScore:
         # max_pillar_weight = 0.30 (security).
         # business_impact(security) = 1.0×0.30×5 / (0.30×5) × 100 = 100.0
         # business_impact(cost)     = 1.0×0.15×5 / (0.30×5) × 100 = 50.0
-        impact_sec  = engine.compute_business_impact_score({"security": 0.0}, {"security": 5})
-        impact_cost = engine.compute_business_impact_score({"cost_optimization": 0.0}, {"cost_optimization": 5})
+        impact_sec = engine.compute_business_impact_score({"security": 0.0}, {"security": 5})
+        impact_cost = engine.compute_business_impact_score(
+            {"cost_optimization": 0.0}, {"cost_optimization": 5}
+        )
         assert impact_sec == pytest.approx(100.0, abs=0.1)
         assert impact_cost == pytest.approx(50.0, abs=0.1)
         assert impact_sec > impact_cost
@@ -369,6 +384,7 @@ class TestComputeBusinessImpactScore:
 # ---------------------------------------------------------------------------
 # NOT_APPLICABLE exclusion via scoring.compute_scores() fallback
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.unit
 class TestComputeScoresFallback:
@@ -387,7 +403,7 @@ class TestComputeScoresFallback:
 
     def test_overall_uses_fixed_pillar_weights(self) -> None:
         """Even in fallback mode, overall score uses fixed pillar weights, not finding counts."""
-        sec_summary  = _pillar_summary("security",  {"critical": 100})
+        sec_summary = _pillar_summary("security", {"critical": 100})
         cost_summary = _pillar_summary("cost_optimization", {"low": 1})
         by_pillar = {"security": sec_summary, "cost_optimization": cost_summary}
         by_severity = {"critical": 100, "low": 1}
@@ -428,20 +444,20 @@ class TestComputeScoresFallback:
 # Full model with catalog data
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestComputeScoresFullModel:
     """Verify compute_scores() with catalog + resource type data (full model)."""
 
     def _catalog(self) -> list[CatalogRule]:
         return [
-            CatalogRule("SEC-001", "security", "critical",
-                        ["microsoft.keyvault/vaults"]),
-            CatalogRule("REL-001", "reliability", "medium",
-                        ["microsoft.compute/virtualmachines"]),
+            CatalogRule("SEC-001", "security", "critical", ["microsoft.keyvault/vaults"]),
+            CatalogRule("REL-001", "reliability", "medium", ["microsoft.compute/virtualmachines"]),
         ]
 
     def test_no_findings_full_model_scores_100(self) -> None:
         from waf_reporting.scoring import compute_scores
+
         result = compute_scores(
             {},
             {},
@@ -457,16 +473,17 @@ class TestComputeScoresFullModel:
 
     def test_all_kv_fail_security_0(self) -> None:
         from waf_reporting.scoring import compute_scores
+
         summary = _pillar_summary("security", {"critical": 2})
         result = compute_scores(
             {"security": summary},
             {"critical": 2},
             catalog_rules=self._catalog(),
-            resource_type_counts={"microsoft.keyvault/vaults": 2,
-                                   "microsoft.compute/virtualmachines": 3},
-            pillar_rt_severity={
-                "security": {"microsoft.keyvault/vaults": {"critical": 2}}
+            resource_type_counts={
+                "microsoft.keyvault/vaults": 2,
+                "microsoft.compute/virtualmachines": 3,
             },
+            pillar_rt_severity={"security": {"microsoft.keyvault/vaults": {"critical": 2}}},
         )
         assert result.pillar_scores["security"] == pytest.approx(0.0, abs=0.1)
 
@@ -474,6 +491,7 @@ class TestComputeScoresFullModel:
         """Failing a high-criticality resource must yield a lower score than
         failing an equivalent low-criticality resource."""
         from waf_reporting.scoring import compute_scores
+
         rules = [
             CatalogRule("SEC-KV", "security", "critical", ["microsoft.keyvault/vaults"]),
             CatalogRule("SEC-DISK", "security", "critical", ["microsoft.compute/disks"]),
@@ -502,8 +520,8 @@ class TestComputeScoresFullModel:
     def test_overall_uses_fixed_pillar_weights_full_model(self) -> None:
         """Security at 0%, all other pillars at 100% → overall ≈ 70%."""
         from waf_reporting.scoring import compute_scores
-        rules = [CatalogRule("SEC-001", "security", "critical",
-                              ["microsoft.keyvault/vaults"])]
+
+        rules = [CatalogRule("SEC-001", "security", "critical", ["microsoft.keyvault/vaults"])]
         rt_counts = {"microsoft.keyvault/vaults": 1}
         summary = _pillar_summary("security", {"critical": 1})
         result = compute_scores(
@@ -521,8 +539,8 @@ class TestComputeScoresFullModel:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _summary_dict(pillar_sev: dict[str, dict[str, int]]) -> dict[str, PillarSummary]:
     return {
-        pillar: _pillar_summary(pillar, sev_counts)
-        for pillar, sev_counts in pillar_sev.items()
+        pillar: _pillar_summary(pillar, sev_counts) for pillar, sev_counts in pillar_sev.items()
     }

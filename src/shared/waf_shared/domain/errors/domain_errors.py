@@ -36,7 +36,7 @@ class QuotaExceededException(DomainError):
         tenant_id: uuid.UUID,
     ) -> None:
         super().__init__(
-            f"Quota '{quota_name}' exceeded for tenant {tenant_id}: limit={limit}, current={current}",
+            f"Quota '{quota_name}' exceeded for tenant {tenant_id}: limit={limit}, current={current}",  # noqa: E501
             code="QUOTA_EXCEEDED",
         )
         self.quota_name = quota_name

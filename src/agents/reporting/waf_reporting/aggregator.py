@@ -35,28 +35,29 @@ from waf_shared.domain.models.finding import Finding, Severity
 
 # ── Legacy severity weight for PillarSummary.compliance_score ────────────────
 _SEVERITY_WEIGHTS: dict[str, float] = {
-    "critical":      1.0,
-    "high":          0.75,
-    "medium":        0.5,
-    "low":           0.25,
+    "critical": 1.0,
+    "high": 0.75,
+    "medium": 0.5,
+    "low": 0.25,
     "informational": 0.0,
 }
 
 # ── Business impact category mapping ─────────────────────────────────────────
 _PILLAR_TO_IMPACT: dict[str, str] = {
-    "security":               "Security Exposure",
-    "reliability":            "Availability Risk",
-    "cost_optimization":      "Financial Waste",
+    "security": "Security Exposure",
+    "reliability": "Availability Risk",
+    "cost_optimization": "Financial Waste",
     "operational_excellence": "Operational Risk",
     "performance_efficiency": "Performance Degradation",
 }
 
 _TOP_CRITICAL_LIMIT = 5
-_TREND_HISTORY_LIMIT = 6   # previous assessments to include in trend
+_TREND_HISTORY_LIMIT = 6  # previous assessments to include in trend
 _HUMAN_REVIEW_CODES = frozenset({"SE-10", "OE-03", "OE-04", "CO-09"})
 
 
 # ── Domain dataclasses ────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class PillarSummary:
@@ -69,11 +70,12 @@ class PillarSummary:
 @dataclass(frozen=True)
 class ResourceTypeStats:
     """Per-resource-type compliance metrics derived from actual assessment data."""
+
     resource_type: str
     total: int
     with_findings: int
-    compliant: int          # total - with_findings
-    compliance_pct: float   # (compliant / total) × 100
+    compliant: int  # total - with_findings
+    compliance_pct: float  # (compliant / total) × 100
     critical_findings: int
     high_findings: int
 
@@ -81,16 +83,18 @@ class ResourceTypeStats:
 @dataclass(frozen=True)
 class PillarControlStats:
     """WAF control coverage per pillar, derived from findings.waf_codes."""
+
     pillar: str
-    controls_assessed: int   # distinct WAF codes appearing in findings
-    controls_passed: int     # codes with no critical/high finding
-    controls_failed: int     # codes with ≥1 critical/high finding
-    compliance_pct: float    # passed / assessed × 100
+    controls_assessed: int  # distinct WAF codes appearing in findings
+    controls_passed: int  # codes with no critical/high finding
+    controls_failed: int  # codes with ≥1 critical/high finding
+    compliance_pct: float  # passed / assessed × 100
 
 
 @dataclass(frozen=True)
 class TrendDataPoint:
     """Compliance snapshot from a historical assessment report."""
+
     assessment_id: uuid.UUID
     assessment_date: datetime
     total_findings: int
@@ -101,6 +105,7 @@ class TrendDataPoint:
 @dataclass(frozen=True)
 class TopRisk:
     """Top-N highest-severity findings for executive risk section."""
+
     title: str
     resource_id: str
     resource_type: str
@@ -127,20 +132,14 @@ class AggregatedReport:
 
     # ── Phase 5 fields (all have defaults for backward compatibility) ──────────
     subscription_count: int = 0
-    assessment_date: datetime = field(
-        default_factory=lambda: datetime.now(UTC)
-    )
-    resource_type_inventory: dict[str, ResourceTypeStats] = field(
-        default_factory=dict
-    )
+    assessment_date: datetime = field(default_factory=lambda: datetime.now(UTC))
+    resource_type_inventory: dict[str, ResourceTypeStats] = field(default_factory=dict)
     top_5_risks: list[TopRisk] = field(default_factory=list)
     overall_compliance_score: float = 100.0
     overall_risk_score: float = 0.0
     weighted_severity_score: float = 0.0
     business_impact_score: float = 0.0
-    pillar_control_stats: dict[str, PillarControlStats] = field(
-        default_factory=dict
-    )
+    pillar_control_stats: dict[str, PillarControlStats] = field(default_factory=dict)
     trend_data: list[TrendDataPoint] = field(default_factory=list)
     scoring_methodology: str = ""
     # Per-pillar scores from the weighted pass-rate model (0–100).
@@ -150,18 +149,17 @@ class AggregatedReport:
 
 # ── Compliance scoring helpers (legacy, kept for PillarSummary + trend data) ──
 
+
 def _pillar_compliance_score(sev_counts: dict[str, int]) -> float:
     total = sum(sev_counts.values())
     if total == 0:
         return 1.0
-    weighted = sum(
-        _SEVERITY_WEIGHTS.get(sev, 0.5) * count
-        for sev, count in sev_counts.items()
-    )
+    weighted = sum(_SEVERITY_WEIGHTS.get(sev, 0.5) * count for sev, count in sev_counts.items())
     return round(1.0 - weighted / total, 4)
 
 
 # ── Main aggregator ────────────────────────────────────────────────────────────
+
 
 class FindingAggregator:
     """Builds AggregatedReport from the database for one assessment."""
@@ -173,10 +171,10 @@ class FindingAggregator:
         report_repo: ReportRepository | None = None,
         rule_repo: object | None = None,  # WafRuleRepository | None — avoid circular import
     ) -> None:
-        self._finding_repo    = finding_repo
+        self._finding_repo = finding_repo
         self._assessment_repo = assessment_repo
-        self._report_repo     = report_repo
-        self._rule_repo       = rule_repo
+        self._report_repo = report_repo
+        self._rule_repo = rule_repo
 
     async def aggregate(
         self,
@@ -184,9 +182,7 @@ class FindingAggregator:
         assessment_id: uuid.UUID,
         assessment: Assessment | None = None,
     ) -> AggregatedReport:
-        total_resources = await self._assessment_repo.count_resources(
-            tenant_id, assessment_id
-        )
+        total_resources = await self._assessment_repo.count_resources(tenant_id, assessment_id)
         resources_with_findings = await self._finding_repo.count_distinct_resources(
             tenant_id, assessment_id
         )
@@ -208,8 +204,10 @@ class FindingAggregator:
             )
 
         # ── Core aggregations ─────────────────────────────────────────────────
-        by_severity     = await self._finding_repo.count_by_severity(tenant_id, assessment_id)
-        pillar_severity = await self._finding_repo.aggregate_pillar_severity(tenant_id, assessment_id)
+        by_severity = await self._finding_repo.count_by_severity(tenant_id, assessment_id)
+        pillar_severity = await self._finding_repo.aggregate_pillar_severity(
+            tenant_id, assessment_id
+        )
 
         top_critical = await self._finding_repo.list_by_assessment(
             tenant_id=tenant_id,
@@ -230,23 +228,17 @@ class FindingAggregator:
 
         total_findings = sum(by_severity.values())
         coverage = (
-            round(resources_with_findings / total_resources, 4)
-            if total_resources > 0
-            else 0.0
+            round(resources_with_findings / total_resources, 4) if total_resources > 0 else 0.0
         )
 
         # ── Phase 5: resource type inventory ─────────────────────────────────
-        resource_type_inventory = await self._build_resource_inventory(
-            tenant_id, assessment_id
-        )
+        resource_type_inventory = await self._build_resource_inventory(tenant_id, assessment_id)
 
         # ── Phase 5: top-5 risks ──────────────────────────────────────────────
         top_5_risks = await self._build_top_risks(tenant_id, assessment_id)
 
         # ── Phase 5: pillar control stats ─────────────────────────────────────
-        pillar_control_stats = await self._build_pillar_control_stats(
-            tenant_id, assessment_id
-        )
+        pillar_control_stats = await self._build_pillar_control_stats(tenant_id, assessment_id)
 
         # ── Phase 5: enhanced scoring (weighted pass-rate model) ──────────────
         from waf_reporting.scoring import CatalogRule, compute_scores
@@ -269,12 +261,13 @@ class FindingAggregator:
                 ]
                 # Resource type → count from the inventory
                 resource_type_counts = {
-                    rt: stats.total
-                    for rt, stats in resource_type_inventory.items()
+                    rt: stats.total for rt, stats in resource_type_inventory.items()
                 }
                 # Three-way breakdown needed for exact failure weight
-                pillar_rt_severity = await self._finding_repo.aggregate_pillar_resource_type_severity(
-                    tenant_id, assessment_id
+                pillar_rt_severity = (
+                    await self._finding_repo.aggregate_pillar_resource_type_severity(
+                        tenant_id, assessment_id
+                    )
                 )
             except Exception:
                 # Fall back to legacy formula if catalog load fails.
@@ -282,6 +275,7 @@ class FindingAggregator:
                 # a permanently misconfigured catalog — silent fallback masks
                 # scoring degradation that may persist undetected.
                 import logging as _logging
+
                 _logging.getLogger(__name__).warning(
                     "aggregator.scoring_catalog_load_failed: falling back to legacy "
                     "compliance formula; weighted pass-rate scores unavailable",
@@ -335,9 +329,7 @@ class FindingAggregator:
         assessment_id: uuid.UUID,
     ) -> dict[str, ResourceTypeStats]:
         """Cross-reference assessment_resources with assessment_findings."""
-        rows = await self._assessment_repo.aggregate_resource_inventory(
-            tenant_id, assessment_id
-        )
+        rows = await self._assessment_repo.aggregate_resource_inventory(tenant_id, assessment_id)
         rt_severity = await self._finding_repo.aggregate_resource_type_severity(
             tenant_id, assessment_id
         )
@@ -364,24 +356,24 @@ class FindingAggregator:
         tenant_id: uuid.UUID,
         assessment_id: uuid.UUID,
     ) -> list[TopRisk]:
-        findings = await self._finding_repo.list_top_risks(
-            tenant_id, assessment_id, limit=5
-        )
+        findings = await self._finding_repo.list_top_risks(tenant_id, assessment_id, limit=5)
         risks: list[TopRisk] = []
         for f in findings:
             primary_impact = _PILLAR_TO_IMPACT.get(f.pillar, "Operational Risk")
             if f.severity.value == "critical" and f.pillar in ("security", "reliability"):
                 primary_impact += " / Data Loss Risk"
-            risks.append(TopRisk(
-                title=f.title,
-                resource_id=f.resource_id,
-                resource_type=f.resource_type,
-                severity=f.severity.value,
-                pillar=f.pillar,
-                waf_codes=list(f.waf_codes),
-                rule_id=f.rule_id,
-                business_impact=primary_impact,
-            ))
+            risks.append(
+                TopRisk(
+                    title=f.title,
+                    resource_id=f.resource_id,
+                    resource_type=f.resource_type,
+                    severity=f.severity.value,
+                    pillar=f.pillar,
+                    waf_codes=list(f.waf_codes),
+                    rule_id=f.rule_id,
+                    business_impact=primary_impact,
+                )
+            )
         return risks
 
     async def _build_pillar_control_stats(
@@ -389,14 +381,12 @@ class FindingAggregator:
         tenant_id: uuid.UUID,
         assessment_id: uuid.UUID,
     ) -> dict[str, PillarControlStats]:
-        coverage = await self._finding_repo.aggregate_waf_control_coverage(
-            tenant_id, assessment_id
-        )
+        coverage = await self._finding_repo.aggregate_waf_control_coverage(tenant_id, assessment_id)
         result: dict[str, PillarControlStats] = {}
         for pillar, code_map in coverage.items():
             assessed = len(code_map)
-            failed   = sum(1 for v in code_map.values() if v == 1)
-            passed   = assessed - failed
+            failed = sum(1 for v in code_map.values() if v == 1)
+            passed = assessed - failed
             pct = round(passed / assessed * 100, 1) if assessed > 0 else 100.0
             result[pillar] = PillarControlStats(
                 pillar=pillar,
@@ -433,11 +423,13 @@ class FindingAggregator:
                 comp = round((1.0 - weighted / total) * 100, 1)
             else:
                 comp = 100.0
-            points.append(TrendDataPoint(
-                assessment_id=r.assessment_id,
-                assessment_date=r.generated_at,
-                total_findings=s.total_findings,
-                compliance_score=comp,
-                findings_by_pillar=dict(s.findings_by_pillar),
-            ))
+            points.append(
+                TrendDataPoint(
+                    assessment_id=r.assessment_id,
+                    assessment_date=r.generated_at,
+                    total_findings=s.total_findings,
+                    compliance_score=comp,
+                    findings_by_pillar=dict(s.findings_by_pillar),
+                )
+            )
         return points

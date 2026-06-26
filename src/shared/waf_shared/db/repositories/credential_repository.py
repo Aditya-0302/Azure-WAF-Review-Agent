@@ -59,10 +59,10 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
         credential_id: uuid.UUID,
     ) -> SubscriptionCredential | None:
         row = await self._read_one(
-            f"SELECT {_COLS} FROM subscription_credentials "
-            f"WHERE tenant_id = $1 AND id = $2",
+            f"SELECT {_COLS} FROM subscription_credentials " f"WHERE tenant_id = $1 AND id = $2",
             tenant_id,
-            tenant_id, credential_id,
+            tenant_id,
+            credential_id,
         )
         return _row_to_credential(row) if row else None
 
@@ -75,7 +75,8 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
             f"SELECT {_COLS} FROM subscription_credentials "
             f"WHERE tenant_id = $1 AND subscription_id = $2",
             tenant_id,
-            tenant_id, subscription_id,
+            tenant_id,
+            subscription_id,
         )
         return _row_to_credential(row) if row else None
 
@@ -90,14 +91,17 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
                 f"SELECT {_COLS} FROM subscription_credentials "
                 f"WHERE tenant_id = $1 ORDER BY id LIMIT $2",
                 tenant_id,
-                tenant_id, limit,
+                tenant_id,
+                limit,
             )
         else:
             rows = await self._read(
                 f"SELECT {_COLS} FROM subscription_credentials "
                 f"WHERE tenant_id = $1 AND id > $2 ORDER BY id LIMIT $3",
                 tenant_id,
-                tenant_id, cursor, limit,
+                tenant_id,
+                cursor,
+                limit,
             )
         return [_row_to_credential(r) for r in rows]
 
@@ -124,9 +128,7 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
         )
         return [_row_to_credential(r) for r in rows]
 
-    async def count_by_health(
-        self, tenant_id: uuid.UUID
-    ) -> dict[str, int]:
+    async def count_by_health(self, tenant_id: uuid.UUID) -> dict[str, int]:
         rows = await self._read(
             "SELECT health, COUNT(*) AS n "
             "FROM subscription_credentials WHERE tenant_id = $1 GROUP BY health",
@@ -137,9 +139,7 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
 
     # ── Writes ────────────────────────────────────────────────────────────────
 
-    async def create(
-        self, credential: SubscriptionCredential
-    ) -> SubscriptionCredential:
+    async def create(self, credential: SubscriptionCredential) -> SubscriptionCredential:
         row = await self._write_one(
             f"INSERT INTO subscription_credentials "
             f"(id, tenant_id, subscription_id, display_name, keyvault_secret_name, "
@@ -179,7 +179,11 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
             f"WHERE tenant_id = $1 AND id = $2 "
             f"RETURNING {_COLS}",
             tenant_id,
-            tenant_id, credential_id, health.value, expires_at, last_health_check_at,
+            tenant_id,
+            credential_id,
+            health.value,
+            expires_at,
+            last_health_check_at,
         )
         if row is None:
             raise CredentialNotFoundError(credential_id, tenant_id)
@@ -191,8 +195,8 @@ class CredentialRepository(BaseRepository, ICredentialRepository):
         credential_id: uuid.UUID,
     ) -> None:
         await self._write(
-            "DELETE FROM subscription_credentials "
-            "WHERE tenant_id = $1 AND id = $2",
+            "DELETE FROM subscription_credentials " "WHERE tenant_id = $1 AND id = $2",
             tenant_id,
-            tenant_id, credential_id,
+            tenant_id,
+            credential_id,
         )

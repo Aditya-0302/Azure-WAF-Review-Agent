@@ -13,7 +13,6 @@ from waf_shared.domain.models.human_review import (
     ComplianceStatus,
     HumanReviewAssessment,
     HumanReviewControl,
-    HumanReviewSummary,
     ReviewStatus,
 )
 
@@ -26,7 +25,9 @@ _NOW = datetime(2026, 6, 22, 12, 0, 0, tzinfo=UTC)
 _KNOWN_CODES = {"SE-10", "OE-03", "OE-04", "CO-09"}
 
 
-def _make_review(control_code: str, compliance_status: ComplianceStatus, score: int = 90) -> HumanReviewAssessment:
+def _make_review(
+    control_code: str, compliance_status: ComplianceStatus, score: int = 90
+) -> HumanReviewAssessment:
     return HumanReviewAssessment(
         id=uuid.uuid4(),
         assessment_id=_ASSESSMENT,
@@ -55,10 +56,12 @@ def mock_pool():
 @pytest.fixture
 def service(mock_pool):
     from waf_api.services.human_review_service import HumanReviewService
+
     return HumanReviewService(pool=mock_pool)
 
 
 # ── Catalog loading ────────────────────────────────────────────────────────────
+
 
 class TestCatalogLoading:
     def test_list_controls_returns_four(self, service):
@@ -110,6 +113,7 @@ class TestCatalogLoading:
 
 # ── Question structure validation ─────────────────────────────────────────────
 
+
 class TestQuestionStructure:
     def test_se10_has_pentest_frequency_question(self, service):
         ctrl = service.get_control("SE-10")
@@ -138,7 +142,9 @@ class TestQuestionStructure:
             evidence_qs = [q for q in ctrl.questions if q.type == "evidence"]
             assert len(evidence_qs) >= 1, f"{code} must have at least one evidence question"
             for q in evidence_qs:
-                assert len(q.accepted_types) > 0, f"{code} evidence question must list accepted_types"
+                assert (
+                    len(q.accepted_types) > 0
+                ), f"{code} evidence question must list accepted_types"
 
     def test_required_questions_exist_in_each_control(self, service):
         for code in _KNOWN_CODES:
@@ -148,6 +154,7 @@ class TestQuestionStructure:
 
 
 # ── Summary computation ────────────────────────────────────────────────────────
+
 
 class TestGetSummary:
     @pytest.mark.asyncio
@@ -165,10 +172,7 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_all_four_compliant_gives_100_percent(self, service, mock_pool):
-        reviews = [
-            _make_review(code, ComplianceStatus.COMPLIANT)
-            for code in _KNOWN_CODES
-        ]
+        reviews = [_make_review(code, ComplianceStatus.COMPLIANT) for code in _KNOWN_CODES]
         with patch.object(service._repo, "list_by_assessment", new=AsyncMock(return_value=reviews)):
             summary = await service.get_summary(_TENANT, _ASSESSMENT)
 
@@ -216,7 +220,9 @@ class TestGetSummary:
             created_at=_NOW,
             updated_at=_NOW,
         )
-        with patch.object(service._repo, "list_by_assessment", new=AsyncMock(return_value=[review])):
+        with patch.object(
+            service._repo, "list_by_assessment", new=AsyncMock(return_value=[review])
+        ):
             summary = await service.get_summary(_TENANT, _ASSESSMENT)
 
         assert summary.human_review_compliant == 0
@@ -243,6 +249,7 @@ class TestGetSummary:
 
 # ── Catalog JSON integrity ─────────────────────────────────────────────────────
 
+
 class TestCatalogIntegrity:
     def test_no_duplicate_control_codes(self, service):
         controls = service.list_controls()
@@ -264,15 +271,15 @@ class TestCatalogIntegrity:
         for ctrl in service.list_controls():
             prefix = expected_prefixes[ctrl.code]
             for q in ctrl.questions:
-                assert q.id.startswith(prefix), (
-                    f"{ctrl.code} question id '{q.id}' should start with '{prefix}'"
-                )
+                assert q.id.startswith(
+                    prefix
+                ), f"{ctrl.code} question id '{q.id}' should start with '{prefix}'"
 
     def test_reason_for_human_review_is_not_empty(self, service):
         for ctrl in service.list_controls():
-            assert len(ctrl.reason_for_human_review) > 20, (
-                f"{ctrl.code} reason_for_human_review is too short"
-            )
+            assert (
+                len(ctrl.reason_for_human_review) > 20
+            ), f"{ctrl.code} reason_for_human_review is too short"
 
     def test_expected_pillars(self, service):
         pillar_map = {c.code: c.pillar for c in service.list_controls()}

@@ -9,11 +9,13 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from waf_shared.domain.models.assessment import Assessment, AssessmentBatch, AssessmentStatus, BatchStatus
-from waf_shared.domain.models.credential import CredentialHealth, SubscriptionCredential
+from waf_shared.domain.models.assessment import (
+    Assessment,
+    AssessmentStatus,
+)
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.rule import EvaluationType, Pillar, WafRule
-from waf_shared.domain.models.tenant import PlanTier, Tenant, TenantQuota, TenantUser, UserRole
+from waf_shared.domain.models.tenant import PlanTier, Tenant, TenantQuota
 
 
 def make_tenant(

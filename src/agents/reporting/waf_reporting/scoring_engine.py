@@ -34,8 +34,8 @@ NOT_APPLICABLE controls do not reduce the score.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from waf_reporting.scoring_config import DEFAULT_SCORING_WEIGHTS, ScoringWeights
 
@@ -45,8 +45,8 @@ class CatalogRule:
     """Minimal rule descriptor consumed by ``ScoringEngine``."""
 
     rule_id: str
-    pillar: str            # e.g. "security"
-    severity: str          # e.g. "critical"
+    pillar: str  # e.g. "security"
+    severity: str  # e.g. "critical"
     resource_types: list[str]  # lowercase Azure resource-type strings
 
 
@@ -106,9 +106,7 @@ class ScoringEngine:
                 n = resource_type_counts.get(rt_l, 0)
                 if n <= 0:
                     continue
-                crit = self._w.resource_criticality.get(
-                    rt_l, self._w.default_resource_criticality
-                )
+                crit = self._w.resource_criticality.get(rt_l, self._w.default_resource_criticality)
                 applicable[p] = applicable.get(p, 0.0) + n * crit * sev_w
 
         # ── Step 2: failed weight per pillar (from findings breakdown)
@@ -117,9 +115,7 @@ class ScoringEngine:
             pillar_failed = 0.0
             for rt, sev_data in rt_data.items():
                 rt_l = rt.lower()
-                crit = self._w.resource_criticality.get(
-                    rt_l, self._w.default_resource_criticality
-                )
+                crit = self._w.resource_criticality.get(rt_l, self._w.default_resource_criticality)
                 for sev, count in sev_data.items():
                     sev_w = self._w.severity_weights.get(sev, 1.0)
                     pillar_failed += count * crit * sev_w
@@ -178,9 +174,8 @@ class ScoringEngine:
         base = 100.0 - overall_compliance
         total = sum(findings_by_severity.values())
         if total > 0:
-            critical_high = (
-                findings_by_severity.get("critical", 0)
-                + findings_by_severity.get("high", 0)
+            critical_high = findings_by_severity.get("critical", 0) + findings_by_severity.get(
+                "high", 0
             )
             base = min(100.0, base + (critical_high / total) * 10.0)
         return round(base, 1)

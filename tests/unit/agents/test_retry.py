@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -174,7 +173,7 @@ class TestWithAgentRetry:
             nonlocal call_count
             call_count += 1
             if call_count < 2:
-                raise IOError("network glitch")
+                raise OSError("network glitch")
             return "ok"
 
         async def _on_retry(ctx: RetryContext) -> None:

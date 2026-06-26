@@ -8,14 +8,14 @@ asyncio_mode = "auto" eliminates the @pytest.mark.asyncio decorator.
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from waf_shared.domain.errors.infrastructure_errors import LLMQuotaExhaustedError
 from waf_shared.domain.events.assessment_events import ReasoningRequestedEvent
 from waf_shared.domain.events.base import CloudEventEnvelope
 from waf_shared.domain.models.assessment import (
@@ -26,7 +26,6 @@ from waf_shared.domain.models.assessment import (
 )
 from waf_shared.domain.models.finding import Finding, FindingStatus, Severity
 from waf_shared.domain.models.rule import EvaluationType, Pillar, WafRule
-from waf_shared.domain.errors.infrastructure_errors import LLMQuotaExhaustedError
 
 pytest_plugins = ["anyio"]
 
@@ -37,6 +36,7 @@ pytest_plugins = ["anyio"]
 
 
 # ── Fixtures / helpers ─────────────────────────────────────────────────────────
+
 
 def _make_assessment(
     *,
@@ -213,6 +213,7 @@ def _build_handler(mocks: _Mocks):
 
 # ── Happy path ─────────────────────────────────────────────────────────────────
 
+
 class TestReasoningHandlerHappyPath:
     @pytest.mark.asyncio
     async def test_single_resource_produces_finding_and_publishes_reporting(self):
@@ -295,6 +296,7 @@ class TestReasoningHandlerHappyPath:
 
 # ── Skip conditions ────────────────────────────────────────────────────────────
 
+
 class TestReasoningHandlerSkip:
     @pytest.mark.asyncio
     async def test_skips_completed_assessment(self):
@@ -361,6 +363,7 @@ class TestReasoningHandlerSkip:
 
 # ── Cancellation gate ──────────────────────────────────────────────────────────
 
+
 class TestReasoningHandlerCancellation:
     @pytest.mark.asyncio
     async def test_cancellation_after_findings_prevents_reporting_event(self):
@@ -370,14 +373,16 @@ class TestReasoningHandlerCancellation:
         cancelled_assessment = _make_assessment(cancelled=True)
 
         mocks.assessment_repo.get_by_id.side_effect = [
-            initial_assessment,    # first call: check terminal
+            initial_assessment,  # first call: check terminal
             cancelled_assessment,  # second call: post fan-in cancellation gate
         ]
         mocks.assessment_repo.list_resources_by_batch.return_value = []
         mocks.assessment_repo.complete_batch_and_check_fanin.return_value = True
 
         handler = _build_handler(mocks)
-        await handler.process(_raw_event(initial_assessment.id, initial_assessment.tenant_id, batch_id))
+        await handler.process(
+            _raw_event(initial_assessment.id, initial_assessment.tenant_id, batch_id)
+        )
 
         mocks.publisher.publish.assert_not_awaited()
         mocks.assessment_repo.update_status.assert_not_awaited()
@@ -400,6 +405,7 @@ class TestReasoningHandlerCancellation:
 
 
 # ── LLM pipeline integration ───────────────────────────────────────────────────
+
 
 class TestReasoningHandlerLLMPipeline:
     @pytest.mark.asyncio
@@ -490,6 +496,7 @@ class TestReasoningHandlerLLMPipeline:
 
 
 # ── Deterministic pipeline integration ────────────────────────────────────────
+
 
 class TestReasoningHandlerDeterministicPipeline:
     @pytest.mark.asyncio

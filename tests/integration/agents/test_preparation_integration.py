@@ -21,6 +21,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from waf_preparation.handler import BATCH_SIZE, PreparationHandler
 
 from waf_shared.auth.credential_provider import CrossTenantCredentialProvider
 from waf_shared.db.repositories.assessment_repository import AssessmentRepository
@@ -33,14 +34,11 @@ from waf_shared.domain.models.assessment import (
     Assessment,
     AssessmentBatch,
     AssessmentStatus,
-    BatchStatus,
 )
 from waf_shared.domain.models.credential import CredentialHealth, SubscriptionCredential
 from waf_shared.messaging.queue_names import EXTRACTION_REQUESTED
 from waf_shared.messaging.service_bus import ServiceBusPublisher
 from waf_shared.telemetry.logging import StructuredLogger
-from waf_preparation.handler import BATCH_SIZE, PreparationHandler
-
 
 # ── Shared factories ──────────────────────────────────────────────────────────
 
@@ -168,8 +166,8 @@ class TestPreparationAgentFullFlow:
 
         assessment_repo.get_by_id.side_effect = [assessment, assessment]
         assessment_repo.list_batches.return_value = []
-        assessment_repo.update_status.side_effect = (
-            lambda tid, aid, status: assessment.model_copy(update={"status": status})
+        assessment_repo.update_status.side_effect = lambda tid, aid, status: assessment.model_copy(
+            update={"status": status}
         )
         assessment_repo.set_total_batches.return_value = None
 
@@ -246,14 +244,14 @@ class TestPreparationAgentFullFlow:
         created_batches: list[AssessmentBatch] = []
         assessment_repo.get_by_id.side_effect = [assessment, assessment]
         assessment_repo.list_batches.return_value = []
-        assessment_repo.update_status.side_effect = (
-            lambda tid, aid, status: assessment.model_copy(update={"status": status})
+        assessment_repo.update_status.side_effect = lambda tid, aid, status: assessment.model_copy(
+            update={"status": status}
         )
         assessment_repo.set_total_batches.return_value = None
         assessment_repo.create_batch.side_effect = lambda b: (created_batches.append(b) or b)
 
-        credential_repo.get_by_subscription.side_effect = (
-            lambda tid, sid: _make_credential_record(tid, sid)
+        credential_repo.get_by_subscription.side_effect = lambda tid, sid: _make_credential_record(
+            tid, sid
         )
 
         cross_tenant = AsyncMock(spec=CrossTenantCredentialProvider)
@@ -356,8 +354,8 @@ class TestPreparationAgentFullFlow:
 
         assessment_repo.get_by_id.side_effect = [assessment, assessment]
         assessment_repo.list_batches.return_value = []
-        assessment_repo.update_status.side_effect = (
-            lambda tid, aid, status: assessment.model_copy(update={"status": status})
+        assessment_repo.update_status.side_effect = lambda tid, aid, status: assessment.model_copy(
+            update={"status": status}
         )
         assessment_repo.set_total_batches.return_value = None
         assessment_repo.create_batch.side_effect = lambda b: b
@@ -413,8 +411,8 @@ class TestPreparationAgentFullFlow:
 
         assessment_repo.get_by_id.side_effect = [assessment, assessment]
         assessment_repo.list_batches.return_value = []
-        assessment_repo.update_status.side_effect = (
-            lambda tid, aid, status: assessment.model_copy(update={"status": status})
+        assessment_repo.update_status.side_effect = lambda tid, aid, status: assessment.model_copy(
+            update={"status": status}
         )
         assessment_repo.create_batch.side_effect = DatabaseError("connection lost")
 

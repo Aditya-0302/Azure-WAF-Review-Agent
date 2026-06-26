@@ -59,12 +59,8 @@ class SubscriptionDiscoveryService:
             )
             return subs
         except HttpResponseError as exc:
-            self._metrics.api_errors.add(
-                1, {"service": "subscriptions", "operation": "list"}
-            )
-            raise ResourceDiscoveryError(
-                service="SubscriptionClient", reason=str(exc)
-            ) from exc
+            self._metrics.api_errors.add(1, {"service": "subscriptions", "operation": "list"})
+            raise ResourceDiscoveryError(service="SubscriptionClient", reason=str(exc)) from exc
         finally:
             self._metrics.api_call_duration.record(
                 time.perf_counter() - t0, {"service": "subscriptions"}
@@ -101,12 +97,8 @@ class SubscriptionDiscoveryService:
         except HttpResponseError as exc:
             if exc.status_code == 404:
                 raise SubscriptionNotFoundError(subscription_id) from exc
-            self._metrics.api_errors.add(
-                1, {"service": "subscriptions", "operation": "get"}
-            )
-            raise ResourceDiscoveryError(
-                service="SubscriptionClient", reason=str(exc)
-            ) from exc
+            self._metrics.api_errors.add(1, {"service": "subscriptions", "operation": "get"})
+            raise ResourceDiscoveryError(service="SubscriptionClient", reason=str(exc)) from exc
         finally:
             self._metrics.api_call_duration.record(
                 time.perf_counter() - t0, {"service": "subscriptions"}

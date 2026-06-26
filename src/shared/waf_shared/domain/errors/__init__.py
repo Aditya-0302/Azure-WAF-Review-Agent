@@ -7,8 +7,8 @@ from waf_shared.domain.errors.application_errors import (
 )
 from waf_shared.domain.errors.domain_errors import (
     AssessmentNotFoundError,
-    DSLValidationError,
     DomainError,
+    DSLValidationError,
     InvalidAssessmentScopeError,
     QuotaExceededException,
     WafAgentError,

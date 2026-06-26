@@ -10,20 +10,17 @@ need a live Entra ID tenant and Key Vault.
 
 from __future__ import annotations
 
-import json
 import os
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from waf_shared.auth.auth_service import AuthenticationService
+from waf_shared.auth.config import PlatformAuthConfig
 from waf_shared.auth.credential_provider import CrossTenantCredentialProvider
 from waf_shared.auth.token_provider import TokenProvider
-from waf_shared.auth.config import PlatformAuthConfig
 from waf_shared.domain.models.credential import CredentialHealth, SubscriptionCredential
-
 
 _AZURE_INTEGRATION = pytest.mark.skipif(
     os.environ.get("AZURE_INTEGRATION_TESTS") != "1",
@@ -224,7 +221,11 @@ class TestCredentialRepositoryIntegration:
         now = datetime.now(UTC)
         repo = CredentialRepository(pool=db_pool)
 
-        for health in [CredentialHealth.HEALTHY, CredentialHealth.HEALTHY, CredentialHealth.INVALID]:
+        for health in [
+            CredentialHealth.HEALTHY,
+            CredentialHealth.HEALTHY,
+            CredentialHealth.INVALID,
+        ]:
             cred = SubscriptionCredential(
                 id=uuid.uuid4(),
                 tenant_id=tenant_id,
@@ -258,7 +259,6 @@ class TestAuthServiceIntegration:
         kv_secret = os.environ["AZURE_KV_SECRET_NAME"]
 
         from waf_shared.auth.credential_provider import (
-            CrossTenantCredentialProvider,
             ManagedIdentityCredentialProvider,
         )
 
@@ -290,7 +290,6 @@ class TestAuthServiceIntegration:
         kv_uri = os.environ["AZURE_KV_URI"]
 
         from waf_shared.auth.credential_provider import (
-            CrossTenantCredentialProvider,
             ManagedIdentityCredentialProvider,
         )
 

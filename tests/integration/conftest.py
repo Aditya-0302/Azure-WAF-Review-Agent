@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import os
 
 import pytest
@@ -43,7 +42,7 @@ async def db_pool():  # type: ignore[no-untyped-def]
 
 
 @pytest_asyncio.fixture
-async def clean_db(db_pool: "DatabasePool") -> None:  # type: ignore[name-defined]
+async def clean_db(db_pool: DatabasePool) -> None:  # type: ignore[name-defined]
     """Truncate all data tables between tests (keeps schema intact)."""
     async with db_pool.acquire_write() as conn:
         await conn.execute("""

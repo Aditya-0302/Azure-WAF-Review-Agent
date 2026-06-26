@@ -14,22 +14,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
-
-from waf_catalog.catalog import WafCatalog, WafEnrichment, _CATALOG_DIR
+from waf_catalog.catalog import _CATALOG_DIR, WafCatalog
 from waf_catalog.startup import (
     CatalogStartupError,
-    RuleCoverageReport,
     build_coverage_report,
     validate_catalog_startup,
 )
 from waf_catalog.validator import CatalogValidationError, validate_catalog
+
 from waf_shared.domain.errors.domain_errors import WafEnrichmentError
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def reset_singleton():
@@ -70,6 +68,7 @@ def _make_catalog(tmp_path: Path, controls: list[dict], mapping: dict) -> WafCat
 
 # ── Live catalog enrichment ───────────────────────────────────────────────────
 
+
 class TestLiveCatalogEnrichment:
     """These tests use the real waf_control_mapping.json and waf_controls.json.
     They fail if a rule is removed from the mapping or a control is removed
@@ -105,12 +104,15 @@ class TestLiveCatalogEnrichment:
         """Every rule in the mapping must produce waf_codes with ≥1 entry."""
         for rule_id in real_catalog.get_mapped_rule_ids():
             e = real_catalog.enrich_finding(rule_id)
-            assert e.waf_codes, f"Rule '{rule_id}' is mapped but enrichment returned empty waf_codes"
+            assert (
+                e.waf_codes
+            ), f"Rule '{rule_id}' is mapped but enrichment returned empty waf_codes"
             assert e.waf_titles, f"Rule '{rule_id}' enrichment returned empty waf_titles"
             assert e.microsoft_urls, f"Rule '{rule_id}' enrichment returned empty microsoft_urls"
 
 
 # ── Missing mapping ───────────────────────────────────────────────────────────
+
 
 class TestMissingMapping:
     def test_missing_mapping_is_not_mapped(self, real_catalog: WafCatalog) -> None:
@@ -122,6 +124,7 @@ class TestMissingMapping:
 
 
 # ── Catalog integrity violations ──────────────────────────────────────────────
+
 
 class TestCatalogIntegrityViolations:
     def test_invalid_control_code_in_mapping_raises(self, tmp_path: Path) -> None:
@@ -165,10 +168,13 @@ class TestCatalogIntegrityViolations:
 
 # ── Empty catalog startup failure ─────────────────────────────────────────────
 
+
 class TestEmptyCatalogStartupFailure:
     def test_zero_controls_raises_catalog_startup_error(self, tmp_path: Path) -> None:
         (tmp_path / "waf_controls.json").write_text("[]", encoding="utf-8")
-        (tmp_path / "waf_control_mapping.json").write_text('{"RULE-A": ["SE-01"]}', encoding="utf-8")
+        (tmp_path / "waf_control_mapping.json").write_text(
+            '{"RULE-A": ["SE-01"]}', encoding="utf-8"
+        )
         catalog = WafCatalog(
             controls_path=tmp_path / "waf_controls.json",
             mapping_path=tmp_path / "waf_control_mapping.json",
@@ -196,6 +202,7 @@ class TestEmptyCatalogStartupFailure:
 
 # ── WafEnrichmentError ────────────────────────────────────────────────────────
 
+
 class TestWafEnrichmentError:
     def test_enrichment_error_lists_rule_ids(self) -> None:
         exc = WafEnrichmentError(["RULE-B", "RULE-A", "RULE-A"])
@@ -207,11 +214,13 @@ class TestWafEnrichmentError:
 
     def test_enrichment_error_is_domain_error(self) -> None:
         from waf_shared.domain.errors.domain_errors import DomainError
+
         exc = WafEnrichmentError(["RULE-X"])
         assert isinstance(exc, DomainError)
 
 
 # ── Coverage report ───────────────────────────────────────────────────────────
+
 
 class TestBuildCoverageReport:
     def test_complete_coverage(self, tmp_path: Path) -> None:

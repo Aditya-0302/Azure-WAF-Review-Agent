@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
 
 import asyncpg
 
@@ -82,8 +81,7 @@ class ReportRepository(BaseRepository):
         report_id: uuid.UUID,
     ) -> AssessmentReport | None:
         row = await self._read_one(
-            f"SELECT {_COLS} FROM assessment_reports "
-            "WHERE tenant_id = $1 AND id = $2",
+            f"SELECT {_COLS} FROM assessment_reports " "WHERE tenant_id = $1 AND id = $2",
             tenant_id,
             tenant_id,
             report_id,

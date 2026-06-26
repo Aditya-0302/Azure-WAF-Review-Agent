@@ -7,17 +7,21 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from waf_shared.db.models.base import Base, TimestampMixin
 
 _plan_tier = sa.Enum(
-    "standard", "premium", "enterprise",
+    "standard",
+    "premium",
+    "enterprise",
     name="plan_tier",
     create_type=False,
 )
 _user_role = sa.Enum(
-    "tenant_admin", "tenant_viewer", "platform_admin",
+    "tenant_admin",
+    "tenant_viewer",
+    "platform_admin",
     name="user_role",
     create_type=False,
 )

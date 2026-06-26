@@ -41,7 +41,7 @@ def normalize_jsonb(value: Any) -> dict[str, Any] | list[Any] | None:
     """
     if value is None:
         return None
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return value
     if isinstance(value, str):
         return json.loads(value)

@@ -114,11 +114,12 @@ class CoverageReport:
     def write_json(self, path: str) -> None:
         import json
         from pathlib import Path
+
         Path(path).write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
 
 
 def compute_coverage(
-    catalog: "WafCatalog",
+    catalog: WafCatalog,
     rule_evaluation_types: dict[str, str],
 ) -> CoverageReport:
     """Compute WAF framework coverage given a mapping of rule_id → evaluation_type.
@@ -159,14 +160,16 @@ def compute_coverage(
         else:
             status = CoverageStatus.NOT_IMPLEMENTED
 
-        controls.append(ControlCoverage(
-            code=ctrl.code,
-            pillar=ctrl.pillar,
-            title=ctrl.title,
-            microsoft_url=ctrl.microsoft_url,
-            status=status,
-            rule_ids=all_rules,
-        ))
+        controls.append(
+            ControlCoverage(
+                code=ctrl.code,
+                pillar=ctrl.pillar,
+                title=ctrl.title,
+                microsoft_url=ctrl.microsoft_url,
+                status=status,
+                rule_ids=all_rules,
+            )
+        )
 
         p = ctrl.pillar
         if p not in pillar_stats:

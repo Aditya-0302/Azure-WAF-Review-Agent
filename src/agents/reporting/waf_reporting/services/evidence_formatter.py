@@ -13,29 +13,29 @@ Never raises — all methods are fully defensive.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from waf_shared.domain.models.finding import Finding
 
-
 # ---------------------------------------------------------------------------
 # Output dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class FormattedFindingCard:
     """Presentation-ready evidence card derived from one Finding."""
 
     # ── Resource identity ───────────────────────────────────────────────────
-    resource_name: str          # last segment of resource_id
-    resource_type: str          # e.g. Microsoft.Storage/storageAccounts
-    subscription_id: str        # parsed from resource_id; "" if absent
-    resource_group: str         # parsed from resource_id; "" if absent
+    resource_name: str  # last segment of resource_id
+    resource_type: str  # e.g. Microsoft.Storage/storageAccounts
+    subscription_id: str  # parsed from resource_id; "" if absent
+    resource_group: str  # parsed from resource_id; "" if absent
 
     # ── Evaluation metadata ─────────────────────────────────────────────────
-    evaluation_method: str      # "Deterministic Rule" | "LLM Review"
-    confidence_pct: int         # 0–100
+    evaluation_method: str  # "Deterministic Rule" | "LLM Review"
+    confidence_pct: int  # 0–100
 
     # ── Evidence table rows [(label, value)] ────────────────────────────────
     evidence_rows: tuple[tuple[str, str], ...]
@@ -55,6 +55,7 @@ class FormattedFindingCard:
 # ---------------------------------------------------------------------------
 # Azure resource-ID parser
 # ---------------------------------------------------------------------------
+
 
 def _parse_resource_id(resource_id: str) -> dict[str, str]:
     """Extract name, subscription, and resource-group from an ARM resource ID.
@@ -90,6 +91,7 @@ def _parse_resource_id(resource_id: str) -> dict[str, str]:
 # Evaluation method label
 # ---------------------------------------------------------------------------
 
+
 def _evaluation_method(evaluation_type: str) -> str:
     t = (evaluation_type or "").lower()
     if t in ("llm", "ai", "llm_review", "llm-review"):
@@ -103,29 +105,38 @@ def _evaluation_method(evaluation_type: str) -> str:
 
 # Human-readable label map for common evidence field names
 _EVIDENCE_LABEL_MAP: dict[str, str] = {
-    "observed_value":   "Observed Value",
-    "expected_value":   "Expected Value",
-    "property":         "Property",
-    "property_path":    "Property Path",
-    "source":           "Source",
-    "api_version":      "API Version",
-    "policy_effect":    "Policy Effect",
-    "rule":             "Rule",
-    "result":           "Result",
-    "status":           "Status",
-    "value":            "Value",
-    "current":          "Current Setting",
-    "required":         "Required Setting",
-    "description":      "Description",
-    "control":          "Control",
-    "resource":         "Resource",
+    "observed_value": "Observed Value",
+    "expected_value": "Expected Value",
+    "property": "Property",
+    "property_path": "Property Path",
+    "source": "Source",
+    "api_version": "API Version",
+    "policy_effect": "Policy Effect",
+    "rule": "Rule",
+    "result": "Result",
+    "status": "Status",
+    "value": "Value",
+    "current": "Current Setting",
+    "required": "Required Setting",
+    "description": "Description",
+    "control": "Control",
+    "resource": "Resource",
 }
 
 # Fields redacted for security
-_REDACT_KEYS = frozenset({
-    "password", "secret", "token", "key", "certificate",
-    "sas", "connectionstring", "credential", "apikey",
-})
+_REDACT_KEYS = frozenset(
+    {
+        "password",
+        "secret",
+        "token",
+        "key",
+        "certificate",
+        "sas",
+        "connectionstring",
+        "credential",
+        "apikey",
+    }
+)
 
 
 def _is_sensitive(key: str) -> bool:
@@ -138,9 +149,9 @@ def _format_value(v: Any) -> str:
         return "null"
     if isinstance(v, bool):
         return str(v).lower()
-    if isinstance(v, (int, float)):
+    if isinstance(v, int | float):
         return str(v)
-    if isinstance(v, (list, dict)):
+    if isinstance(v, list | dict):
         s = str(v)
         return s if len(s) <= 120 else s[:119] + "…"
     s = str(v)
@@ -159,9 +170,19 @@ def _build_evidence_rows(evidence: dict[str, Any]) -> tuple[tuple[str, str], ...
     try:
         # Priority display order
         priority_keys = [
-            "observed_value", "expected_value", "property", "property_path",
-            "source", "api_version", "status", "result", "value",
-            "current", "required", "policy_effect", "rule",
+            "observed_value",
+            "expected_value",
+            "property",
+            "property_path",
+            "source",
+            "api_version",
+            "status",
+            "result",
+            "value",
+            "current",
+            "required",
+            "policy_effect",
+            "rule",
         ]
         rows: list[tuple[str, str]] = []
         seen: set[str] = set()
@@ -311,9 +332,8 @@ _BUSINESS_IMPACT_DEFAULT: dict[str, str] = {
 
 
 def _get_business_impact(severity: str, pillar: str) -> str:
-    return (
-        _BUSINESS_IMPACT.get((severity.lower(), pillar.lower()))
-        or _BUSINESS_IMPACT_DEFAULT.get(severity.lower(), _BUSINESS_IMPACT_DEFAULT["informational"])
+    return _BUSINESS_IMPACT.get((severity.lower(), pillar.lower())) or _BUSINESS_IMPACT_DEFAULT.get(
+        severity.lower(), _BUSINESS_IMPACT_DEFAULT["informational"]
     )
 
 
@@ -322,10 +342,10 @@ def _get_business_impact(severity: str, pillar: str) -> str:
 # ---------------------------------------------------------------------------
 
 _REMEDIATION_PRIORITY: dict[str, str] = {
-    "critical":      "Immediate (within 24 hours)",
-    "high":          "Within 7 days",
-    "medium":        "Within 30 days",
-    "low":           "Next maintenance cycle",
+    "critical": "Immediate (within 24 hours)",
+    "high": "Within 7 days",
+    "medium": "Within 30 days",
+    "low": "Next maintenance cycle",
     "informational": "Monitor / Review quarterly",
 }
 
@@ -340,43 +360,91 @@ def _get_remediation_priority(severity: str) -> str:
 
 # Prefix-based verification guidance (checked in order; first match wins)
 _VERIFICATION_PREFIXES: list[tuple[str, str]] = [
-    ("SEC-CR-",    "Re-run the container registry assessment. Confirm content trust "
-                   "policy is enabled and all image pulls require signature verification."),
-    ("SEC-KV-",    "Re-run the Key Vault assessment. Confirm soft-delete, purge "
-                   "protection, and private endpoint settings reflect the expected values."),
-    ("SEC-NET-",   "Re-run the network security assessment. Confirm NSG rules, "
-                   "firewall policies, and private endpoint configurations are in effect."),
-    ("SEC-DEF-",   "Re-run the Defender for Cloud assessment. Confirm all recommended "
-                   "Defender plans are enabled and security alerts are routed correctly."),
-    ("SEC-",       "Re-run the security assessment after applying the recommended "
-                   "configuration change. Confirm the observed value matches the expected "
-                   "value in the assessment evidence."),
-    ("REL-AGW-",   "Re-run the Application Gateway assessment. Confirm health probe "
-                   "settings, WAF policies, and autoscale configuration are correct."),
-    ("REL-SB-",    "Re-run the Service Bus assessment. Confirm geo-redundancy, "
-                   "premium tier settings, and message lock durations are correct."),
-    ("REL-ASR-",   "Re-run the Site Recovery assessment. Confirm replication health "
-                   "status and recovery point objectives meet the required targets."),
-    ("REL-",       "Re-run the reliability assessment after applying the recommended "
-                   "change. Confirm redundancy, replication, and health probe settings "
-                   "reflect the expected configuration."),
-    ("OPS-DIAG-",  "Re-run the diagnostics assessment. Confirm diagnostic settings "
-                   "are enabled and logs are flowing to the expected destination workspace."),
-    ("OPS-SLOT-",  "Re-run the deployment slot assessment. Confirm the production slot "
-                   "has traffic routing and staging slot configurations correctly set."),
-    ("OPS-MON-",   "Re-run the monitoring assessment. Confirm alerts are active and "
-                   "routed to the correct action groups."),
-    ("OPS-",       "Re-run the operational assessment after applying the recommended "
-                   "change. Confirm monitoring, alerting, and diagnostic settings are "
-                   "correctly configured."),
-    ("PER-",       "Re-run the performance assessment after applying the recommended "
-                   "change. Confirm autoscale policies, cache settings, and load "
-                   "balancing configurations are in effect."),
-    ("CST-BUDGET-","Re-run the cost assessment. Confirm budget alerts are active and "
-                   "spending thresholds are correctly set for the subscription."),
-    ("CST-",       "Re-run the cost assessment after applying the recommended change. "
-                   "Confirm resource sizing, reserved capacity, and tagging policies "
-                   "are correctly configured."),
+    (
+        "SEC-CR-",
+        "Re-run the container registry assessment. Confirm content trust "
+        "policy is enabled and all image pulls require signature verification.",
+    ),
+    (
+        "SEC-KV-",
+        "Re-run the Key Vault assessment. Confirm soft-delete, purge "
+        "protection, and private endpoint settings reflect the expected values.",
+    ),
+    (
+        "SEC-NET-",
+        "Re-run the network security assessment. Confirm NSG rules, "
+        "firewall policies, and private endpoint configurations are in effect.",
+    ),
+    (
+        "SEC-DEF-",
+        "Re-run the Defender for Cloud assessment. Confirm all recommended "
+        "Defender plans are enabled and security alerts are routed correctly.",
+    ),
+    (
+        "SEC-",
+        "Re-run the security assessment after applying the recommended "
+        "configuration change. Confirm the observed value matches the expected "
+        "value in the assessment evidence.",
+    ),
+    (
+        "REL-AGW-",
+        "Re-run the Application Gateway assessment. Confirm health probe "
+        "settings, WAF policies, and autoscale configuration are correct.",
+    ),
+    (
+        "REL-SB-",
+        "Re-run the Service Bus assessment. Confirm geo-redundancy, "
+        "premium tier settings, and message lock durations are correct.",
+    ),
+    (
+        "REL-ASR-",
+        "Re-run the Site Recovery assessment. Confirm replication health "
+        "status and recovery point objectives meet the required targets.",
+    ),
+    (
+        "REL-",
+        "Re-run the reliability assessment after applying the recommended "
+        "change. Confirm redundancy, replication, and health probe settings "
+        "reflect the expected configuration.",
+    ),
+    (
+        "OPS-DIAG-",
+        "Re-run the diagnostics assessment. Confirm diagnostic settings "
+        "are enabled and logs are flowing to the expected destination workspace.",
+    ),
+    (
+        "OPS-SLOT-",
+        "Re-run the deployment slot assessment. Confirm the production slot "
+        "has traffic routing and staging slot configurations correctly set.",
+    ),
+    (
+        "OPS-MON-",
+        "Re-run the monitoring assessment. Confirm alerts are active and "
+        "routed to the correct action groups.",
+    ),
+    (
+        "OPS-",
+        "Re-run the operational assessment after applying the recommended "
+        "change. Confirm monitoring, alerting, and diagnostic settings are "
+        "correctly configured.",
+    ),
+    (
+        "PER-",
+        "Re-run the performance assessment after applying the recommended "
+        "change. Confirm autoscale policies, cache settings, and load "
+        "balancing configurations are in effect.",
+    ),
+    (
+        "CST-BUDGET-",
+        "Re-run the cost assessment. Confirm budget alerts are active and "
+        "spending thresholds are correctly set for the subscription.",
+    ),
+    (
+        "CST-",
+        "Re-run the cost assessment after applying the recommended change. "
+        "Confirm resource sizing, reserved capacity, and tagging policies "
+        "are correctly configured.",
+    ),
 ]
 
 _VERIFICATION_DEFAULT = (
@@ -410,6 +478,7 @@ def _get_verification_step(rule_id: str, evidence: dict[str, Any]) -> str:
 # WAF controls builder
 # ---------------------------------------------------------------------------
 
+
 def _build_waf_controls(
     codes: list[str],
     titles: list[str],
@@ -432,6 +501,7 @@ def _build_waf_controls(
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def format_finding_card(finding: Finding) -> FormattedFindingCard:
     """Build a FormattedFindingCard from an existing Finding.
 
@@ -446,23 +516,21 @@ def format_finding_card(finding: Finding) -> FormattedFindingCard:
         verification = _get_verification_step(finding.rule_id, ev)
 
         return FormattedFindingCard(
-            resource_name      = resource_parts["name"] or finding.resource_id,
-            resource_type      = finding.resource_type or "",
-            subscription_id    = resource_parts["subscription"],
-            resource_group     = resource_parts["resource_group"],
-            evaluation_method  = _evaluation_method(finding.evaluation_type or ""),
-            confidence_pct     = max(0, min(100, round(finding.confidence_score * 100))),
-            evidence_rows      = evidence_rows,
-            microsoft_urls     = tuple(u for u in (finding.microsoft_urls or []) if u),
-            waf_controls       = _build_waf_controls(
-                                     finding.waf_codes or [],
-                                     finding.waf_titles or [],
-                                 ),
-            business_impact_text      = _get_business_impact(
-                                            finding.severity.value, finding.pillar
-                                        ),
-            remediation_priority_label = _get_remediation_priority(finding.severity.value),
-            verification_step          = verification,
+            resource_name=resource_parts["name"] or finding.resource_id,
+            resource_type=finding.resource_type or "",
+            subscription_id=resource_parts["subscription"],
+            resource_group=resource_parts["resource_group"],
+            evaluation_method=_evaluation_method(finding.evaluation_type or ""),
+            confidence_pct=max(0, min(100, round(finding.confidence_score * 100))),
+            evidence_rows=evidence_rows,
+            microsoft_urls=tuple(u for u in (finding.microsoft_urls or []) if u),
+            waf_controls=_build_waf_controls(
+                finding.waf_codes or [],
+                finding.waf_titles or [],
+            ),
+            business_impact_text=_get_business_impact(finding.severity.value, finding.pillar),
+            remediation_priority_label=_get_remediation_priority(finding.severity.value),
+            verification_step=verification,
         )
     except Exception:
         # Ultimate fallback — empty card that never breaks report generation

@@ -19,6 +19,7 @@ pytestmark = pytest.mark.integration
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _slug(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:6]}"
 
@@ -38,6 +39,7 @@ async def _insert_tenant(pool, *, tenant_id: uuid.UUID | None = None) -> uuid.UU
 
 
 # ── Tenant Repository ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_tenant_create_and_get_by_id(db_pool, clean_db) -> None:  # type: ignore[no-untyped-def]
@@ -157,6 +159,7 @@ async def test_tenant_quota_upsert(db_pool, clean_db) -> None:  # type: ignore[n
 
 
 # ── Assessment Repository ─────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_assessment_create_and_get(db_pool, clean_db) -> None:  # type: ignore[no-untyped-def]
@@ -322,12 +325,13 @@ async def test_assessment_cross_tenant_isolation(db_pool, clean_db) -> None:  # 
     # Querying as tenant_B must return nothing
     results = await repo.list_by_tenant(tenant_b)
     tenant_a_ids = {r.tenant_id for r in results}
-    assert tenant_a not in tenant_a_ids, (
-        f"CRITICAL: Cross-tenant data leak — tenant_B query returned tenant_A assessments"
-    )
+    assert (
+        tenant_a not in tenant_a_ids
+    ), "CRITICAL: Cross-tenant data leak — tenant_B query returned tenant_A assessments"
 
 
 # ── Unit of Work ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_uow_commit_on_clean_exit(db_pool, clean_db) -> None:  # type: ignore[no-untyped-def]
@@ -441,6 +445,7 @@ async def test_uow_rollback_on_exception(db_pool, clean_db) -> None:  # type: ig
 
 
 # ── WAF Rule Repository ───────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_rule_upsert_and_get(db_pool, clean_db) -> None:  # type: ignore[no-untyped-def]

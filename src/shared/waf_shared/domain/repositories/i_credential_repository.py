@@ -25,9 +25,7 @@ class ICredentialRepository(ABC):
     ) -> SubscriptionCredential | None: ...
 
     @abstractmethod
-    async def create(
-        self, credential: SubscriptionCredential
-    ) -> SubscriptionCredential: ...
+    async def create(self, credential: SubscriptionCredential) -> SubscriptionCredential: ...
 
     @abstractmethod
     async def update_health(

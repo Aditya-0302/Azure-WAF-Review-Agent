@@ -5,16 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
-
-from waf_shared.db.pool import DatabasePool
-from waf_shared.domain.models.human_review import (
-    HumanReviewAssessment,
-    HumanReviewControl,
-    HumanReviewSummary,
-)
-from waf_shared.domain.models.tenant import UserRole
-from waf_shared.telemetry.logging import StructuredLogger
+from fastapi import APIRouter, Depends, status
 
 from waf_api.dependencies.db import get_db_pool
 from waf_api.dependencies.rbac import require_role
@@ -23,6 +14,14 @@ from waf_api.schemas.requests.human_review_requests import (
     UpdateHumanReviewSchema,
 )
 from waf_api.services.human_review_service import HumanReviewService
+from waf_shared.db.pool import DatabasePool
+from waf_shared.domain.models.human_review import (
+    HumanReviewAssessment,
+    HumanReviewControl,
+    HumanReviewSummary,
+)
+from waf_shared.domain.models.tenant import UserRole
+from waf_shared.telemetry.logging import StructuredLogger
 
 router = APIRouter(prefix="/v1/human-review", tags=["human-review"])
 _logger = StructuredLogger(service="waf-api", version="0.1.0")
@@ -33,6 +32,7 @@ def _get_service(pool: DatabasePool = Depends(get_db_pool)) -> HumanReviewServic
 
 
 # ── Control catalog ────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/controls",
@@ -80,6 +80,7 @@ async def get_control(
 
 
 # ── Review lifecycle ────────────────────────────────────────────────────────────
+
 
 @router.get(
     "/assessments/{assessment_id}/reviews",
@@ -189,19 +190,27 @@ async def update_review(
 
     compliance_status = body.compliance_status or existing.compliance_status.value
     score = body.score if body.score is not None else existing.score
-    answers = [a.model_dump() for a in body.answers] if body.answers is not None else [
-        {"question_id": a.question_id, "answer": a.answer, "notes": a.notes}
-        for a in existing.answers
-    ]
-    evidence_refs = [e.model_dump() for e in body.evidence_refs] if body.evidence_refs is not None else [
-        {
-            "evidence_type": e.evidence_type.value,
-            "url_or_filename": e.url_or_filename,
-            "description": e.description,
-            "uploaded_at": e.uploaded_at.isoformat(),
-        }
-        for e in existing.evidence_refs
-    ]
+    answers = (
+        [a.model_dump() for a in body.answers]
+        if body.answers is not None
+        else [
+            {"question_id": a.question_id, "answer": a.answer, "notes": a.notes}
+            for a in existing.answers
+        ]
+    )
+    evidence_refs = (
+        [e.model_dump() for e in body.evidence_refs]
+        if body.evidence_refs is not None
+        else [
+            {
+                "evidence_type": e.evidence_type.value,
+                "url_or_filename": e.url_or_filename,
+                "description": e.description,
+                "uploaded_at": e.uploaded_at.isoformat(),
+            }
+            for e in existing.evidence_refs
+        ]
+    )
     comments = body.comments if body.comments is not None else existing.comments
 
     return await svc.submit_review(
@@ -218,6 +227,7 @@ async def update_review(
 
 
 # ── Executive dashboard summary ────────────────────────────────────────────────
+
 
 @router.get(
     "/assessments/{assessment_id}/summary",

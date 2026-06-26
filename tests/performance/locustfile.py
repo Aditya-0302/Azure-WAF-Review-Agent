@@ -27,8 +27,6 @@ import uuid
 from typing import Any
 
 from locust import HttpUser, between, events, task
-from locust.contrib.fasthttp import FastHttpUser
-
 
 # ---------------------------------------------------------------------------
 # Configuration

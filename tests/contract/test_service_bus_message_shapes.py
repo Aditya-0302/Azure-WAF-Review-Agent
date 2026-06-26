@@ -27,7 +27,6 @@ from waf_shared.domain.events.assessment_events import (
 )
 from waf_shared.domain.events.base import CloudEventEnvelope
 
-
 pytestmark = pytest.mark.contract
 
 
@@ -97,8 +96,13 @@ class TestAssessmentCreatedContract:
         )
         data = json.loads(env.to_json_bytes())["data"]
 
-        for field in ("assessment_id", "tenant_id", "subscription_ids",
-                      "pillar_filter", "created_at"):
+        for field in (
+            "assessment_id",
+            "tenant_id",
+            "subscription_ids",
+            "pillar_filter",
+            "created_at",
+        ):
             assert field in data, f"Missing data field: {field}"
 
     def test_subscription_ids_is_list(self) -> None:
@@ -163,8 +167,14 @@ class TestExtractionRequestedContract:
             ).to_json_bytes()
         )["data"]
 
-        for field in ("assessment_id", "tenant_id", "batch_id",
-                      "subscription_id", "batch_index", "resource_ids"):
+        for field in (
+            "assessment_id",
+            "tenant_id",
+            "batch_id",
+            "subscription_id",
+            "batch_index",
+            "resource_ids",
+        ):
             assert field in data, f"Missing data field: {field}"
 
     def test_resource_ids_non_empty(self) -> None:

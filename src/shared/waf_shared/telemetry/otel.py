@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from opentelemetry import metrics, trace
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader

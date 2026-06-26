@@ -6,20 +6,31 @@ import json
 from pathlib import Path
 
 import pytest
-
 from waf_catalog.catalog import WafCatalog
 from waf_catalog.validator import CatalogValidationError, validate_catalog
 
 _VALID_CONTROLS = [
     {
-        "code": "SE-07", "pillar": "Security", "title": "Protect secrets",
-        "description": ".", "microsoft_url": "https://example.com/SE-07",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "SE-07",
+        "pillar": "Security",
+        "title": "Protect secrets",
+        "description": ".",
+        "microsoft_url": "https://example.com/SE-07",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
     {
-        "code": "RE-02", "pillar": "Reliability", "title": "Design for redundancy",
-        "description": ".", "microsoft_url": "https://example.com/RE-02",
-        "keywords": [], "applicable_resource_types": ["*"], "version": "2024", "status": "active",
+        "code": "RE-02",
+        "pillar": "Reliability",
+        "title": "Design for redundancy",
+        "description": ".",
+        "microsoft_url": "https://example.com/RE-02",
+        "keywords": [],
+        "applicable_resource_types": ["*"],
+        "version": "2024",
+        "status": "active",
     },
 ]
 
@@ -55,7 +66,9 @@ class TestValidateCatalog:
     def test_mapping_to_unknown_code_raises(self, tmp_path: Path) -> None:
         bad_mapping = {"SEC-KV-001": ["SE-07", "XX-99"]}
         (tmp_path / "waf_controls.json").write_text(json.dumps(_VALID_CONTROLS), encoding="utf-8")
-        (tmp_path / "waf_control_mapping.json").write_text(json.dumps(bad_mapping), encoding="utf-8")
+        (tmp_path / "waf_control_mapping.json").write_text(
+            json.dumps(bad_mapping), encoding="utf-8"
+        )
         catalog = WafCatalog(
             controls_path=tmp_path / "waf_controls.json",
             mapping_path=tmp_path / "waf_control_mapping.json",
@@ -94,7 +107,9 @@ class TestValidateCatalog:
             "RULE-B": ["YY-00"],
         }
         (tmp_path / "waf_controls.json").write_text(json.dumps(_VALID_CONTROLS), encoding="utf-8")
-        (tmp_path / "waf_control_mapping.json").write_text(json.dumps(bad_mapping), encoding="utf-8")
+        (tmp_path / "waf_control_mapping.json").write_text(
+            json.dumps(bad_mapping), encoding="utf-8"
+        )
         catalog = WafCatalog(
             controls_path=tmp_path / "waf_controls.json",
             mapping_path=tmp_path / "waf_control_mapping.json",
