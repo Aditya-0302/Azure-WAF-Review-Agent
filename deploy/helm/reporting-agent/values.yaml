@@ -1,0 +1,66 @@
+# Default values for waf-reporting-agent.
+# Override per-environment in values-<env>.yaml or via --set flags.
+
+replicaCount: 1  # Overridden by KEDA at runtime (1–3 replicas).
+
+image:
+  repository: wafagentacr.azurecr.io/waf-reporting-agent
+  pullPolicy: Always
+  tag: ""  # Defaults to Chart.appVersion if empty.
+
+# Azure Workload Identity — bound to mi-waf-reporting-agent managed identity.
+serviceAccount:
+  name: waf-reporting-agent
+  annotations:
+    azure.workload.identity/client-id: ""  # Set per-environment.
+
+# reportlab PDF generation is CPU-intensive; limits are generous accordingly.
+resources:
+  requests:
+    cpu: "1000m"
+    memory: "2Gi"
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+
+nodeSelector:
+  agentpool: reportpool  # D4s_v5 dedicated node pool.
+
+tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "reporting"
+    effect: "NoSchedule"
+
+# Pod Disruption Budget — keep at least 1 pod available during node drains.
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# All values come from environment variables; no secrets in chart.
+# Secrets arrive via CSI Secret Store mounts (Key Vault → pod filesystem).
+env:
+  REPORTING_SERVICE_BUS_NAMESPACE: ""   # e.g. "mynamespace.servicebus.windows.net"
+  REPORTING_DATABASE_URL: ""            # asyncpg DSN — set via sealed secret
+  REPORTING_DATABASE_URL_READONLY: ""   # asyncpg DSN — read replica
+  REPORTING_KEYVAULT_URI: ""            # e.g. "https://my-vault.vault.azure.net"
+  REPORTING_STORAGE_ACCOUNT_URL: ""     # e.g. "https://myacct.blob.core.windows.net"
+  REPORTING_STORAGE_CONTAINER_NAME: "waf-reports"
+
+# Liveness probe — the consumer loop doesn't expose HTTP; use process check.
+livenessProbe:
+  exec:
+    command: ["python", "-c", "import waf_reporting.main"]
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  failureThreshold: 3
+
+# KEDA autoscaling configuration (see templates/keda-scaledobject.yaml).
+keda:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  # Scale up when messageCount >= 1 (one pod per queued report).
+  triggerMessageCount: 1
+  # connectionFromEnv must reference a Service Bus connection secret name.
+  serviceBusConnectionSecretName: "waf-reporting-servicebus-secret"

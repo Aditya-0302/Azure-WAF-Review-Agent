@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-06-22",
+  "generated_by": "Phase 3 coverage expansion — scripts/validate_waf_catalog.py --write-reports",
+  "catalog_valid": true,
+  "framework_version": "2024",
+  "coverage_percentage": 93.0,
+  "total_controls": 57,
+  "covered_controls": 53,
+  "not_implemented_controls": 4,
+  "mapped_rules": 93,
+  "gap_percentage": 7.0,
+  "framework_changes": false,
+  "phase3_new_rules": 15,
+  "phase3_newly_covered_controls": 21,
+  "human_review_required": ["SE-10", "OE-03", "OE-04", "CO-09"],
+  "pillar_summary": {
+    "Security": {
+      "total": 12,
+      "covered": 11,
+      "percentage": 91.7,
+      "not_covered_codes": ["SE-10"],
+      "newly_covered_codes": ["SE-02", "SE-06", "SE-09"],
+      "coverage_delta": "+25.0pp (66.7% → 91.7%)"
+    },
+    "Reliability": {
+      "total": 9,
+      "covered": 9,
+      "percentage": 100.0,
+      "not_covered_codes": [],
+      "newly_covered_codes": ["RE-04", "RE-06", "RE-09"],
+      "coverage_delta": "+33.3pp (66.7% → 100.0%)"
+    },
+    "Operational Excellence": {
+      "total": 12,
+      "covered": 10,
+      "percentage": 83.3,
+      "not_covered_codes": ["OE-03", "OE-04"],
+      "newly_covered_codes": ["OE-02", "OE-08", "OE-09", "OE-10", "OE-11"],
+      "coverage_delta": "+41.6pp (41.7% → 83.3%)"
+    },
+    "Performance Efficiency": {
+      "total": 12,
+      "covered": 12,
+      "percentage": 100.0,
+      "not_covered_codes": [],
+      "newly_covered_codes": ["PE-01", "PE-03", "PE-04", "PE-09", "PE-12"],
+      "coverage_delta": "+41.7pp (58.3% → 100.0%)"
+    },
+    "Cost Optimization": {
+      "total": 12,
+      "covered": 11,
+      "percentage": 91.7,
+      "not_covered_codes": ["CO-09"],
+      "newly_covered_codes": ["CO-01", "CO-02", "CO-04", "CO-08", "CO-12"],
+      "coverage_delta": "+41.7pp (50.0% → 91.7%)"
+    }
+  }
+}

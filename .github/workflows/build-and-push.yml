@@ -1,0 +1,258 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag_override:
+        description: "Image tag override (leave empty to use commit SHA)"
+        required: false
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: wafagentacr.azurecr.io
+  # Short SHA used as default image tag; semver tags get both SHA and version.
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # ── Determine tag ────────────────────────────────────────────────────────────
+  meta:
+    name: Resolve image tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      is_release: ${{ steps.resolve.outputs.is_release }}
+    steps:
+      - id: resolve
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag_override }}" ]]; then
+            echo "tag=${{ inputs.tag_override }}" >> "$GITHUB_OUTPUT"
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Login to ACR ─────────────────────────────────────────────────────────────
+  login:
+    name: ACR login
+    needs: meta
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # OIDC federated identity for ACR push.
+      contents: read
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name wafagentacr
+
+  # ── Build images in parallel ──────────────────────────────────────────────────
+  build-api:
+    name: Build waf-api
+    needs: [meta, login]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name wafagentacr
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build & push waf-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/api/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/waf-api:${{ needs.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/waf-api:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/waf-api:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/waf-api:buildcache,mode=max
+          provenance: true
+          sbom: true
+
+  build-preparation:
+    name: Build preparation-agent
+    needs: [meta, login]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name wafagentacr
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/agents/preparation/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/waf-preparation-agent:${{ needs.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/waf-preparation-agent:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/waf-preparation-agent:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/waf-preparation-agent:buildcache,mode=max
+
+  build-extraction:
+    name: Build extraction-agent
+    needs: [meta, login]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name wafagentacr
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/agents/extraction/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/waf-extraction-agent:${{ needs.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/waf-extraction-agent:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/waf-extraction-agent:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/waf-extraction-agent:buildcache,mode=max
+
+  build-reasoning:
+    name: Build reasoning-agent
+    needs: [meta, login]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name wafagentacr
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/agents/reasoning/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/waf-reasoning-agent:${{ needs.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/waf-reasoning-agent:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/waf-reasoning-agent:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/waf-reasoning-agent:buildcache,mode=max
+
+  build-reporting:
+    name: Build reporting-agent
+    needs: [meta, login]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name wafagentacr
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/agents/reporting/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/waf-reporting-agent:${{ needs.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/waf-reporting-agent:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/waf-reporting-agent:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/waf-reporting-agent:buildcache,mode=max
+
+  # ── Vulnerability scan (blocking on CRITICAL/HIGH) ──────────────────────────
+  scan:
+    name: Trivy vulnerability scan
+    needs: [meta, build-api, build-preparation, build-extraction, build-reasoning, build-reporting]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        image:
+          - waf-api
+          - waf-preparation-agent
+          - waf-extraction-agent
+          - waf-reasoning-agent
+          - waf-reporting-agent
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - run: az acr login --name wafagentacr
+
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ matrix.image }}:${{ needs.meta.outputs.tag }}
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+
+  # ── Signal: all images built and scanned ─────────────────────────────────────
+  images-ready:
+    name: All images ready
+    needs: [meta, scan]
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ needs.meta.outputs.tag }}
+      is_release: ${{ needs.meta.outputs.is_release }}
+    steps:
+      - run: echo "All images built, pushed, and scanned. Tag=${{ needs.meta.outputs.tag }}"

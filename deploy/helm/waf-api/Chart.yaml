@@ -1,0 +1,16 @@
+apiVersion: v2
+name: waf-api
+description: >
+  WAF Review Agent API tier. Exposes REST endpoints for tenant management,
+  assessment submission, finding retrieval, and report download. Runs behind
+  AGIC (Application Gateway Ingress Controller) with JWT authentication.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - waf
+  - azure
+  - api
+  - fastapi
+maintainers:
+  - name: WAF Agent Platform Team

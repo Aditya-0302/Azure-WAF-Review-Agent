@@ -1,0 +1,223 @@
+{
+  "_comment": "Maps each WAF rule_id to one or more WAF control codes. Every rule MUST have at least one mapping or the CI validator will fail the build.",
+  "schema_version": "1.0",
+
+  "SEC-KV-001": ["SE-07", "SE-12"],
+  "SEC-KV-002": ["SE-04", "SE-07"],
+  "SEC-KV-003": ["SE-05", "SE-07"],
+  "SEC-KV-004": ["SE-05"],
+  "SEC-KV-005": ["SE-11"],
+
+  "SEC-STOR-001": ["SE-03"],
+  "SEC-STOR-002": ["SE-03"],
+  "SEC-STOR-003": ["SE-03", "SE-04"],
+  "SEC-STOR-004": ["SE-04"],
+  "SEC-STOR-005": ["SE-03"],
+
+  "SEC-NET-001": ["SE-04"],
+  "SEC-NET-002": ["SE-01", "SE-04"],
+  "SEC-NET-003": ["SE-11"],
+
+  "SEC-SQL-001": ["SE-03"],
+  "SEC-SQL-002": ["SE-04"],
+  "SEC-SQL-003": ["SE-05"],
+  "SEC-SQL-004": ["SE-11"],
+
+  "SEC-VM-001": ["SE-03"],
+  "SEC-VM-002": ["SE-01"],
+  "SEC-VM-003": ["SE-05"],
+
+  "SEC-APP-001": ["SE-03"],
+  "SEC-APP-002": ["SE-05"],
+  "SEC-APP-003": ["SE-05"],
+  "SEC-APP-004": ["SE-03"],
+
+  "SEC-RBAC-001": ["SE-05"],
+  "SEC-RBAC-002": ["SE-05", "SE-08"],
+
+  "REL-VM-001": ["RE-02", "RE-03"],
+  "REL-VM-002": ["RE-02"],
+  "REL-VM-003": ["RE-08"],
+  "REL-VM-004": ["RE-07"],
+
+  "REL-VMSS-001": ["RE-02", "RE-03"],
+  "REL-VMSS-002": ["RE-05"],
+
+  "REL-APP-001": ["RE-02", "RE-03"],
+  "REL-APP-002": ["RE-08"],
+  "REL-APP-003": ["RE-02"],
+
+  "REL-SQL-001": ["RE-03", "RE-08"],
+  "REL-SQL-002": ["RE-08"],
+
+  "REL-STOR-001": ["RE-02", "RE-03"],
+  "REL-STOR-002": ["RE-08"],
+  "REL-STOR-003": ["RE-08"],
+
+  "REL-LB-001": ["RE-02", "RE-03"],
+  "REL-AGW-001": ["RE-07"],
+  "REL-ARC-001": ["RE-01"],
+
+  "CST-VM-001": ["CO-06"],
+  "CST-VM-002": ["CO-11"],
+  "CST-VM-003": ["CO-05"],
+
+  "CST-DISK-001": ["CO-07"],
+  "CST-DISK-002": ["CO-06"],
+
+  "CST-IP-001": ["CO-07"],
+  "CST-LB-001": ["CO-07"],
+  "CST-AGW-001": ["CO-06"],
+  "CST-SQL-001": ["CO-06"],
+
+  "CST-STOR-001": ["CO-07"],
+  "CST-STOR-002": ["CO-07", "CO-10"],
+
+  "OPS-VM-001": ["OE-07"],
+  "OPS-VM-002": ["OE-12"],
+
+  "OPS-APP-001": ["OE-07"],
+  "OPS-APP-002": ["OE-07"],
+
+  "OPS-KV-001": ["OE-07"],
+
+  "OPS-SQL-001": ["OE-07"],
+  "OPS-SQL-002": ["OE-07"],
+
+  "OPS-TAG-001": ["OE-01", "CO-03"],
+  "OPS-LOCK-001": ["OE-06"],
+  "OPS-POL-001": ["OE-01", "OE-05"],
+  "OPS-UPD-001": ["OE-12"],
+
+  "PER-VM-001": ["PE-07"],
+  "PER-VM-002": ["PE-08"],
+  "PER-VM-003": ["PE-05"],
+
+  "PER-VMSS-001": ["PE-05"],
+  "PER-VMSS-002": ["PE-02", "PE-05"],
+
+  "PER-APP-001": ["PE-05"],
+  "PER-APP-002": ["PE-11"],
+  "PER-APP-003": ["PE-06"],
+
+  "PER-SQL-001": ["PE-08"],
+  "PER-CDN-001": ["PE-10", "PE-11"],
+  "PER-CACHE-001": ["PE-11"],
+
+  "STOR-TLS-001": ["SE-03"],
+
+  "REL-VM-999": ["RE-01"],
+
+  "SEC-CR-001":       ["SE-02", "OE-02"],
+  "SEC-DEF-001":      ["SE-02", "SE-09"],
+  "SEC-NET-004":      ["SE-06"],
+
+  "REL-AGW-002":      ["RE-04"],
+  "REL-SB-001":       ["RE-06"],
+  "REL-ASR-001":      ["RE-09"],
+
+  "OPS-DIAG-001":     ["OE-08"],
+  "OPS-SLOT-001":     ["OE-09", "OE-11"],
+  "OPS-MON-001":      ["OE-10", "PE-04"],
+
+  "PER-ALERT-001":    ["PE-01"],
+  "PER-ADV-001":      ["PE-03", "PE-09"],
+  "PER-LT-001":       ["PE-12"],
+
+  "CST-BUDGET-001":   ["CO-01", "CO-04"],
+  "CST-COST-TAG-001": ["CO-02"],
+  "CST-ADV-001":      ["CO-08", "CO-12"],
+
+  "STORAGE-SECURE-TRANSFER": ["SE-03"],
+  "STORAGE-MIN-TLS-12":      ["SE-03", "SE-04"],
+  "VM-ZONES-REVIEW":         ["RE-02", "RE-03"],
+  "PUBLIC-IP-NON-BASIC":     ["RE-02", "RE-03"],
+
+  "REL-STOR-004":   ["RE-08"],
+  "REL-LB-002":     ["RE-04", "RE-05"],
+  "REL-COSMOS-001": ["RE-02", "RE-03"],
+  "REL-AKS-001":    ["RE-02"],
+  "REL-APP-004":    ["RE-02"],
+  "REL-EH-001":     ["RE-06"],
+  "REL-MYSQL-001":  ["RE-02", "RE-08"],
+  "REL-POSTGRES-001": ["RE-02", "RE-08"],
+  "REL-REDIS-001":  ["RE-02"],
+  "REL-AGW-003":    ["RE-02"],
+
+  "CST-STOR-003":   ["CO-07", "CO-10"],
+  "CST-APP-001":    ["CO-06"],
+  "CST-SNAP-001":   ["CO-07"],
+  "CST-NIC-001":    ["CO-07"],
+  "CST-LOG-001":    ["CO-07", "CO-10"],
+  "CST-SCALE-001":  ["CO-05"],
+  "CST-PREM-001":   ["CO-06"],
+  "CST-AKS-001":    ["CO-05"],
+  "CST-AGW-002":    ["CO-06"],
+  "CST-GW-001":     ["CO-06"],
+  "CST-SQL-002":    ["CO-06"],
+  "CST-COSMOS-001": ["CO-06"],
+
+  "OPS-AKS-001":    ["OE-07", "OE-10"],
+  "OPS-AKS-002":    ["OE-12"],
+  "OPS-NSG-001":    ["OE-07"],
+  "OPS-COSMOS-001": ["OE-07", "OE-08"],
+  "OPS-STOR-001":   ["OE-08"],
+  "OPS-VMSS-001":   ["OE-12"],
+  "OPS-REDIS-001":  ["OE-07", "OE-08"],
+  "OPS-APP-003":    ["OE-09", "OE-11"],
+  "OPS-MYSQL-001":  ["OE-08"],
+  "OPS-POSTGRES-001": ["OE-08"],
+  "OPS-ACT-001":    ["OE-07", "OE-10"],
+  "OPS-SQL-003":    ["OE-07", "OE-10"],
+
+  "PER-VM-004":     ["PE-05", "PE-07"],
+  "PER-DISK-001":   ["PE-05"],
+  "PER-APP-004":    ["PE-05", "PE-06"],
+  "PER-APP-005":    ["PE-06"],
+  "PER-SQL-002":    ["PE-08"],
+  "PER-REDIS-001":  ["PE-11"],
+  "PER-LB-001":     ["PE-05"],
+  "PER-AGW-001":    ["PE-05"],
+  "PER-CDN-002":    ["PE-10"],
+  "PER-SQL-003":    ["PE-08", "PE-09"],
+  "PER-COSMOS-001": ["PE-08"],
+  "PER-AKS-001":    ["PE-05"],
+
+  "SEC-KV-006":     ["SE-01", "SE-02"],
+  "SEC-KV-007":     ["SE-06"],
+  "REL-KV-001":     ["RE-06"],
+
+  "REL-VNET-001":   ["RE-04", "RE-05"],
+  "OPS-VNET-001":   ["OE-07"],
+
+  "SEC-AFW-001":    ["SE-09"],
+  "REL-AFW-001":    ["RE-04"],
+
+  "SEC-CA-001":     ["SE-07"],
+  "REL-CA-001":     ["RE-04"],
+  "OPS-CA-001":     ["OE-07"],
+
+  "REL-AVSET-001":  ["RE-04"],
+  "REL-AVSET-002":  ["RE-04"],
+
+  "SEC-SQLMI-001":  ["SE-06"],
+  "SEC-SQLMI-002":  ["SE-07"],
+  "REL-SQLMI-001":  ["RE-04"],
+
+  "SEC-EG-001":     ["SE-06"],
+  "SEC-EG-002":     ["SE-01", "SE-02"],
+
+  "OPS-AI-001":     ["OE-07", "OE-10"],
+  "CST-AI-001":     ["CO-06"],
+
+  "OPS-AG-001":     ["OE-07", "OE-08"],
+
+  "SEC-APP-005":    ["SE-07"],
+  "SEC-APP-006":    ["SE-07"],
+  "SEC-APP-007":    ["SE-01"],
+
+  "SEC-VM-004":     ["SE-01"],
+
+  "SEC-AKS-001":    ["SE-01", "SE-02"],
+  "SEC-AKS-002":    ["SE-06"]
+}

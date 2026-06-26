@@ -1,0 +1,151 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install tooling
+        run: |
+          pip install ruff mypy bandit detect-secrets
+          pip install -e "src/shared[dev]"
+          pip install -e "src/api[dev]"
+
+      - name: ruff lint
+        run: ruff check src/ tests/
+
+      - name: ruff format check
+        run: ruff format --check src/ tests/
+
+      - name: mypy type check
+        run: mypy src/ --config-file pyproject.toml
+
+      - name: bandit security scan
+        run: bandit -r src/ -ll
+
+      - name: detect-secrets
+        run: detect-secrets scan --baseline .secrets.baseline
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          pip install -e "src/shared[dev]"
+          pip install -e "src/api[dev]"
+          pip install pytest pytest-asyncio pytest-cov
+
+      - name: Run unit tests
+        run: pytest tests/unit/ tests/contract/ -v -m "unit or contract" --cov=src --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wafagent
+          POSTGRES_USER: wafagent
+          POSTGRES_PASSWORD: changeme_local_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          pip install -e "src/shared[dev]"
+          pip install -e "src/api[dev]"
+          pip install pytest pytest-asyncio
+
+      - name: Run migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: wafagent
+          DB_USER: wafagent
+          DB_PASSWORD: changeme_local_only
+        run: alembic upgrade head
+
+      - name: Run integration tests
+        env:
+          TEST_DB_DSN: postgresql://wafagent:changeme_local_only@localhost:5432/wafagent
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest tests/integration/ -v -m integration
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy scan Dockerfile (API)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: src/api/Dockerfile
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - name: pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit -r src/shared/pyproject.toml
+          pip-audit -r src/api/pyproject.toml
+
+  build-images:
+    name: Build Images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f src/api/Dockerfile --target production -t waf-api:pr-${{ github.event.pull_request.number }} .
+
+      - name: Validate image builds without errors
+        run: docker run --rm waf-api:pr-${{ github.event.pull_request.number }} --version 2>/dev/null || true

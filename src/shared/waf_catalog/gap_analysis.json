@@ -1,0 +1,46 @@
+{
+  "framework_version": "2024",
+  "generated_at": "2026-06-22",
+  "generated_by": "Phase 3 coverage expansion — scripts/validate_waf_catalog.py --write-reports",
+  "total_controls": 57,
+  "total_rules": 93,
+  "unmapped_control_count": 4,
+  "unmapped_rule_count": 0,
+  "gap_percentage": 7.0,
+  "phase3_note": "21 of 25 previously-unmapped controls are now covered by 15 new rules. 4 controls require human review and cannot be objectively measured via Azure APIs.",
+  "unmapped_controls": [
+    {
+      "code": "SE-10",
+      "pillar": "Security",
+      "title": "Conduct regular adversarial testing",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/security/adversarial-testing",
+      "reason": "human_review_required",
+      "explanation": "Penetration testing, red-team exercises, and bug bounty programmes are organisational processes. Azure does not expose an API indicating whether adversarial testing has been conducted or scheduled. This control requires a human attestation process (e.g., a signed attestation in a compliance management tool, a ServiceNow record, or an external pentest report)."
+    },
+    {
+      "code": "OE-03",
+      "pillar": "Operational Excellence",
+      "title": "Formalize software ideation and planning management",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/operational-excellence/ideation-planning",
+      "reason": "human_review_required",
+      "explanation": "Backlog management, sprint planning, and requirements management are implemented in Azure DevOps Boards, GitHub Projects, Jira, or similar tools — none of which surface in Azure Resource Manager. This is an organisational process control with no ARM-detectable evidence."
+    },
+    {
+      "code": "OE-04",
+      "pillar": "Operational Excellence",
+      "title": "Use continuous integration",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/operational-excellence/continuous-integration",
+      "reason": "human_review_required",
+      "explanation": "CI pipelines (Azure Pipelines, GitHub Actions, Jenkins, etc.) are not represented as ARM resources. The existence of an App Service or AKS cluster does not prove that a CI pipeline deploys to it. This control requires review of the team's DevOps toolchain configuration."
+    },
+    {
+      "code": "CO-09",
+      "pillar": "Cost Optimization",
+      "title": "Optimize personnel time",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/cost-optimization/personnel-time",
+      "reason": "human_review_required",
+      "explanation": "Personnel time optimisation (e.g., reducing toil through automation, measuring on-call burden, right-sizing engineering teams) is a people and process concern. Azure has no API that reports on engineer hours spent on cloud operations. This is an organisational metric reviewed in retrospectives and team surveys."
+    }
+  ],
+  "unmapped_rules": []
+}

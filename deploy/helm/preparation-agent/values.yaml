@@ -1,0 +1,60 @@
+# Default values for waf-preparation-agent.
+# Override per-environment in values-<env>.yaml or via --set flags.
+
+replicaCount: 1  # Overridden by KEDA at runtime.
+
+image:
+  repository: wafagentacr.azurecr.io/waf-preparation-agent
+  pullPolicy: Always
+  tag: ""
+
+serviceAccount:
+  name: waf-preparation-agent
+  annotations:
+    azure.workload.identity/client-id: ""
+
+# Preparation is lightweight: validation + DB writes + one SB publish per assessment.
+resources:
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+nodeSelector:
+  agentpool: agentpool
+
+tolerations: []
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 0  # Can scale to 0 when queue is empty.
+
+env:
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+  OTEL_EXPORTER_ENABLED: "true"
+  OTEL_SERVICE_NAME: "waf-preparation-agent"
+  AZURE_SERVICEBUS_NAMESPACE: ""
+  AZURE_KEYVAULT_URI: ""
+  DB_HOST: ""
+  DB_PORT: "5432"
+  DB_NAME: "wafagent"
+  DB_USER: "wafagent_agents"
+
+livenessProbe:
+  exec:
+    command: ["python", "-c", "import waf_preparation.main"]
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  failureThreshold: 3
+
+keda:
+  enabled: true
+  minReplicas: 0
+  maxReplicas: 5
+  triggerMessageCount: "2"
+  queueName: "assessment.created"
+  cooldownPeriod: 60
+  pollingInterval: 15

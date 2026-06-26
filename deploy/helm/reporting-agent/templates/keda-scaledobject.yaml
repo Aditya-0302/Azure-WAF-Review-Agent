@@ -1,0 +1,50 @@
+{{- if .Values.keda.enabled }}
+# KEDA ScaledObject — scales Reporting Agent pods based on Service Bus queue depth.
+#
+# Scales up when reporting.requested queue has >= 1 message (one pod per report).
+# Scales down to minReplicas when the queue is empty.
+#
+# ARCHITECTURE: Report generation is CPU-intensive (PDF via reportlab).
+# One message = one full assessment report; do not batch multiple per pod.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "waf-reporting-agent.fullname" . }}
+  labels:
+    {{- include "waf-reporting-agent.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "waf-reporting-agent.fullname" . }}
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  # Allow 2 minutes after scale-down trigger before terminating pods, so
+  # in-flight report generation can complete gracefully.
+  cooldownPeriod: 120
+  # Poll the Service Bus queue every 30 seconds.
+  pollingInterval: 30
+  triggers:
+    - type: azure-servicebus
+      metadata:
+        queueName: reporting.requested
+        # messageCount: scale so that each active pod handles at most N messages.
+        # Setting 1 means one pod per queued message (1:1 ratio for CPU-heavy work).
+        messageCount: "{{ .Values.keda.triggerMessageCount }}"
+        # connectionFromEnv: name of the env var holding the Service Bus connection
+        # string.  The value is injected via a Kubernetes Secret referenced in the
+        # Deployment.  KEDA uses this only for metric polling; the agent itself uses
+        # Managed Identity.
+        connectionFromEnv: KEDA_SERVICEBUS_CONNECTION
+      authenticationRef:
+        name: {{ include "waf-reporting-agent.fullname" . }}-keda-auth
+---
+# TriggerAuthentication lets KEDA use Workload Identity (no connection string).
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "waf-reporting-agent.fullname" . }}-keda-auth
+  labels:
+    {{- include "waf-reporting-agent.labels" . | nindent 4 }}
+spec:
+  podIdentity:
+    provider: azure-workload
+{{- end }}

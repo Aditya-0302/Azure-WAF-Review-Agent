@@ -1,0 +1,17 @@
+apiVersion: v2
+name: waf-reporting-agent
+description: >
+  Reporting Agent for the AI-Powered Azure WAF Review Agent.
+  Consumes reporting.requested events from Azure Service Bus, aggregates
+  findings, generates Excel and PDF reports, uploads to Blob Storage, and
+  delivers HMAC-signed webhook notifications.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - waf
+  - azure
+  - reporting
+  - service-bus
+maintainers:
+  - name: WAF Agent Platform Team

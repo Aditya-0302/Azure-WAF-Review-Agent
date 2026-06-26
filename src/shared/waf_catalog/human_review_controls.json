@@ -1,0 +1,228 @@
+{
+  "_comment": "Human review controls catalog — WAF recommendations that cannot be objectively assessed via Azure ARM, Resource Graph, Advisor, Monitor, Policy, or Cost Management APIs. These require reviewer attestation, structured questionnaire responses, evidence collection, and sign-off.",
+  "schema_version": "1.0",
+  "generated_at": "2026-06-22",
+  "total_controls": 4,
+  "controls": [
+    {
+      "code": "SE-10",
+      "pillar": "Security",
+      "title": "Perform security validation and adversarial testing",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/security/adversarial-testing",
+      "review_required": true,
+      "reason_for_human_review": "Penetration testing, red-team exercises, and bug bounty programmes are organisational processes. Azure does not expose an API indicating whether adversarial testing has been conducted or scheduled. This control requires a human attestation process supported by pentest reports, red-team summaries, or equivalent external evidence.",
+      "questions": [
+        {
+          "id": "se10-q1",
+          "text": "Does your organisation conduct penetration testing of this workload?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "se10-q2",
+          "text": "How frequently is penetration testing performed?",
+          "type": "single_choice",
+          "options": ["Annually", "Semi-annually", "Quarterly", "Ad-hoc", "Never"],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "se10-q3",
+          "text": "Are penetration test findings tracked to remediation with defined SLAs?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "se10-q4",
+          "text": "Are third-party or independent security assessments (e.g. red-team exercises, bug bounty programmes) performed?",
+          "type": "boolean",
+          "options": [],
+          "required": false,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "se10-q5",
+          "text": "Provide evidence of the most recent adversarial test (e.g. pentest report, red-team summary, bug bounty scope document).",
+          "type": "evidence",
+          "options": [],
+          "required": false,
+          "evidence_required": true,
+          "accepted_types": ["PDF", "DOCX", "PNG", "JPG", "link"]
+        }
+      ]
+    },
+    {
+      "code": "OE-03",
+      "pillar": "Operational Excellence",
+      "title": "Formalize software ideation and planning management",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/operational-excellence/ideation-planning",
+      "review_required": true,
+      "reason_for_human_review": "Backlog management, sprint planning, and requirements management are implemented in Azure DevOps Boards, GitHub Projects, Jira, or similar tools — none of which surface in Azure Resource Manager or are accessible via the Azure Resource Graph API.",
+      "questions": [
+        {
+          "id": "oe03-q1",
+          "text": "Is work for this workload tracked in a formal planning system (e.g. Azure DevOps Boards, GitHub Projects, Jira)?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe03-q2",
+          "text": "Which planning tool is used?",
+          "type": "single_choice",
+          "options": ["Azure DevOps Boards", "GitHub Projects", "Jira", "Linear", "ServiceNow", "Other", "None"],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe03-q3",
+          "text": "Are priorities documented and regularly reviewed (e.g. sprint retrospectives, backlog refinement sessions)?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe03-q4",
+          "text": "Are requirements linked to work items and traceable through to deployments?",
+          "type": "boolean",
+          "options": [],
+          "required": false,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe03-q5",
+          "text": "Provide evidence of your planning process (e.g. board screenshot, sprint report, backlog export).",
+          "type": "evidence",
+          "options": [],
+          "required": false,
+          "evidence_required": true,
+          "accepted_types": ["PDF", "DOCX", "PNG", "JPG", "PPTX", "link"]
+        }
+      ]
+    },
+    {
+      "code": "OE-04",
+      "pillar": "Operational Excellence",
+      "title": "Use continuous integration",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/operational-excellence/continuous-integration",
+      "review_required": true,
+      "reason_for_human_review": "CI/CD pipelines (Azure Pipelines, GitHub Actions, Jenkins, etc.) are not represented as Azure Resource Manager resources and cannot be discovered via Azure Resource Graph. The existence of an App Service or AKS cluster does not prove that a CI pipeline deploys to it.",
+      "questions": [
+        {
+          "id": "oe04-q1",
+          "text": "Do CI/CD pipelines exist for deploying this workload?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe04-q2",
+          "text": "Which CI/CD platform is used?",
+          "type": "single_choice",
+          "options": ["Azure Pipelines", "GitHub Actions", "Jenkins", "GitLab CI", "CircleCI", "TeamCity", "Other", "None"],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe04-q3",
+          "text": "Are automated quality gates enforced in the pipeline (e.g. unit tests, security scans, code coverage thresholds)?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe04-q4",
+          "text": "Are rollback procedures defined and tested for failed deployments?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "oe04-q5",
+          "text": "Provide evidence of your CI/CD pipelines (e.g. pipeline screenshot, build history, YAML definition).",
+          "type": "evidence",
+          "options": [],
+          "required": false,
+          "evidence_required": true,
+          "accepted_types": ["PDF", "PNG", "JPG", "link"]
+        }
+      ]
+    },
+    {
+      "code": "CO-09",
+      "pillar": "Cost Optimization",
+      "title": "Optimize personnel time",
+      "microsoft_url": "https://learn.microsoft.com/azure/well-architected/cost-optimization/personnel-time",
+      "review_required": true,
+      "reason_for_human_review": "Personnel time optimisation (reducing toil through automation, measuring on-call burden, right-sizing engineering teams) is a people and process concern. Azure has no API that reports on engineer hours spent on cloud operations. This is an organisational metric reviewed in retrospectives and team surveys.",
+      "questions": [
+        {
+          "id": "co09-q1",
+          "text": "Do engineering teams regularly review operational effort and toil for this workload?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "co09-q2",
+          "text": "Are repetitive manual operations automated to reduce engineer time spent on cloud operations?",
+          "type": "boolean",
+          "options": [],
+          "required": true,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "co09-q3",
+          "text": "Are on-call burdens and support costs measured and reviewed for optimisation opportunities?",
+          "type": "boolean",
+          "options": [],
+          "required": false,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "co09-q4",
+          "text": "Has an automation initiative been undertaken to reduce manual cloud operations in the past 12 months?",
+          "type": "boolean",
+          "options": [],
+          "required": false,
+          "evidence_required": false,
+          "accepted_types": []
+        },
+        {
+          "id": "co09-q5",
+          "text": "Provide evidence of personnel time optimisation efforts (e.g. automation runbooks, toil reduction reports, on-call metrics).",
+          "type": "evidence",
+          "options": [],
+          "required": false,
+          "evidence_required": true,
+          "accepted_types": ["PDF", "DOCX", "PNG", "JPG", "link"]
+        }
+      ]
+    }
+  ]
+}

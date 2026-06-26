@@ -1,0 +1,33 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "waf-reasoning-agent.fullname" . }}
+  labels:
+    {{- include "waf-reasoning-agent.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "waf-reasoning-agent.fullname" . }}
+  minReplicaCount: {{ .Values.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod }}
+  pollingInterval: {{ .Values.keda.pollingInterval }}
+  triggers:
+    - type: azure-servicebus
+      metadata:
+        queueName: {{ .Values.keda.queueName }}
+        messageCount: {{ .Values.keda.triggerMessageCount | quote }}
+        connectionFromEnv: KEDA_SERVICEBUS_CONNECTION
+      authenticationRef:
+        name: {{ include "waf-reasoning-agent.fullname" . }}-keda-auth
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "waf-reasoning-agent.fullname" . }}-keda-auth
+  labels:
+    {{- include "waf-reasoning-agent.labels" . | nindent 4 }}
+spec:
+  podIdentity:
+    provider: azure-workload
+{{- end }}

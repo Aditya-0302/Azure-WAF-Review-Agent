@@ -1,0 +1,18 @@
+apiVersion: v2
+name: waf-reasoning-agent
+description: >
+  Reasoning Agent for the AI-Powered Azure WAF Review Agent.
+  Consumes reasoning.requested events, runs DSL evaluator against extracted
+  resource properties, augments with GPT-4o via Azure OpenAI, retrieves
+  supplemental rules from Azure AI Search, and persists findings.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - waf
+  - azure
+  - reasoning
+  - openai
+  - ai-search
+maintainers:
+  - name: WAF Agent Platform Team

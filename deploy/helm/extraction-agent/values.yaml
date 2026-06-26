@@ -1,0 +1,63 @@
+# Default values for waf-extraction-agent.
+# Override per-environment in values-<env>.yaml or via --set flags.
+
+replicaCount: 1  # Overridden by KEDA at runtime.
+
+image:
+  repository: wafagentacr.azurecr.io/waf-extraction-agent
+  pullPolicy: Always
+  tag: ""
+
+serviceAccount:
+  name: waf-extraction-agent
+  annotations:
+    azure.workload.identity/client-id: ""
+
+# Extraction issues many concurrent ARM API calls; network-bound but needs memory
+# for buffering large subscription resource lists.
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+nodeSelector:
+  agentpool: agentpool
+
+tolerations: []
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 0
+
+env:
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+  OTEL_EXPORTER_ENABLED: "true"
+  OTEL_SERVICE_NAME: "waf-extraction-agent"
+  AZURE_SERVICEBUS_NAMESPACE: ""
+  AZURE_KEYVAULT_URI: ""
+  DB_HOST: ""
+  DB_PORT: "5432"
+  DB_NAME: "wafagent"
+  DB_USER: "wafagent_agents"
+  ARM_API_CONCURRENCY: "10"     # Max concurrent ARM SDK calls per pod.
+  ARM_REQUEST_TIMEOUT_S: "30"
+
+livenessProbe:
+  exec:
+    command: ["python", "-c", "import waf_extraction.main"]
+  initialDelaySeconds: 15
+  periodSeconds: 30
+  failureThreshold: 3
+
+keda:
+  enabled: true
+  minReplicas: 0
+  maxReplicas: 10
+  triggerMessageCount: "1"
+  queueName: "extraction.requested"
+  cooldownPeriod: 120
+  pollingInterval: 15

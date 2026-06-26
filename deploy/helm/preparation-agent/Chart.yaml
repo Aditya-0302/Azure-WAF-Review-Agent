@@ -1,0 +1,16 @@
+apiVersion: v2
+name: waf-preparation-agent
+description: >
+  Preparation Agent for the AI-Powered Azure WAF Review Agent.
+  Consumes assessment.created events from Azure Service Bus, validates
+  subscriptions, records assessment state, and enqueues extraction tasks.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - waf
+  - azure
+  - preparation
+  - service-bus
+maintainers:
+  - name: WAF Agent Platform Team

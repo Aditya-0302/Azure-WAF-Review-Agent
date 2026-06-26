@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "waf-reporting-agent"
+version = "0.1.0"
+description = "Reporting Agent — aggregates findings and generates Excel/PDF reports for the WAF Review Agent"
+requires-python = ">=3.12"
+dependencies = [
+    "waf-agent-shared>=0.1.0",
+    # Report generation
+    "openpyxl>=3.1.2",
+    "reportlab>=4.2.0",
+    "Pillow>=10.0.0",   # required by reportlab renderPM for PNG export
+    # HTTP client for webhook delivery
+    "aiohttp>=3.9.0",
+    # Azure SDKs (Managed Identity only — no connection strings)
+    "azure-storage-blob>=12.20.0",
+    "azure-keyvault-secrets>=4.8.0",
+    "azure-servicebus>=7.12.0",
+    "azure-identity>=1.17.0",
+    # Config
+    "pydantic-settings>=2.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["waf_reporting"]

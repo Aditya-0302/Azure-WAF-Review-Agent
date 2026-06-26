@@ -1,0 +1,334 @@
+version: "3.9"
+
+x-azure-auth-env: &azure-auth-env
+  AZURE_TENANT_ID: "${AZURE_TENANT_ID:-}"
+  AZURE_CLIENT_ID: "${AZURE_CLIENT_ID:-}"
+  AZURE_CLIENT_SECRET: "${AZURE_CLIENT_SECRET:-}"
+  KEYVAULT_URI: "${KEYVAULT_URI:-}"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wafagent-postgres
+    environment:
+      POSTGRES_DB: wafagent
+      POSTGRES_USER: wafagent
+      POSTGRES_PASSWORD: changeme_local_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wafagent -d wafagent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: wafagent-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  sqledge:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: wafagent-sqledge
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "ServiceBus@Local1"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'ServiceBus@Local1' -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # One-shot: copies a statically compiled nc into a named volume so the
+  # distroless emulator image has a TCP-check binary for its health check.
+  # busybox:musl is statically linked — no glibc dependency, runs in any container.
+  servicebus-healthtools:
+    image: busybox:musl
+    container_name: wafagent-servicebus-healthtools
+    command: ["sh", "-c", "cp /bin/nc /tools/nc && chmod +x /tools/nc"]
+    volumes:
+      - servicebus-healthtools:/tools
+    restart: "no"
+
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    container_name: wafagent-servicebus
+    ports:
+      - "5672:5672"
+      - "5671:5671"
+      - "9080:9080"
+    environment:
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: sqledge
+      MSSQL_SA_PASSWORD: "ServiceBus@Local1"
+    volumes:
+      # Queue/namespace config — file mount is the only supported config mechanism.
+      - ./docker/servicebus_config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+      # Injected nc binary for health check (image is distroless — no shell tools).
+      - servicebus-healthtools:/healthcheck:ro
+    depends_on:
+      servicebus-healthtools:
+        condition: service_completed_successfully
+      sqledge:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/healthcheck/nc", "-z", "localhost", "5672"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  mock-azure-rg:
+    image: wiremock/wiremock:3.6.0
+    container_name: wafagent-mock-azure
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./tests/fixtures/azure_responses:/home/wiremock/mappings
+    command: --verbose --global-response-templating
+
+  migrate:
+    build:
+      context: .
+      dockerfile: src/api/Dockerfile
+      target: development
+    container_name: wafagent-migrate
+    working_dir: /app
+    command: ["alembic", "-c", "/app/alembic.ini", "upgrade", "head"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+    volumes:
+      - ./src:/app/src
+      - ./alembic.ini:/app/alembic.ini:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - full
+
+  seed-rules:
+    build:
+      context: .
+      dockerfile: src/api/Dockerfile
+      target: development
+    container_name: wafagent-seed-rules
+    working_dir: /app
+    command: ["python", "scripts/seed_rules.py"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    profiles:
+      - full
+
+  api:
+    build:
+      context: .
+      dockerfile: src/api/Dockerfile
+      target: development
+    container_name: wafagent-api
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *azure-auth-env
+      # APP_ENV controls docs visibility and log format.
+      # staging (default): docs disabled, human-readable logs — correct for E2E tests.
+      # Override to "development" for a local dev session that needs /docs:
+      #   $env:APP_ENV = "development"; docker-compose --profile full up api
+      APP_ENV: "${APP_ENV:-staging}"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+      REDIS_URL: redis://redis:6379/0
+      SERVICEBUS_NAMESPACE: "sbemulatorns.servicebus.windows.net"
+      SERVICEBUS_CONNECTION_STRING: "${SERVICEBUS_EMULATOR_CONNECTION_STRING:-Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE=;UseDevelopmentEmulator=true;}"
+      AUTH_MODE: default_chain
+      # API_AUTH_MODE controls JWT enforcement.
+      # entra (default): JWT validation active — required for E2E security tests.
+      # Override to "development" to skip JWT validation during rapid local iteration:
+      #   $env:API_AUTH_MODE = "development"; docker-compose --profile full up api
+      API_AUTH_MODE: "${API_AUTH_MODE:-entra}"
+      JWT_AUDIENCE: "${JWT_AUDIENCE:-api://waf-agent-api}"
+      OTEL_EXPORTER_ENABLED: "false"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: uvicorn waf_api.main:app --host 0.0.0.0 --port 8000 --reload
+    profiles:
+      - full
+
+  preparation-agent:
+    build:
+      context: .
+      dockerfile: src/agents/preparation/Dockerfile
+      target: development
+    container_name: wafagent-preparation
+    environment:
+      <<: *azure-auth-env
+      APP_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+      SERVICEBUS_NAMESPACE: "sbemulatorns.servicebus.windows.net"
+      SERVICEBUS_CONNECTION_STRING: "${SERVICEBUS_EMULATOR_CONNECTION_STRING:-Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE=;UseDevelopmentEmulator=true;}"
+      AUTH_MODE: default_chain
+      OTEL_EXPORTER_ENABLED: "false"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      servicebus-emulator:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    profiles:
+      - full
+
+  extraction-agent:
+    build:
+      context: .
+      dockerfile: src/agents/extraction/Dockerfile
+      target: development
+    container_name: wafagent-extraction
+    environment:
+      <<: *azure-auth-env
+      APP_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+      SERVICEBUS_NAMESPACE: "sbemulatorns.servicebus.windows.net"
+      SERVICEBUS_CONNECTION_STRING: "${SERVICEBUS_EMULATOR_CONNECTION_STRING:-Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE=;UseDevelopmentEmulator=true;}"
+      AUTH_MODE: default_chain
+      ARM_API_BASE_URL: http://mock-azure-rg:8080   # WireMock ARM stub
+      OTEL_EXPORTER_ENABLED: "false"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      servicebus-emulator:
+        condition: service_healthy
+      mock-azure-rg:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    profiles:
+      - full
+
+  reasoning-agent:
+    build:
+      context: .
+      dockerfile: src/agents/reasoning/Dockerfile
+      target: development
+    container_name: wafagent-reasoning
+    environment:
+      <<: *azure-auth-env
+      APP_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+      SERVICEBUS_NAMESPACE: "sbemulatorns.servicebus.windows.net"
+      SERVICEBUS_CONNECTION_STRING: "${SERVICEBUS_EMULATOR_CONNECTION_STRING:-Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE=;UseDevelopmentEmulator=true;}"
+      AUTH_MODE: default_chain
+      # LLM provider — set LLM_PROVIDER=gemini (default) or azure in .env
+      LLM_PROVIDER: "${LLM_PROVIDER:-gemini}"
+      # Gemini (recommended — requires GEMINI_API_KEY in .env)
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      GEMINI_CHAT_MODEL: "${GEMINI_CHAT_MODEL:-gemini-2.5-pro}"
+      GEMINI_EMBED_MODEL: "${GEMINI_EMBED_MODEL:-text-embedding-004}"
+      # Azure OpenAI (optional enterprise path — only needed when LLM_PROVIDER=azure)
+      AZURE_OPENAI_ENDPOINT: "${AZURE_OPENAI_ENDPOINT:-}"
+      AZURE_OPENAI_DEPLOYMENT_CHAT: "${AZURE_OPENAI_DEPLOYMENT_CHAT:-}"
+      AZURE_OPENAI_API_VERSION: "${AZURE_OPENAI_API_VERSION:-2024-10-21}"
+      OTEL_EXPORTER_ENABLED: "false"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      servicebus-emulator:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    profiles:
+      - full
+
+  reporting-agent:
+    build:
+      context: .
+      dockerfile: src/agents/reporting/Dockerfile
+      target: development
+    container_name: wafagent-reporting
+    environment:
+      <<: *azure-auth-env
+      APP_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wafagent
+      DB_USER: wafagent
+      DB_PASSWORD: changeme_local_only
+      SERVICEBUS_NAMESPACE: "sbemulatorns.servicebus.windows.net"
+      SERVICEBUS_CONNECTION_STRING: "${SERVICEBUS_EMULATOR_CONNECTION_STRING:-Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE=;UseDevelopmentEmulator=true;}"
+      AUTH_MODE: default_chain
+      STORAGE_ACCOUNT_NAME: "${STORAGE_ACCOUNT_NAME:-}"
+      STORAGE_REPORTS_CONTAINER: "${STORAGE_REPORTS_CONTAINER:-reports}"
+      OTEL_EXPORTER_ENABLED: "false"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      servicebus-emulator:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    profiles:
+      - full
+
+volumes:
+  postgres_data:
+  servicebus-healthtools:

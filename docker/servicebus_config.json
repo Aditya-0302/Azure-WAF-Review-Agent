@@ -1,0 +1,21 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "sbemulatorns",
+        "Queues": [
+          {"Name": "assessment.created",    "Properties": {"MaxDeliveryCount": 5,  "LockDuration": "PT5M"}},
+          {"Name": "extraction.requested",  "Properties": {"MaxDeliveryCount": 5,  "LockDuration": "PT5M"}},
+          {"Name": "reasoning.requested",   "Properties": {"MaxDeliveryCount": 5,  "LockDuration": "PT5M"}},
+          {"Name": "reporting.requested",   "Properties": {"MaxDeliveryCount": 5,  "LockDuration": "PT5M"}},
+          {"Name": "assessment.cancelled",  "Properties": {"MaxDeliveryCount": 3,  "LockDuration": "PT1M"}},
+          {"Name": "webhook.delivery",      "Properties": {"MaxDeliveryCount": 10, "LockDuration": "PT2M"}}
+        ],
+        "Topics": []
+      }
+    ],
+    "Logging": {
+      "Type": "Console"
+    }
+  }
+}

@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "waf-reporting-agent.fullname" . }}
+  labels:
+    {{- include "waf-reporting-agent.labels" . | nindent 4 }}
+spec:
+  # replicaCount is managed by KEDA ScaledObject at runtime;
+  # setting it here provides a safe baseline for initial rollout.
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "waf-reporting-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "waf-reporting-agent.selectorLabels" . | nindent 8 }}
+        azure.workload.identity/use: "true"
+      annotations:
+        # Force pod restart on configmap/secret change.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+
+      # Graceful shutdown: drain in-flight message before SIGKILL.
+      terminationGracePeriodSeconds: 120
+
+      containers:
+        - name: reporting-agent
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            # DB credentials arrive via CSI Secret Store mount (see volumeMounts).
+            - name: REPORTING_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: waf-reporting-db-secret
+                  key: database-url
+            - name: REPORTING_DATABASE_URL_READONLY
+              valueFrom:
+                secretKeyRef:
+                  name: waf-reporting-db-secret
+                  key: database-url-readonly
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+
+          # No readinessProbe — this is a background consumer, not an HTTP service.
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        # tmpfs scratch space for report generation (Excel/PDF are built in memory,
+        # but reportlab may write temp files to /tmp).
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+---
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "waf-reporting-agent.fullname" . }}
+  labels:
+    {{- include "waf-reporting-agent.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "waf-reporting-agent.selectorLabels" . | nindent 6 }}
+{{- end }}

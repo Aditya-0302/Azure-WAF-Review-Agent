@@ -1,0 +1,16 @@
+apiVersion: v2
+name: waf-extraction-agent
+description: >
+  Extraction Agent for the AI-Powered Azure WAF Review Agent.
+  Consumes extraction.requested events, queries ARM APIs for resource
+  properties across all WAF pillars, and persists raw resource snapshots.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - waf
+  - azure
+  - extraction
+  - arm
+maintainers:
+  - name: WAF Agent Platform Team
