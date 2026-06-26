@@ -59,7 +59,11 @@ jobs:
         run: |
           pip install -e "src/shared[dev]"
           pip install -e "src/api[dev]"
-          pip install pytest pytest-asyncio pytest-cov
+          pip install -e "src/agents/extraction[dev]"
+          pip install -e "src/agents/preparation[dev]"
+          pip install -e "src/agents/reasoning[dev]"
+          pip install -e "src/agents/reporting[dev]"
+          pip install pytest pytest-asyncio pytest-cov pytest-mock
 
       - name: Run unit tests
         run: pytest tests/unit/ tests/contract/ -v -m "unit or contract" --cov=src --cov-report=xml --cov-fail-under=80
