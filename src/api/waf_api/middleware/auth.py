@@ -68,6 +68,76 @@ async def _http_get_jwks(url: str) -> dict[str, Any]:
         return response.json()  # type: ignore[no-any-return]
 
 
+class _JwksCache:
+    """Per-instance JWKS cache with TTL expiry and capacity-bounded eviction.
+
+    Replaces the module-level ``_JWKS_CACHE`` dict for callers that need
+    isolated cache state (e.g. tests).  The module-level ``_fetch_jwks``
+    continues to use ``_JWKS_CACHE`` for backward compatibility.
+    """
+
+    def __init__(
+        self,
+        ttl_seconds: float = _JWKS_TTL_SECONDS,
+        max_entries: int = _JWKS_MAX_ENTRIES,
+    ) -> None:
+        self._cache: dict[str, tuple[dict[str, Any], float]] = {}
+        self._ttl = ttl_seconds
+        self._max = max_entries
+
+    async def get(self, url: str) -> dict[str, Any]:
+        now = time.monotonic()
+        entry = self._cache.get(url)
+        if entry is not None:
+            value, expires_at = entry
+            if now < expires_at:
+                return value
+            del self._cache[url]
+        if len(self._cache) >= self._max:
+            oldest = min(self._cache, key=lambda k: self._cache[k][1])
+            del self._cache[oldest]
+        jwks = await _http_get_jwks(url)
+        self._cache[url] = (jwks, now + self._ttl)
+        return jwks
+
+
+async def _resolve_tenant_id(
+    *,
+    claims: dict[str, Any],
+    path_tenant_id: str | None,
+    db_pool: Any,
+) -> uuid.UUID:
+    """Resolve the internal tenant UUID from JWT claims.
+
+    Platform.Admin users get either the UUID from the path parameter or the
+    zero UUID (cross-tenant sentinel) when no path param is present.
+    All other roles perform a DB lookup by azure_tenant_id.
+
+    Raises:
+        ValueError: when the DB lookup finds no matching tenant.
+    """
+    roles: list[str] = claims.get("roles", [])
+    if "Platform.Admin" in roles or "WafAgent.PlatformAdmin" in roles:
+        if path_tenant_id:
+            return uuid.UUID(path_tenant_id)
+        return uuid.UUID(int=0)
+
+    if db_pool is None:
+        raise ValueError("db_pool is required for non-admin tenant resolution")
+
+    azure_tid = claims.get("tid")
+    async with db_pool.acquire_read() as conn:
+        result = await conn.fetchval(
+            "SELECT id FROM tenants WHERE azure_tenant_id = $1::uuid",
+            azure_tid,
+        )
+
+    if result is None:
+        raise ValueError(f"Tenant not found: azure_tenant_id={azure_tid}")
+
+    return result if isinstance(result, uuid.UUID) else uuid.UUID(str(result))
+
+
 async def _validate_claims(claims: dict[str, Any]) -> None:
     if not (claims.get("oid") or claims.get("sub")):
         raise ValueError("missing claim: oid")

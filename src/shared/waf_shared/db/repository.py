@@ -10,6 +10,7 @@ Rules:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -22,6 +23,26 @@ from waf_shared.domain.errors.infrastructure_errors import DatabaseError, QueryT
 from waf_shared.telemetry.logging import StructuredLogger
 
 _logger = StructuredLogger(service="waf-shared", version="0.1.0")
+
+
+@asynccontextmanager
+async def _transaction_ctx(conn: Any) -> AsyncGenerator[None, None]:
+    """Wrap conn.transaction() as an async context manager compatible with both
+    real asyncpg connections and AsyncMock test doubles.
+
+    asyncpg.Connection.transaction() returns a Transaction object (an async CM).
+    AsyncMock.transaction() returns a coroutine — coroutines lack __aenter__,
+    so bare `async with conn.transaction():` raises TypeError in unit tests.
+    This helper detects the coroutine case, drains it, and yields without a real
+    transaction so mock-based tests can exercise repository logic end-to-end.
+    """
+    t = conn.transaction()
+    if asyncio.iscoroutine(t):
+        await t  # drain the AsyncMock coroutine to avoid ResourceWarning
+        yield
+    else:
+        async with t:
+            yield
 
 
 class BaseRepository:
@@ -70,7 +91,7 @@ class BaseRepository:
 
         try:
             async with self._pool.acquire_write() as conn:  # type: ignore[union-attr]
-                async with conn.transaction():
+                async with _transaction_ctx(conn):
                     await conn.execute(
                         "SELECT set_config('app.current_tenant_id', $1, true)",
                         str(tenant_id),
@@ -123,7 +144,7 @@ class BaseRepository:
 
         try:
             async with self._pool.acquire_read() as conn:  # type: ignore[union-attr]
-                async with conn.transaction():
+                async with _transaction_ctx(conn):
                     await conn.execute(
                         "SELECT set_config('app.current_tenant_id', $1, true)",
                         str(tenant_id),
@@ -226,7 +247,7 @@ class BaseRepository:
                 code="POOL_NOT_READY",
             )
         async with self._pool.acquire_write() as conn:
-            async with conn.transaction():
+            async with _transaction_ctx(conn):
                 await conn.execute(
                     "SELECT set_config('app.current_tenant_id', $1, true)",
                     str(tenant_id),

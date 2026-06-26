@@ -34,6 +34,25 @@ _DETERMINISTIC_RESULT_REVIEW = "REVIEW"
 _CONFIDENCE_CERTAIN = 1.0
 _CONFIDENCE_UNCERTAIN = 0.5
 
+# Operators whose True result means "violation detected" (not "resource is compliant").
+# All other operators use compliance-assertion semantics: True = passes the check.
+_VIOLATION_OPS: frozenset[str] = frozenset({"is_null"})
+
+
+def _condition_is_violation_detector(dsl: dict[str, Any]) -> bool:
+    """Return True when the DSL node uses violation-detection semantics.
+
+    ``is_null`` returns True when a non-compliant condition exists (property
+    is absent or None).  Logical combinators (or/and) inherit the convention
+    if any of their sub-nodes are violation detectors.
+    """
+    op = dsl.get("op", "")
+    if op in _VIOLATION_OPS:
+        return True
+    if op in ("or", "and"):
+        return any(_condition_is_violation_detector(c) for c in dsl.get("conditions", []))
+    return False
+
 
 class DeterministicPipeline:
     """Evaluates all deterministic rules for one resource without any I/O."""
@@ -84,7 +103,7 @@ class DeterministicPipeline:
         tenant_id: uuid.UUID,
     ) -> Finding | None:
         try:
-            passed = evaluate_condition(
+            raw = evaluate_condition(
                 rule.rule_id,
                 rule.condition_dsl,  # type: ignore[arg-type]
                 resource.raw_properties,
@@ -110,6 +129,16 @@ class DeterministicPipeline:
                     "error": f"DSL evaluation error: {exc.detail}",
                 },
             )
+
+        # Resolve which convention the condition uses:
+        #   Violation-detection (is_null, or/and containing is_null):
+        #     True  = violation found  → finding
+        #     False = no violation     → no finding
+        #   Compliance-assertion (all other operators):
+        #     True  = resource passes  → no finding
+        #     False = resource fails   → finding
+        violation_mode = _condition_is_violation_detector(rule.condition_dsl)  # type: ignore[arg-type]
+        passed = not raw if violation_mode else raw
 
         self._logger.info(
             "reasoning.deterministic.evaluated",
