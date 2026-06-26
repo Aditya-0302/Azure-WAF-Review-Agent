@@ -63,8 +63,6 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# Secrets baseline
-.secrets.baseline
 
 # Docker
 *.log
