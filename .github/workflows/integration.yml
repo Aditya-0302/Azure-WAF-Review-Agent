@@ -1,0 +1,102 @@
+name: Integration Tests
+
+# Run manually on demand, or on a weekly schedule.
+# NOT triggered on push/pull_request — these tests require all agent packages
+# and a live PostgreSQL instance.  Public contributors run these locally or
+# after the default CI check passes.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 1"  # Every Monday at 02:00 UTC
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel an in-flight integration run.
+
+jobs:
+  # ── Agent handler tests ───────────────────────────────────────────────────────
+  # Tests the full message → handler → event pipeline for all four agents.
+  # All I/O (repositories, Azure SDK) is mocked — no external services required.
+  agent-integration:
+    name: Agent handler integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install all agent packages
+        run: |
+          pip install -e "src/shared[dev]"
+          pip install -e "src/agents/preparation[dev]"
+          pip install -e "src/agents/extraction[dev]"
+          pip install -e "src/agents/reasoning[dev]"
+          pip install -e "src/agents/reporting[dev]"
+          pip install pytest pytest-asyncio
+
+      - name: Run agent handler integration tests
+        run: pytest tests/integration/agents/ -v -m integration
+
+  # ── Database and auth integration tests ──────────────────────────────────────
+  # Tests repository layer, RLS isolation, and credential health flows against
+  # a real PostgreSQL instance.  Azure SDK tests in tests/integration/discovery/
+  # and tests/integration/auth/ self-skip unless AZURE_INTEGRATION_TESTS=1 is set.
+  db-integration:
+    name: Database integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wafagent
+          POSTGRES_USER: wafagent
+          POSTGRES_PASSWORD: changeme_local_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install packages
+        run: |
+          pip install -e "src/shared[dev]"
+          pip install -e "src/api[dev]"
+          pip install pytest pytest-asyncio
+
+      - name: Run migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: wafagent
+          DB_USER: wafagent
+          DB_PASSWORD: changeme_local_only
+        run: alembic upgrade head
+
+      - name: Run DB, auth, and discovery integration tests
+        env:
+          TEST_DB_DSN: postgresql://wafagent:changeme_local_only@localhost:5432/wafagent
+          REDIS_URL: redis://localhost:6379/0
+          # AZURE_INTEGRATION_TESTS: not set — Azure discovery tests self-skip.
+        run: >
+          pytest
+          tests/integration/db/
+          tests/integration/auth/
+          tests/integration/discovery/
+          -v -m integration

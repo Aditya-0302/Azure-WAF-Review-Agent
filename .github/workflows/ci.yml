@@ -69,57 +69,6 @@ jobs:
         with:
           files: coverage.xml
 
-  # ── Integration tests (self-contained: postgres + redis via GHA services) ─────
-  integration-tests:
-    name: Integration tests
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: wafagent
-          POSTGRES_USER: wafagent
-          POSTGRES_PASSWORD: changeme_local_only
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install packages
-        run: |
-          pip install -e "src/shared[dev]"
-          pip install -e "src/api[dev]"
-          pip install pytest pytest-asyncio
-
-      - name: Run migrations
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: wafagent
-          DB_USER: wafagent
-          DB_PASSWORD: changeme_local_only
-        run: alembic upgrade head
-
-      - name: Run integration tests
-        env:
-          TEST_DB_DSN: postgresql://wafagent:changeme_local_only@localhost:5432/wafagent
-          REDIS_URL: redis://localhost:6379/0
-        run: pytest tests/integration/ -v -m integration
-
   # ── Dependency vulnerability audit ───────────────────────────────────────────
   security-scan:
     name: Security scan
