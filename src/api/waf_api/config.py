@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # API Server
     # Bind to all interfaces so Kubernetes pod-to-pod routing works.
     # Network-level isolation is enforced by AKS NetworkPolicy (default-deny).
-    api_host: str = "0.0.0.0"  # noqa: S104
+    api_host: str = "0.0.0.0"  # noqa: S104  # nosec B104 — AKS pod networking requires binding all interfaces; isolation via NetworkPolicy
     api_port: int = 8000
     api_workers: int = 1
 

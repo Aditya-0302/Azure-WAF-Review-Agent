@@ -58,7 +58,7 @@ _FINDINGS_PAGE_SIZE = 500
 # Blob upload is best-effort. When it fails, reports are written here and the
 # assessment is still marked COMPLETED. The local path is stored in the DB so
 # the API tier can surface a "locally cached" download path instead of a SAS URL.
-_LOCAL_REPORTS_DIR = Path("/tmp/reports")
+_LOCAL_REPORTS_DIR = Path("/tmp/reports")  # nosec B108 — containerised; /tmp is ephemeral pod storage, not a shared host path
 
 _XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 _PDF_CONTENT_TYPE = "application/pdf"

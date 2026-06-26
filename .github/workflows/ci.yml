@@ -38,7 +38,7 @@ jobs:
         run: mypy src/ --config-file pyproject.toml
 
       - name: bandit security scan
-        run: bandit -r src/ -ll
+        run: bandit -r src/ -ll -c pyproject.toml
 
       - name: detect-secrets
         run: detect-secrets scan --baseline .secrets.baseline
