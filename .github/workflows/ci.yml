@@ -24,7 +24,7 @@ jobs:
 
       - name: Install tooling
         run: |
-          pip install ruff mypy bandit detect-secrets
+          pip install ruff==0.8.4 mypy bandit detect-secrets
           pip install -e "src/shared[dev]"
           pip install -e "src/api[dev]"
 
