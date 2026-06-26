@@ -1,16 +1,18 @@
-name: PR Validation
+name: CI
 
 on:
+  push:
+    branches: ["**"]
   pull_request:
-    branches: [main]
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # ── Static analysis ───────────────────────────────────────────────────────────
   lint:
-    name: Lint & Type Check
+    name: Lint & type check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,8 +43,9 @@ jobs:
       - name: detect-secrets
         run: detect-secrets scan --baseline .secrets.baseline
 
+  # ── Unit + contract tests ─────────────────────────────────────────────────────
   unit-tests:
-    name: Unit Tests
+    name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,8 +69,9 @@ jobs:
         with:
           files: coverage.xml
 
+  # ── Integration tests (self-contained: postgres + redis via GHA services) ─────
   integration-tests:
-    name: Integration Tests
+    name: Integration tests
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -83,12 +87,10 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-
       redis:
         image: redis:7-alpine
         ports:
           - 6379:6379
-
     steps:
       - uses: actions/checkout@v4
 
@@ -118,17 +120,18 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
         run: pytest tests/integration/ -v -m integration
 
+  # ── Dependency vulnerability audit ───────────────────────────────────────────
   security-scan:
-    name: Security Scan
+    name: Security scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy scan Dockerfile (API)
+      - name: Trivy — Dockerfile config scan (all images)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: config
-          scan-ref: src/api/Dockerfile
+          scan-ref: .
           severity: CRITICAL,HIGH
           exit-code: 1
 
@@ -138,14 +141,44 @@ jobs:
           pip-audit -r src/shared/pyproject.toml
           pip-audit -r src/api/pyproject.toml
 
-  build-images:
-    name: Build Images
+  # ── Docker builds (all 5 images, no push) ────────────────────────────────────
+  docker-build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: waf-api
+            dockerfile: src/api/Dockerfile
+          - name: waf-preparation-agent
+            dockerfile: src/agents/preparation/Dockerfile
+          - name: waf-extraction-agent
+            dockerfile: src/agents/extraction/Dockerfile
+          - name: waf-reasoning-agent
+            dockerfile: src/agents/reasoning/Dockerfile
+          - name: waf-reporting-agent
+            dockerfile: src/agents/reporting/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: production
+          push: false
+          tags: ${{ matrix.name }}:ci
+
+  # ── Compose config validation ─────────────────────────────────────────────────
+  compose-validate:
+    name: Validate docker-compose config
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build API image
-        run: docker build -f src/api/Dockerfile --target production -t waf-api:pr-${{ github.event.pull_request.number }} .
-
-      - name: Validate image builds without errors
-        run: docker run --rm waf-api:pr-${{ github.event.pull_request.number }} --version 2>/dev/null || true
+      - name: Validate docker-compose.dev.yml
+        run: docker compose -f docker-compose.dev.yml config --quiet
